@@ -1,0 +1,98 @@
+import { NavLink, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard, Inbox, List, Globe, UserCircle,
+  Briefcase, Radio, Send, Target, LogOut,
+} from 'lucide-react'
+import { useAuth } from '../../lib/AuthContext'
+
+const nav = [
+  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/busqueda',      icon: Target,          label: 'Mi Búsqueda',   badge: 'NEW' },
+  { to: '/scanner',       icon: Radio,           label: 'Escáner' },
+  { to: '/pipeline',      icon: Inbox,           label: 'Evaluar Oferta' },
+  { to: '/postulaciones', icon: Send,            label: 'Postulaciones' },
+  { to: '/tracker',       icon: List,            label: 'Tracker' },
+  { to: '/portals',       icon: Globe,           label: 'Portales Chile' },
+  { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
+]
+
+export default function Sidebar() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
+  }
+
+  // Iniciales del email para el avatar
+  const initials = user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : '?'
+
+  return (
+    <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
+      {/* Logo */}
+      <div className="p-5 border-b border-gray-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0">
+            <Briefcase size={16} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white leading-none">Career Ops</h1>
+            <p className="text-xs text-gray-500 leading-none mt-0.5">Búsqueda con IA · Chile</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {nav.map(({ to, icon: Icon, label, badge }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`
+            }
+          >
+            <Icon size={16} />
+            <span className="flex-1">{label}</span>
+            {badge && (
+              <span className="text-[10px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                {badge}
+              </span>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      {user && (
+        <div className="p-3 border-t border-gray-800">
+          <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
+            {/* Avatar */}
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+              {initials}
+            </div>
+            {/* Email */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-300 truncate">{user.email}</p>
+            </div>
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              className="text-gray-600 hover:text-red-400 transition-colors shrink-0"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </aside>
+  )
+}

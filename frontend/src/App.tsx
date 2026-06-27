@@ -1,0 +1,47 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './lib/AuthContext'
+import Layout from './components/layout/Layout'
+import Login from './pages/Login'
+import CareersDashboard from './pages/careers/CareersDashboard'
+import CareersPipeline from './pages/careers/CareersPipeline'
+import CareersTracker from './pages/careers/CareersTracker'
+import CareersPortals from './pages/careers/CareersPortals'
+import CareersProfile from './pages/careers/CareersProfile'
+import CareersScanner from './pages/careers/CareersScanner'
+import CareersPostulaciones from './pages/careers/CareersPostulaciones'
+import CareersBusqueda from './pages/careers/CareersBusqueda'
+
+function ProtectedLayout() {
+  const { user, loading } = useAuth()
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      </div>
+    </div>
+  )
+
+  if (!user) return <Navigate to="/login" replace />
+  return <Layout />
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<ProtectedLayout />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard"       element={<CareersDashboard />} />
+        <Route path="busqueda"        element={<CareersBusqueda />} />
+        <Route path="scanner"         element={<CareersScanner />} />
+        <Route path="pipeline"        element={<CareersPipeline />} />
+        <Route path="postulaciones"   element={<CareersPostulaciones />} />
+        <Route path="tracker"         element={<CareersTracker />} />
+        <Route path="portals"         element={<CareersPortals />} />
+        <Route path="profile"         element={<CareersProfile />} />
+      </Route>
+    </Routes>
+  )
+}

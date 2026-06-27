@@ -1,0 +1,83 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[top=0.7in,bottom=0.7in,left=0.75in,right=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\pagestyle{empty}
+\titleformat{\section}{\normalfont\bfseries}{}{0em}{\uppercase}[\vspace{-4pt}\hrule\vspace{4pt}]
+\titlespacing{\section}{0pt}{8pt}{5pt}
+\setlist[itemize]{leftmargin=1.2em,label=--,itemsep=0pt,topsep=2pt,parsep=0pt}
+\begin{document}
+\begin{center}
+{\fontsize{16}{19}\selectfont\textbf{\MakeUppercase{Diego Castillo Pineda}}}\\[4pt]
+{\small La Florida, Santiago, Chile \quad|\quad +56 9 9416 2547 \quad|\quad \href{mailto:diego.castillop11@gmail.com}{diego.castillop11@gmail.com}\\
+\href{https://linkedin.com/in/diego-castillo-pineda}{linkedin.com/in/diego-castillo-pineda} \quad|\quad \href{https://github.com/diegocastillop11}{github.com/diegocastillop11}}
+\end{center}
+
+\section{Resumen Profesional}
+Analista de Inteligencia de Datos con trayectoria sólida en SQL Server, análisis de datos y automatización de procesos en entornos de alta concurrencia. Experiencia aplicando business analytics, desarrollando soluciones con Python y Power BI, y diseñando procedimientos almacenados que procesan decenas de miles de transacciones por hora. Capacidad comprobada para transformar datos en insights accionables, optimizar bases de datos en Azure y comunicar hallazgos técnicos a stakeholders de negocio, alineando soluciones de inteligencia de datos con objetivos estratégicos.
+
+\section{Experiencia Profesional}
+
+\textbf{Punto Ticket} \hfill Santiago, Chile\\
+\textit{Analista de Base de Datos Senior} \hfill Nov. 2019 – Feb. 2026
+\begin{itemize}
+  \item Diseñé y optimicé stored procedures y consultas SQL Server para eventos masivos, procesando más de 50,000 transacciones concurrentes por hora y manteniendo tiempos de respuesta bajo 200ms en períodos críticos de venta.
+  \item Automaticé procesos de ETL mediante scripts T-SQL y Python, reduciendo en 85\% los errores manuales en operaciones recurrentes de carga de datos y generación de reportes analíticos.
+  \item Desarrollé reportería avanzada con consultas dinámicas PIVOT y dashboards en Power BI, entregando insights de comportamiento de usuarios y patrones de compra a equipos de marketing y comercial.
+  \item Lideré iniciativas de migración de bases de datos SQL Server on-premise hacia Azure SQL Database, asegurando alta disponibilidad (99.9\% uptime) durante la transición y en períodos de alta demanda.
+  \item Integré datos de múltiples fuentes utilizando formatos JSON, XML y APIs REST, consolidando información en un data warehouse que soporta análisis de business intelligence y toma de decisiones estratégicas.
+  \item Implementé estrategias de optimización de índices y particionamiento de tablas, mejorando el rendimiento de queries analíticas complejas en 60\% y reduciendo costos de almacenamiento en Azure.
+\end{itemize}
+\vspace{2pt}
+\textbf{Imperial S.A.} \hfill Santiago, Chile\\
+\textit{Analista Funcional} \hfill Jun. 2017 – Nov. 2019
+\begin{itemize}
+  \item Ejecuté análisis funcional y levantamiento de requerimientos con usuarios clave de operaciones, finanzas y logística, traduciendo necesidades de negocio en especificaciones técnicas para desarrollo en Oracle y SQL Server.
+  \item Desarrollé consultas SQL y reportes ad-hoc en SQL Server Management Studio para soporte a decisiones operativas, reduciendo en 40\% el tiempo de respuesta a solicitudes críticas de información de áreas comerciales.
+  \item Parametricé y configuré módulos ERP (Oracle y SAP), elaborando documentación técnica y funcional (instructivos, flujos de proceso, manuales de usuario) que facilitó la capacitación de más de 80 usuarios finales.
+  \item Colaboré con equipos técnicos y funcionales en la resolución de incidencias en ambientes productivos, aplicando metodologías de troubleshooting que mejoraron en 30\% el SLA de atención a usuarios.
+\end{itemize}
+\vspace{2pt}
+\textbf{OB GROUP PARK} \hfill Santiago, Chile\\
+\textit{Analista de Sistemas y TI} \hfill Mayo 2014 – Abr. 2017
+\begin{itemize}
+  \item Lideré proyectos de mejora de procesos contables y de gestión en retail, integrando tecnologías de bases de datos SQL Server y plataformas de ERP que optimizaron flujos operativos y redujeron tiempos de cierre contable en 25\%.
+  \item Coordiné la implementación de soluciones tecnológicas con equipos multidisciplinarios, asegurando compatibilidad entre sistemas legados y nuevas plataformas, y garantizando la continuidad operativa durante transiciones críticas.
+  \item Diseñé y documenté procedimientos de extracción y transformación de datos para análisis de inventarios y ventas, entregando reportes periódicos que apoyaron la planificación estratégica y la toma de decisiones de gerencia.
+\end{itemize}
+\vspace{2pt}
+\textbf{Hewlett-Packard Company} \hfill Santiago, Chile\\
+\textit{Agente de Mesa de Ayuda Nivel 1} \hfill Ago. 2013 – Mayo 2014
+\begin{itemize}
+  \item Brindé soporte técnico de primer nivel a usuarios finales, diagnosticando y resolviendo incidencias de hardware, software y acceso a sistemas, desarrollando habilidades de troubleshooting y comunicación efectiva con stakeholders no técnicos.
+\end{itemize}
+
+\section{Proyectos Destacados}
+
+\textbf{Sistema de Análisis Predictivo con IA para Retail} \hfill 2024
+\begin{itemize}
+  \item Desarrollé una aplicación web full-stack con React (TypeScript), Node.js y PostgreSQL que integra modelos de machine learning en Python para predecir demanda de productos, aplicando técnicas de prompt engineering con Claude AI para generar insights automáticos a partir de datos históricos.
+  \item Implementé seguridad de datos con autenticación JWT, encriptación de información sensible y diseño UI/UX responsive siguiendo principios de accesibilidad, logrando una interfaz intuitiva que reduce en 50\% el tiempo de consulta de reportes analíticos.
+  \item Desplegué la solución en contenedores Docker y Azure, asegurando escalabilidad y mantenimiento simplificado, con pipelines CI/CD en GitHub Actions que automatizan testing y deployment.
+\end{itemize}
+
+\section{Habilidades T\'{e}cnicas}
+\textbf{Datos \& Inteligencia de Negocios:} SQL Server (Experto), Azure SQL Database, Oracle, PostgreSQL, Power BI, Business Analytics, Data Warehousing, ETL \\
+\textbf{Análisis \& IA:} Python (Pandas, NumPy, Scikit-learn), Machine Learning, Prompt Engineering (Claude, Gemini), Data Science, Estadística Aplicada \\
+\textbf{Desarrollo \& Cloud:} C\#, Node.js, TypeScript, JavaScript (ES6+), React, Microsoft Azure, Docker, Git (GitHub/GitLab) \\
+\textbf{Herramientas \& Metodologías:} SQL Server Management Studio, Excel Avanzado, JSON/XML, HTML5/CSS3, UI/UX Design, Scrum/Kanban, Documentación Técnica
+
+\section{Formaci\'{o}n Acad\'{e}mica}
+\textbf{Business Analytics Essentials, Machine Learning y Data Science}, Escuela de Postgrado, Universidad de Chile \hfill 2023–2024 \\
+\textbf{Optimización de Procesos y Administración de Bases de Datos SQL Server}, Universidad de Chile \hfill 2023 \\
+\textbf{Desarrollo de Aplicaciones Móviles}, Universidad Complutense de Madrid \hfill 2017 \\
+\textbf{Analista Programador}, Universidad Tecnológica de Chile INACAP \hfill 2013
+
+\end{document}

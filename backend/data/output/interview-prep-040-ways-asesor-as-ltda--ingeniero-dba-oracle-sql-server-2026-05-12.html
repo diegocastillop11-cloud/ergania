@@ -1,0 +1,524 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prep. Entrevista WAYS Asesorías Ltda.</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:24px;line-height:1.6;}h1,h2,h3{color:#111;margin-top:1.4rem;}h1{font-size:26px;}h2{font-size:20px;}h3{font-size:17px;}p{margin:0.9rem 0;}ul,ol{margin:0.8rem 0 0.8rem 1.4rem;}code{background:#f3f4f6;padding:0.15rem 0.35rem;border-radius:0.3rem;}pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e5e7eb;padding:16px;border-radius:12px;}</style></head><body><h1>Preparación de Entrevista</h1><p><strong>Empresa:</strong> WAYS Asesorías Ltda.</p><p><strong>Cargo:</strong> Ingeniero DBA Oracle, SQL Server</p><pre># Guía Completa de Preparación para Entrevista
+**Cargo:** Ingeniero DBA Oracle, SQL Server  
+**Empresa:** WAYS Asesorías Ltda.  
+**Candidato:** Diego Castillo Pineda
+
+---
+
+## 1. TOP 10 PREGUNTAS PROBABLES
+
+### 1.1 "Cuéntame sobre ti"
+
+**Respuesta sugerida:**
+
+"Soy Diego Castillo, Analista de Base de Datos Senior con más de 6 años de experiencia en entornos de alta concurrencia. La mayor parte de mi carrera la desarrollé en Punto Ticket, donde sostuve la infraestructura de datos detrás de los eventos más grandes de Chile. Ahí aprendí que cuando se ponen a la venta las entradas de un show masivo, no hay margen para errores: cada segundo cuenta y cada query debe estar optimizada.
+
+Me especializo en SQL Server, diseño y optimización de stored procedures, y automatización de procesos masivos con T-SQL. También tengo experiencia con Oracle y he participado en migraciones hacia Azure. Lo que más valoro es la estabilidad operativa y la documentación técnica, porque entiendo que el conocimiento debe quedarse en el equipo, no solo en las personas.
+
+Busco unirme a WAYS porque me interesa trabajar en una consultora donde pueda aplicar mi experiencia en múltiples clientes y seguir creciendo técnicamente."
+
+**Tip de delivery:**  
+Mantén contacto visual, habla con ritmo pausado (no más de 90 segundos). Cierra siempre conectando tu experiencia con lo que ellos necesitan.
+
+---
+
+### 1.2 "¿Por qué dejaste Punto Ticket?"
+
+**Respuesta sugerida:**
+
+"Estuve más de 6 años en Punto Ticket y fue una etapa muy enriquecedora donde aprendí a trabajar bajo presión y en entornos críticos. Sin embargo, siento que llegué a un punto de estabilidad donde ya dominaba los procesos y necesito nuevos desafíos técnicos. 
+
+Busco un entorno donde pueda trabajar con diferentes industrias, enfrentar problemáticas diversas y seguir creciendo como DBA. Una consultora como WAYS me ofrece exactamente eso: variedad de proyectos, aprendizaje continuo y la oportunidad de aportar valor desde mi experiencia."
+
+**Tip de delivery:**  
+Nunca hables mal de tu empleador anterior. Enfoca tu salida en crecimiento personal y búsqueda de nuevos retos, no en problemas internos.
+
+---
+
+### 1.3 "¿Cuál es tu experiencia con Oracle específicamente?"
+
+**Respuesta sugerida:**
+
+"Mi experiencia con Oracle fue principalmente en Imperial S.A., donde trabajé como Analista Funcional dando soporte a sistemas que corrían sobre bases de datos Oracle. Mi rol incluía resolver incidencias, levantar requerimientos con usuarios clave, y realizar consultas SQL para análisis y reportería.
+
+Si bien mi expertise principal está en SQL Server, conozco la arquitectura de Oracle, he trabajado con SQL*Plus, PL/SQL básico, y entiendo conceptos como tablespaces, roles, y backups con RMAN. Estoy absolutamente dispuesto a profundizar en Oracle porque tengo las bases y la capacidad de aprendizaje rápido que demostré cuando migré de ambientes on-premise a Azure en Punto Ticket."
+
+**Tip de delivery:**  
+Sé honesto pero positivo. Reconoce que tu fuerte es SQL Server, pero demuestra que tienes fundamentos en Oracle y, sobre todo, ganas de aprender.
+
+---
+
+### 1.4 "Cuéntame sobre un problema crítico que hayas resuelto"
+
+**Respuesta sugerida:**
+
+"En Punto Ticket, durante la preventa de un festival masivo, detectamos que un stored procedure estaba generando un deadlock recurrente que bloqueaba las transacciones de compra. Esto ocurría en horario peak, justo cuando más usuarios intentaban comprar.
+
+Lo primero que hice fue revisar los logs de SQL Server con `sp_who2` y `DBCC INPUTBUFFER` para identificar las sesiones bloqueadas. Encontré que dos procedimientos actualizaban las mismas tablas en diferente orden, generando el deadlock.
+
+Rediseñé la lógica de uno de los procedimientos para que ambos accedieran a las tablas en el mismo orden, implementé hints de bloqueo más granulares (`WITH (ROWLOCK)`), y agregué manejo de errores con `TRY-CATCH` para reintentos automáticos.
+
+El resultado fue cero deadlocks durante el resto de la venta y tiempos de respuesta que se mantuvieron bajo 200ms incluso con 15.000 usuarios concurrentes."
+
+**Tip de delivery:**  
+Usa la estructura STAR: Situación, Tarea, Acción, Resultado. Incluye datos concretos (tiempos, usuarios, métricas).
+
+---
+
+### 1.5 "¿Cómo priorizas cuando tienes múltiples incidentes al mismo tiempo?"
+
+**Respuesta sugerida:**
+
+"Uso un enfoque basado en impacto y urgencia. Primero evalúo:
+
+1. **Impacto:** ¿Cuántos usuarios o procesos críticos están afectados?
+2. **Urgencia:** ¿Hay un evento inminente o deadline de negocio?
+
+En Punto Ticket, si había un problema en producción durante una venta activa, eso tenía prioridad absoluta sobre cualquier otra tarea, incluso si había un desarrollo programado. La regla era: primero estabilizamos, después investigamos la causa raíz.
+
+Además, comunico constantemente: aviso al equipo y a los stakeholders qué estoy atendiendo primero y por qué, para que todos estén alineados. Y siempre documento los incidentes en un ticket o bitácora para no perder el contexto."
+
+**Tip de delivery:**  
+Demuestra que eres metódico y que entiendes el impacto de negocio, no solo el técnico.
+
+---
+
+### 1.6 "¿Qué experiencia tienes con automatización?"
+
+**Respuesta sugerida:**
+
+"La automatización fue clave en mi trabajo en Punto Ticket. Heredé procesos manuales que se ejecutaban diariamente y que eran propensos a errores humanos.
+
+Desarrollé scripts T-SQL con SQL Agent Jobs para:
+- Limpieza automática de tablas temporales
+- Generación de reportes diarios de ventas con datos agregados
+- Validación de integridad referencial después de cargas masivas
+- Respaldos incrementales automáticos con verificación de integridad
+
+Esto redujo en un 80% los errores operativos y liberó tiempo del equipo para tareas más estratégicas. Además, documenté cada script con comentarios y lo subí a un repositorio en GitLab para que cualquiera pudiera mantenerlo."
+
+**Tip de delivery:**  
+Da ejemplos concretos de lo que automatizaste y el beneficio tangible. Menciona herramientas específicas (SQL Agent, PowerShell, etc.).
+
+---
+
+### 1.7 "¿Cómo manejas la presión en situaciones críticas?"
+
+**Respuesta sugerida:**
+
+"He trabajado bajo presión real durante más de 6 años en Punto Ticket, donde cada venta masiva era un evento crítico con miles de usuarios comprando simultáneamente. 
+
+Mi enfoque es:
+
+1. **Mantener la calma:** La presión nubla el juicio. Respiro, analizo y luego actúo.
+2. **Priorizar:** Identifico rápido qué es lo más crítico y lo atiendo primero.
+3. **Comunicar:** Informo al equipo y al negocio sobre el problema y el tiempo estimado de resolución.
+4. **Ejecutar con método:** No hago cambios a ciegas. Siempre valido en un ambiente de pruebas si el tiempo lo permite.
+
+Un ejemplo concreto: durante la venta de un concierto, el servidor de BD empezó a mostrar alta latencia. En lugar de entrar en pánico, revisé los queries más pesados con `sp_WhoIsActive`, identifiqué uno sin índice adecuado, lo optimicé y el problema se resolvió en menos de 10 minutos."
+
+**Tip de delivery:**  
+Da un ejemplo real y muestra que tienes un método claro, no que solo "aguantas" la presión.
+
+---
+
+### 1.8 "¿Qué te motiva a trabajar como DBA?"
+
+**Respuesta sugerida:**
+
+"Me motiva profundamente el impacto directo que tiene nuestro trabajo. Cuando optimizas una consulta y el usuario puede ver su reporte en 2 segundos en lugar de 30, o cuando aseguras que 50.000 personas puedan comprar entradas sin que el sistema se caiga, sientes que tu trabajo realmente importa.
+
+Además, me gusta la combinación de desafíos técnicos y operativos. No es solo escribir código; es entender el negocio, diseñar soluciones escalables, monitorear proactivamente y estar listo para resolver cualquier problema.
+
+También valoro mucho trabajar en equipo y transferir conocimiento. He visto cómo un equipo bien documentado y con buena comunicación puede resolver problemas más rápido y con menos estrés."
+
+**Tip de delivery:**  
+Conecta tu motivación con el valor que aportas al negocio y al equipo, no solo con tu gusto personal por la tecnología.
+
+---
+
+### 1.9 "¿Cuáles son tus expectativas salariales?"
+
+**Respuesta sugerida:**
+
+"Según mi investigación del mercado y considerando mi experiencia de más de 6 años como DBA en entornos críticos de alta concurrencia, estoy buscando una posición en el rango de $1.800.000 a $2.100.000 brutos mensuales.
+
+Este rango refleja mi nivel de especialización en SQL Server, mi capacidad de resolver problemas complejos bajo presión, y mi experiencia con herramientas modernas como Azure y automatización.
+
+Dicho esto, también valoro mucho otros factores como oportunidades de crecimiento, proyectos desafiantes y un buen ambiente de trabajo, así que estoy abierto a conversar si hay flexibilidad."
+
+**Tip de delivery:**  
+Da un rango, no un número exacto. Muestra que investigaste y que eres flexible si el proyecto es atractivo.
+
+---
+
+### 1.10 "¿Por qué deberíamos contratarte a ti?"
+
+**Respuesta sugerida:**
+
+"Porque traigo tres cosas que son difíciles de encontrar juntas:
+
+1. **Experiencia real en alta concurrencia:** Seis años sosteniendo sistemas donde un minuto de caída significa pérdidas económicas reales y miles de usuarios afectados. Sé lo que es trabajar bajo presión y resolver rápido.
+
+2. **Profundidad técnica en SQL Server:** No solo administro bases de datos; diseño stored procedures optimizados, automatizo procesos, integro datos y migro a cloud. Tengo las manos en el código todos los días.
+
+3. **Visión de negocio:** He trabajado con áreas funcionales, levantado requerimientos y traducido necesidades de negocio en soluciones técnicas. Entiendo que mi trabajo existe para generar valor, no solo para que funcione la tecnología.
+
+Si buscan un DBA que pueda entrar rápido a resolver problemas, documentar bien, trabajar en equipo y aportar desde el primer día, creo que soy un muy buen fit para WAYS."
+
+**Tip de delivery:**  
+Vende con confianza pero sin arrogancia. Enfócate en lo que ellos ganan contratándote, no solo en lo que tú sabes.
+
+---
+
+## 2. PREGUNTAS TÉCNICAS DEL ROL
+
+### 2.1 "¿Cómo identificas y resuelves problemas de performance en SQL Server?"
+
+**Cómo abordarla:**
+
+"Mi enfoque es sistemático:
+
+1. **Identificación:**
+   - Uso `sp_WhoIsActive` o `sp_who2` para ver sesiones activas y bloqueadas
+   - Reviso el Activity Monitor y los wait stats con `sys.dm_os_wait_stats`
+   - Analizo el plan de ejecución de queries lentas con `SET STATISTICS IO ON` y `SET STATISTICS TIME ON`
+
+2. **Diagnóstico:**
+   - Identifico queries que hacen table scans en lugar de index seeks
+   - Reviso si hay índices faltantes con `sys.dm_db_missing_index_details`
+   - Verifico estadísticas desactualizadas
+
+3. **Resolución:**
+   - Creo índices apropiados (clusterizados, no clusterizados, filtered)
+   - Reescribo queries: uso EXISTS en lugar de IN cuando es más eficiente, evito funciones en WHERE sobre columnas indexadas
+   - Optimizo stored procedures: uso table variables o temp tables según el volumen
+   - Actualizo estadísticas con `UPDATE STATISTICS`
+
+4. **Validación:**
+   - Mido tiempos antes y después
+   - Monitoreo en producción para asegurar mejora sostenida
+
+Un caso real: reduje un reporte de 45 segundos a 3 segundos simplemente agregando un índice compuesto y reescribiendo un JOIN innecesario."
+
+---
+
+### 2.2 "Explica la diferencia entre clustered y non-clustered index y cuándo usar cada uno"
+
+**Cómo abordarla:**
+
+"**Clustered Index:**
+- Reordena físicamente las filas en disco según la clave del índice
+- Solo puede haber uno por tabla
+- Por defecto, SQL Server lo crea en la Primary Key
+- Ideal para columnas que se consultan en rangos (fechas, IDs secuenciales)
+
+**Non-Clustered Index:**
+- Crea una estructura separada con punteros a las filas reales
+- Puedes tener hasta 999 por tabla (aunque no es recomendable tantos)
+- Ideal para columnas que se filtran frecuentemente pero no definen el orden natural de la tabla
+
+**Cuándo uso cada uno:**
+- **Clustered:** En la columna que define el orden lógico de la tabla (ej: FechaCreacion en una tabla de transacciones)
+- **Non-Clustered:** En columnas de filtro frecuente (ej: Email en tabla de Usuarios, Estado en tabla de Pedidos)
+
+**Tip adicional:** Si una consulta cubre todas las columnas que necesita con un non-clustered index (covering index), SQL Server no necesita ir a la tabla, mejorando aún más el performance."
+
+---
+
+### 2.3 "¿Cómo realizas backups y cuál es tu estrategia de recuperación?"
+
+**Cómo abordarla:**
+
+"Mi estrategia depende del RPO (Recovery Point Objective) y RTO (Recovery Time Objective) del negocio, pero típicamente implemento:
+
+**Modelo de Backup:**
+- **Full Backup:** Domingos a las 02:00 AM (baseline completo)
+- **Differential Backup:** Miércoles a las 02:00 AM (solo cambios desde el último full)
+- **Transaction Log Backup:** Cada 15-30 minutos en horario laboral (mínima pérdida de datos)
+
+**Estrategia de Recuperación:**
+1. Restauro el último Full Backup
+2. Aplico el último Differential si existe
+3. Aplico todos los Transaction Logs posteriores en secuencia con `WITH NORECOVERY`
+4. Ejecuto el último log con `WITH RECOVERY`
+
+**Validación:**
+- Pruebo restauraciones mensualmente en un ambiente de QA
+- Verifico integridad con `DBCC CHECKDB` después de cada full backup
+- Documento los procedimientos de recuperación paso a paso
+
+En Punto Ticket, esta estrategia nos permitía recuperar datos con pérdida máxima de 15 minutos, lo cual estaba dentro del acuerdo de nivel de servicio."
+
+---
+
+### 2.4 "¿Qué diferencias clave hay entre Oracle y SQL Server en términos de administración?"
+
+**Cómo abordarla:**
+
+"He trabajado con ambos y algunas diferencias importantes son:
+
+**Arquitectura:**
+- **Oracle:** Usa instancias y esquemas (schemas) dentro de bases de datos. Un schema es como un contenedor de objetos de un usuario.
+- **SQL Server:** Una instancia contiene múltiples bases de datos independientes.
+
+**Gestión de Memoria:**
+- **Oracle:** SGA (System Global Area) y PGA (Program Global Area) - configuración más manual.
+- **SQL Server:** Buffer Pool y Plan Cache - más automático, aunque se puede ajustar.
+
+**Backup:**
+- **Oracle:** RMAN es la herramienta estándar, con conceptos como archivelog mode.
+- **SQL Server:** Backups nativos con T-SQL o mediante GUI, más intuitivo inicialmente.
+
+**Lenguaje:**
+- **Oracle:** PL/SQL
+- **SQL Server:** T-SQL
+
+**Privilegios:**
+- **Oracle:** Roles y privilegios más granulares y complejos.
+- **SQL Server:** Roles de base de datos y server roles más simples.
+
+Si bien mi expertise es SQL Server, entiendo la lógica de Oracle y me adapto rápido. De hecho, cuando trabajé en Imperial, logré resolver incidencias complejas en Oracle consultando documentación y aplicando mis fundamentos de bases de datos relacionales."
+
+---
+
+### 2.5 "¿Cómo gestionas la seguridad en bases de datos?"
+
+**Cómo abordarla:**
+
+"La seguridad en BD es multicapa:
+
+**1. Autenticación:**
+- Prefiero Windows Authentication sobre SQL Authentication (más segura, integrada con AD)
+- Si uso SQL Auth, fuerzo políticas de contraseña fuertes con `CHECK_POLICY = ON`
+
+**2. Autorización:**
+- Principio de menor privilegio: los usuarios solo tienen permisos sobre lo que necesitan
+- Uso roles de base de datos (`db_datareader`, `db_datawriter`) en lugar de permisos directos
+- Creo roles personalizados para grupos de usuarios con necesidades similares
+
+**3. Encriptación:**
+- Transparent Data Encryption (TDE) para cifrar datos en reposo
+- Always Encrypted para datos sensibles (ej: números de tarjetas)
+- Certificados SSL/TLS para conexiones
+
+**4. Auditoría:**
+- Habilito SQL Server Audit para rastrear accesos y cambios críticos
+- Monitoreo logins fallidos y actividad sospechosa
+
+**5. Mantenimiento:**
+- Reviso y elimino cuentas inactivas regularmente
+- Actualizo parches de seguridad de SQL Server
+- Restrinjo acceso directo a producción: solo vía jump servers o VPNs corporativas
+
+En Punto Ticket, implementé auditoría sobre tablas de ventas para cumplir con requisitos de trazabilidad financiera."
+
+---
+
+## 3. MANEJO DE BRECHAS DE EXPERIENCIA
+
+### Si te preguntan por experiencia con Oracle que no tienes profunda:
+
+**Frase clave:**
+"Mi experiencia práctica con Oracle fue en Imperial S.A., donde daba soporte funcional y técnico a sistemas que corrían sobre Oracle. Si bien mi especialización está en SQL Server, conozco la arquitectura de Oracle, he trabajado con SQL*Plus, PL/SQL básico y conceptos como tablespaces y RMAN.
+
+Lo importante es que **los fundamentos de administración de bases de datos relacionales son transferibles**. Entiendo indexación, optimización de queries, gestión de transacciones, backups y seguridad, que aplican en cualquier motor.
+
+Además, aprendo rápido: cuando tuve que migrar a Azure en Punto Ticket, dominé las herramientas cloud en cuestión de semanas. Estoy totalmente dispuesto a profundizar en Oracle y tengo la capacidad de ponerme al día rápidamente."
+
+---
+
+### Si te preguntan por certificaciones que no tienes:
+
+**Frase clave:**
+"No tengo certificaciones formales en este momento, pero tengo algo más valioso: **experiencia práctica de 6 años resolviendo problemas reales en producción**. He diseñado, optimizado y mantenido bases de datos que soportan millones de transacciones al año.
+
+Dicho esto, valoro las certificaciones como forma de validar conocimientos formales y estoy abierto a certificarme si es un requisito o valor agregado para el equipo. De hecho, tengo formación actualizada de la Universidad de Chile en Business Analytics, Machine Learning y Optimización de Procesos, lo que demuestra mi compromiso con el aprendizaje continuo."
+
+---
+
+### Si te preguntan por experiencia con tecnologías específicas (ej: RAC de Oracle, Always On de SQL Server):
+
+**Frase clave:**
+"No he implementado [tecnología específica] en un entorno productivo, pero **entiendo conceptualmente cómo funciona y para qué se usa**.
+
+Por ejemplo, sé que SQL Server Always On es para alta disponibilidad con réplicas sincrónicas/asincrónicas, y que RAC de Oracle permite clusterización con múltiples nodos compartiendo la misma BD.
+
+Lo que sí tengo es experiencia implementando estrategias de alta disponibilidad con backups automáticos, monitoreo proactivo y planes de disaster recovery que minimizan el downtime. Además, tengo las habilidades técnicas y la capacidad de aprendizaje para implementar estas tecnologías con la documentación y guía adecuadas."
+
+---
+
+### Si te preguntan por liderazgo formal de equipos:
+
+**Frase clave:**
+"No he tenido un cargo de liderazgo formal con personas a cargo, pero **sí he liderado técnicamente en varios aspectos**:
+
+- Documenté procesos complejos para que nuevos integrantes del equipo pudieran ponerse al día rápido
+- Capacité a colegas en optimización de queries y mejores prácticas de T-SQL
+- Coordiné migraciones técnicas trabajando con equipos de desarrollo, infraestructura y negocio
+- Fui referente técnico en Punto Ticket: cuando había un problema crítico de BD, me buscaban a mí
+
+Tengo facilidad para comunicarme con equipos técnicos y de negocio, y entiendo que el liderazgo también se trata de transferir conocimiento, colaborar y generar confianza."
+
+---
+
+### Si te preguntan por experiencia con proyectos internacionales o inglés avanzado:
+
+**Frase clave:**
+"No he trabajado en proyectos internacionales directamente, pero **leo documentación técnica en inglés todos los días**: Microsoft Docs, Stack Overflow, artículos de SQL Server Central, blogs de expertos, etc.
+
+Mi inglés técnico es fuerte: entiendo y puedo comunicarme sobre arquitectura de BD, troubleshooting y mejores prácticas. Si el rol requiere comunicación oral constante en inglés, estoy dispuesto a mejorar mi fluidez conversacional, porque tengo la base y solo necesito práctica.
+
+Además, en Punto Ticket trabajé con herramientas y plataformas internacionales como Microsoft Azure y GitHub, donde toda la interfaz y documentación está en inglés."
+
+---
+
+## 4. PREGUNTAS PARA HACERLES A ELLOS
+
+### 4.1 Sobre el rol y responsabilidades:
+
+"¿Cuál sería mi principal desafío en los primeros 3 meses? ¿Hay algún proyecto de migración, optimización o implementación nueva en curso?"
+
+**Por qué es buena:**  
+Demuestra que piensas en resultados rápidos y quieres entender las prioridades. También te permite evaluar si el desafío es atractivo para ti.
+
+---
+
+### 4.2 Sobre el equipo y cultura:
+
+"¿Cómo está estructurado el equipo de bases de datos? ¿Trabajan en conjunto con desarrollo o infraestructura? ¿Cómo manejan la documentación y transferencia de conocimiento?"
+
+**Por qué es buena:**  
+Muestra que valoras el trabajo en equipo y la organización. También te da pistas sobre si hay buenas prácticas de documentación (importante para ti).
+
+---
+
+### 4.3 Sobre tecnología y herramientas:
+
+"¿Qué versiones de Oracle y SQL Server están usando? ¿Tienen ambientes on-premise, cloud o híbridos? ¿Usan herramientas de monitoreo como Redgate, SolarWinds o nativas de cada plataforma?"
+
+**Por qué es buena:**  
+Demuestra conocimiento técnico y te ayuda a entender qué tan modernizada está la infraestructura.
+
+---
+
+### 4.4 Sobre crecimiento y desarrollo:
+
+"¿WAYS ofrece capacitaciones o certificaciones para el equipo técnico? ¿Hay oportunidades de especializarse en áreas como cloud, Big Data o seguridad de bases de datos?"
+
+**Por qué es buena:**  
+Muestra ambición de crecimiento y que no solo buscas un trabajo, sino una carrera a largo plazo.
+
+---
+
+### 4.5 Sobre la empresa y clientes:
+
+"¿Con qué tipo de industrias trabajan más frecuentemente? ¿Hay clientes con ambientes de alta concurrencia similares a los que he trabajado?"
+
+**Por qué es buena:**  
+Conecta tu experiencia con lo que ellos hacen y demuestra que quieres saber si tu expertise calza con sus necesidades.
+
+---
+
+## 5. ANÁLISIS FODA
+
+### FORTALEZAS
+
+✅ **Experiencia sólida en SQL Server:** 6+ años en entornos productivos críticos con alta concurrencia (Punto Ticket).
+
+✅ **Capacidad técnica probada:** Diseño y optimización de stored procedures, automatización con T-SQL, integración de datos (JSON, XML, HTML).
+
+✅ **Experiencia en alta presión:** Has trabajado en eventos masivos donde cada segundo cuenta y la caída del sistema tiene impacto directo en el negocio.
+
+✅ **Experiencia cloud:** Participación en migraciones a Microsoft Azure, que es tendencia actual en el mercado.
+
+✅ **Visión de negocio:** Has trabajado con áreas funcionales, levantamiento de requerimientos, soporte a usuarios. No eres solo técnico.
+
+✅ **Documentación y transferencia de conocimiento:** Lo mencionas explícitamente en tu CV, lo cual es un diferenciador escaso en DBAs.
+
+✅ **Adaptabilidad:** Has trabajado en múltiples industrias (entretenimiento, retail, manufactura) y con distintas tecnologías (SQL Server, Oracle, SAP, Azure).
+
+---
+
+### OPORTUNIDADES
+
+🌟 **Consultora especializada:** WAYS te expone a múltiples clientes e industrias, acelerando tu aprendizaje y diversificando tu portfolio.
+
+🌟 **Profundización en Oracle:** El rol pide Oracle, y aunque tienes bases, esta es tu oportunidad de especializarte formalmente.
+
+🌟 **Certificaciones:** Podrías certificarte en Oracle DBA o Microsoft SQL Server para aumentar tu valor de mercado.
+
+🌟 **Networking:** Trabajar en consultora amplía tu red de contactos en la industria tech chilena.
+
+🌟 **Crecimiento salarial:** Con tu experiencia y en una consultora, hay espacio para crecer hacia roles senior o de arquitectura de datos.
+
+---
+
+### DEBILIDADES
+
+⚠️ **Experiencia limitada con Oracle:** Tu fuerte es SQL Server; en Oracle tienes conocimientos básicos pero no expertise profunda. Esto puede ser una brecha si el cliente requiere 80% Oracle.
+
+⚠️ **Sin certificaciones formales:** No tienes certificaciones de Oracle (OCP) ni Microsoft (MCSA/MCSE), lo que puede pesarte frente a candidatos certificados.
+
+⚠️ **Falta de experiencia en consultora:** Vienes de roles in-house; consultora implica cambios frecuentes de cliente, adaptación rápida y posiblemente más presión comercial.
+
+⚠️ **No mencionas experiencia con Always On, RAC u otras tecnologías de HA avanzadas:** Si el rol lo requiere, puede ser una brecha.
+
+⚠️ **Inglés conversacional:** No especificas tu nivel de inglés, y muchas consultoras trabajan con clientes internacionales o documentación técnica compleja.
+
+---
+
+### AMENAZAS
+
+🔴 **Competencia con candidatos más especializados en Oracle:** Pueden llegar candidatos con 5 años full time en Oracle y certificaciones.
+
+🔴 **Rechazo por filtros ATS/IA:** Si el sistema busca palabras clave específicas como "RAC", "Data Guard", "RMAN avanzado" y no están en tu CV, puedes quedar fuera automáticamente.
+
+🔴 **Consultora puede pagar menos inicialmente:** Algunas consultoras ofrecen salarios más bajos que corporaciones, especialmente si eres "nuevo" en consultora.
+
+🔴 **Ritmo de trabajo intenso:** Consultoras suelen tener múltiples proyectos simultáneos, deadlines apretados y rotación alta de personal. Si no te adaptas rápido, puede ser estresante.
+
+🔴 **Falta de especialización visible en tu CV:** Tu perfil es "generalista sólido", pero consultoras a veces buscan "expertos nicho". Necesitas posicionarte más claramente.
+
+---
+
+## 6. FEEDBACK DEL RECLUTADOR SENIOR
+
+### ❌ QUÉ ME HARÍA RECHAZAR ESTE CV
+
+**1. Título poco específico:**
+"Analista de Base de Datos Senior" es genérico. No especifica SQL Server ni Oracle en el título. Si busco "Ingeniero DBA Oracle" en LinkedIn o en un ATS, este CV puede no aparecer.
+
+**Solución:** Cambia el título a: **"Ingeniero DBA | SQL Server · Oracle · Azure | Alta Concurrencia &amp; Automatización"**
+
+---
+
+**2. Falta de keywords críticas para ATS:**
+No aparecen términos como:
+- Performance tuning
+- High availability (HA)
+- Disaster recovery
+- Índices compuestos
+- Transact-SQL
+- PL/SQL
+- RMAN
+- Always On
+- Replicación
+
+Si un reclutador filtra por "RMAN" o "Always On" en su ATS, este CV no va a matchear.
+
+**Solución:** Agrega una sección **"Competencias Técnicas"** antes de Experiencia Profesional con estas keywords, incluso si tu experiencia es básica. Ejemplo:
+
+```
+## Competencias Técnicas Clave
+- Administración SQL Server 2012-2019 (instancias productivas, performance tuning, índices)
+- Fundamentos de Oracle Database (PL/SQL, RMAN, tablespaces, roles)
+- Alta disponibilidad y recuperación (backups full/differential/log, disaster recovery planning)
+- Automatización (T-SQL scripts, SQL Agent Jobs, PowerShell)
+- Integración de datos (HTML, JSON, XML)
+- Cloud (Microsoft Azure SQL, migraciones on-premise to cloud)
+```
+
+---
+
+**3. Fechas confus</pre></body></html>
