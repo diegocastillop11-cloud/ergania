@@ -131,7 +131,7 @@ export default function ApiKeySettingsModal({ onClose }: Props) {
         {/* Footer */}
         <div className="px-6 pb-5 pt-3 border-t border-gray-800 flex items-center justify-between gap-3">
           <p className="text-xs text-gray-500">
-            Deja vacío para usar la key del servidor (si está configurada).
+            Solo en tu navegador. Nunca se envían al servidor.
           </p>
           <button
             onClick={handleSave}
