@@ -4,10 +4,6 @@ import OpenAI from 'openai'
 import axios from 'axios'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
-import fs from 'fs'
-import path from 'path'
-// puppeteer-core se carga de forma lazy dentro de scrapeWithBrowser()
-// para evitar que un fallo de carga rompa todos los endpoints
 
 type LlmProvider = 'gemini' | 'groq' | 'anthropic' | 'openai'
 
@@ -683,10 +679,8 @@ export const generateCV = async (req: Request, res: Response) => {
       .map(b => (b as { type: 'text'; text: string }).text)
       .join('')
 
-    const htmlPath = svc.saveHtmlFile(cvHtml, empresa, rol)
-    const { pdfPath, filename } = await svc.generatePDFFromHtml(htmlPath, empresa, rol)
-    if (entryId) await svc.updateTrackerEntry(entryId, { pdf: true, estado: 'CV Generado' }, userEmail)
-    res.json({ ok: true, pdfPath, filename })
+    if (entryId) await svc.updateTrackerEntry(entryId, { pdf: false, estado: 'CV Generado' }, userEmail)
+    res.json({ ok: true, cvHtml })
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message })
   }
@@ -800,10 +794,7 @@ JSON exacto a retornar:
     const cvHtml = svc.buildCvHtml(cvData)
     const cvTex  = svc.buildCvLatex(cvData)
 
-    const htmlPath = svc.saveHtmlFile(cvHtml, empresa, rol)
-    svc.saveTexFile(cvTex, empresa, rol)
-
-    // Generar PDF y carta de presentación en paralelo
+    // Generar carta de presentación
     const coverLetterPrompt = `Redacta una carta de presentación profesional en español para la siguiente postulación.
 CANDIDATO: ${cand.full_name || 'Diego Castillo'}
 EMPRESA: ${empresa}
@@ -819,33 +810,24 @@ REGLAS:
 - Máximo 200 palabras
 - Termina con: "Quedo disponible para conversar. Saludos, ${cand.full_name || 'Diego Castillo'}"`
 
-    const [pdfResult, coverLetterResult] = await Promise.allSettled([
-      svc.generatePDFFromHtml(htmlPath, empresa, rol),
-      getLlmClient(req).messages.create({
+    let coverLetter: string | undefined
+    try {
+      const clResult = await getLlmClient(req).messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 600,
         system: 'Eres experto en redacción de cartas de presentación para el mercado laboral chileno. Responde SOLO con el texto de la carta, sin encabezados extra ni explicaciones.',
         messages: [{ role: 'user', content: coverLetterPrompt }],
-      }),
-    ])
-
-    let cvPdfFilename: string | undefined
-    if (pdfResult.status === 'fulfilled') {
-      cvPdfFilename = pdfResult.value.filename
-    } else {
-      console.error('PDF generation failed (non-fatal):', pdfResult.reason)
-    }
-
-    let coverLetter: string | undefined
-    if (coverLetterResult.status === 'fulfilled') {
-      coverLetter = coverLetterResult.value.content
+      })
+      coverLetter = clResult.content
         .filter((b: { type: string }) => b.type === 'text')
         .map((b: { type: string; text: string }) => b.text)
         .join('')
         .trim()
-    } else {
-      console.error('Cover letter generation failed (non-fatal):', coverLetterResult.reason)
+    } catch (clErr) {
+      console.error('Cover letter generation failed (non-fatal):', clErr)
     }
+
+    const cvPdfFilename: string | undefined = undefined
 
     const existingApp = await svc.findApplicationByUrlOrRole(url, empresa, rol, userEmail)
     const id = existingApp?.id ?? await svc.getNextApplicationId(userEmail)
@@ -979,20 +961,10 @@ JSON exacto a retornar:
 
     const cvHtml = svc.buildCvHtml(cvData)
     const cvTex  = svc.buildCvLatex(cvData)
-    const htmlPath = svc.saveHtmlFile(cvHtml, empresa, rol)
-    svc.saveTexFile(cvTex, empresa, rol)
-
-    let cvPdfFilename: string | undefined
-    try {
-      const { filename } = await svc.generatePDFFromHtml(htmlPath, empresa, rol)
-      cvPdfFilename = filename
-    } catch (pdfErr) {
-      console.error('PDF regen failed (non-fatal):', pdfErr)
-    }
 
     app.cvHtml = cvHtml
     app.cvTex  = cvTex
-    if (cvPdfFilename) app.cvPdfFilename = cvPdfFilename
+    app.cvPdfFilename = undefined
     await svc.saveApplication(app, userEmail)
 
     const { cvHtml: _h, ...appWithoutHtml } = app
@@ -1262,34 +1234,15 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
   try {
     const userEmail = await getUserEmail(req)
     const app = await svc.getApplication(req.params.id, userEmail)
-    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+    if (!app?.cvHtml) return res.status(404).json({ error: 'CV no disponible para este postulación' })
 
-    const careerOpsPath = process.env.CAREER_OPS_PATH || 'D:/career-ops-main/career-ops'
-    const outputDir = path.join(careerOpsPath, 'output')
-    let pdfPath: string | undefined
-    let filename = app.cvPdfFilename
+    const profile = await svc.readProfile(userEmail)
+    const candidateName = ((profile?.candidate as Record<string, string>)?.full_name || '').replace(/\s+/g, '_')
 
-    if (filename) {
-      const candidatePath = path.join(outputDir, filename)
-      if (fs.existsSync(candidatePath)) {
-        pdfPath = candidatePath
-      } else {
-        filename = undefined
-      }
-    }
-
-    if (!pdfPath) {
-      if (!app.cvHtml) return res.status(404).json({ error: 'PDF no disponible' })
-      const htmlPath = svc.saveHtmlFile(app.cvHtml, app.empresa, app.rol)
-      const result = await svc.generatePDFFromHtml(htmlPath, app.empresa, app.rol)
-      pdfPath = result.pdfPath
-      filename = result.filename
-      app.cvPdfFilename = filename
-      await svc.saveApplication(app, userEmail)
-    }
-
-    if (!pdfPath || !filename) return res.status(500).json({ error: 'No se pudo generar el PDF' })
-    res.download(pdfPath, filename)
+    const { buffer, filename } = await svc.generatePDFFromHtml(app.cvHtml, app.empresa, app.rol, candidateName)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(buffer)
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message })
   }
@@ -1301,9 +1254,11 @@ export const downloadInterviewPrepPdf = async (req: Request, res: Response) => {
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app?.interviewPrep) return res.status(404).json({ error: 'Prep. de entrevista no disponible' })
 
-    const htmlPath = svc.saveInterviewPrepHtml(app.interviewPrep, app.empresa, app.rol, app.id)
-    const { pdfPath, filename } = await svc.generatePDFFromHtml(htmlPath, app.empresa, app.rol, 'InterviewPrep')
-    res.download(pdfPath, filename)
+    const html = svc.buildInterviewPrepHtml(app.interviewPrep, app.empresa, app.rol)
+    const { buffer, filename } = await svc.generatePDFFromHtml(html, app.empresa, app.rol, '', 'InterviewPrep')
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(buffer)
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message })
   }

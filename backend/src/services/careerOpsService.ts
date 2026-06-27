@@ -940,7 +940,7 @@ export async function getStats(userEmail?: string) {
       avgScore,
       pipeline: pipeline.length,
       reports: reports.length,
-      pdfs: (() => { try { return fs.readdirSync(p('output')).filter(f => f.endsWith('.pdf')).length } catch { return 0 } })(),
+      pdfs: 0,
     }
   }
 
@@ -960,87 +960,72 @@ export async function getStats(userEmail?: string) {
     avgScore,
     pipeline: readPipelineLocal().length,
     reports: listReportsLocal().length,
-    pdfs: (() => { try { return fs.readdirSync(p('output')).filter(f => f.endsWith('.pdf')).length } catch { return 0 } })(),
+    pdfs: 0,
   }
 }
 
-// ── PDF generation (generate-pdf.mjs) ────────────────────────────────────────
-// generate-pdf.mjs expects positional args: <input.html> <output.pdf>
+// ── PDF generation (serverless-compatible via @sparticuz/chromium) ────────────
 
-export function saveHtmlFile(html: string, empresa: string, rol: string): string {
-  const outputDir = p('output')
-  fs.mkdirSync(outputDir, { recursive: true })
-  const date = new Date().toISOString().split('T')[0]
-  const slug = `${empresa.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${rol.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-  const htmlPath = path.join(outputDir, `cv-${slug}-${date}.html`)
-  fs.writeFileSync(htmlPath, html, 'utf-8')
-  return htmlPath
-}
-
-export function saveInterviewPrepHtml(prep: string, empresa: string, rol: string, id: string): string {
-  const outputDir = p('output')
-  fs.mkdirSync(outputDir, { recursive: true })
-  const date = new Date().toISOString().split('T')[0]
-  const slug = `interview-prep-${id}-${empresa.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${rol.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-  const safePrep = prep.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prep. Entrevista ${empresa}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:24px;line-height:1.6;}h1,h2,h3{color:#111;margin-top:1.4rem;}h1{font-size:26px;}h2{font-size:20px;}h3{font-size:17px;}p{margin:0.9rem 0;}ul,ol{margin:0.8rem 0 0.8rem 1.4rem;}code{background:#f3f4f6;padding:0.15rem 0.35rem;border-radius:0.3rem;}pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e5e7eb;padding:16px;border-radius:12px;}</style></head><body><h1>Preparación de Entrevista</h1><p><strong>Empresa:</strong> ${empresa}</p><p><strong>Cargo:</strong> ${rol}</p><pre>${safePrep}</pre></body></html>`
-  const htmlPath = path.join(outputDir, `${slug}-${date}.html`)
-  fs.writeFileSync(htmlPath, html, 'utf-8')
-  return htmlPath
-}
-
-export function saveTexFile(tex: string, empresa: string, rol: string): string {
-  const outputDir = p('output')
-  fs.mkdirSync(outputDir, { recursive: true })
-  const date = new Date().toISOString().split('T')[0]
-  const slug = `${empresa.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${rol.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-  const texPath = path.join(outputDir, `cv-${slug}-${date}.tex`)
-  fs.writeFileSync(texPath, tex, 'utf-8')
-  return texPath
-}
-
-export function readCvTemplate(): string {
-  return readFile(p('templates', 'cv-template.tex'), '')
-}
-
-function buildPdfFilename(empresa: string, rol: string, prefix = 'CV'): string {
-  const prof = readProfileLocal() as Record<string, unknown>
-  const candidate = (prof.candidate as Record<string, string>) || {}
-  const name = (candidate.full_name || prefix).replace(/\s+/g, '_')
+function buildPdfFilename(empresa: string, rol: string, candidateName = '', prefix = 'CV'): string {
+  const name = (candidateName || prefix).replace(/\s+/g, '_')
   const emp  = empresa.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
   const r    = rol.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
   return `${prefix}_${name}_${emp}_${r}.pdf`
 }
 
-export async function generatePDFFromLatex(texPath: string, empresa: string, rol: string): Promise<{ pdfPath: string; filename: string }> {
-  const outputDir = p('output')
-  fs.mkdirSync(outputDir, { recursive: true })
-  const filename = buildPdfFilename(empresa, rol)
-  const pdfPath = path.join(outputDir, filename)
+export function buildInterviewPrepHtml(prep: string, empresa: string, rol: string): string {
+  const safePrep = prep.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prep. Entrevista ${empresa}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:24px;line-height:1.6;}h1,h2,h3{color:#111;margin-top:1.4rem;}h1{font-size:26px;}h2{font-size:20px;}h3{font-size:17px;}p{margin:0.9rem 0;}ul,ol{margin:0.8rem 0 0.8rem 1.4rem;}code{background:#f3f4f6;padding:0.15rem 0.35rem;border-radius:0.3rem;}pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e5e7eb;padding:16px;border-radius:12px;}</style></head><body><h1>Preparación de Entrevista</h1><p><strong>Empresa:</strong> ${empresa}</p><p><strong>Cargo:</strong> ${rol}</p><pre>${safePrep}</pre></body></html>`
+}
 
-  const cmd = `node "${p('generate-latex.mjs')}" "${texPath}" "${pdfPath}"`
+async function launchBrowser() {
+  // In production (Vercel/Lambda) use @sparticuz/chromium; locally use installed Chrome
+  let executablePath: string
+  let args: string[]
   try {
-    const { stdout } = await execAsync(cmd, { cwd: CAREER_OPS_PATH, timeout: 120000 })
-    const result = JSON.parse(stdout.trim().split('\n').slice(-1)[0] || stdout)
-    if (!result.compiled) throw new Error(result.compileError || 'LaTeX compilation failed')
-    return { pdfPath, filename }
-  } catch (err: unknown) {
-    throw new Error(`LaTeX PDF failed: ${(err as Error).message}`)
+    const chromium = await import('@sparticuz/chromium')
+    executablePath = await chromium.default.executablePath()
+    args = chromium.default.args
+  } catch {
+    // Local fallback: use puppeteer-core with system Chrome
+    const chromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/usr/bin/google-chrome',
+    ]
+    executablePath = chromePaths.find(p => { try { return fs.existsSync(p) } catch { return false } }) || ''
+    args = ['--no-sandbox', '--disable-setuid-sandbox']
+  }
+
+  const puppeteer = await import('puppeteer-core')
+  return puppeteer.default.launch({
+    executablePath,
+    args,
+    headless: true,
+  })
+}
+
+export async function generatePDFFromHtml(
+  html: string,
+  empresa: string,
+  rol: string,
+  candidateName = '',
+  prefix = 'CV'
+): Promise<{ buffer: Buffer; filename: string }> {
+  const filename = buildPdfFilename(empresa, rol, candidateName, prefix)
+  const browser = await launchBrowser()
+  try {
+    const page = await browser.newPage()
+    await page.setContent(html, { waitUntil: 'networkidle0' })
+    const pdf = await page.pdf({ format: 'A4', printBackground: true })
+    return { buffer: Buffer.from(pdf), filename }
+  } finally {
+    await browser.close()
   }
 }
 
-export async function generatePDFFromHtml(htmlPath: string, empresa: string, rol: string, prefix = 'CV'): Promise<{ pdfPath: string; filename: string }> {
-  const outputDir = p('output')
-  fs.mkdirSync(outputDir, { recursive: true })
-  const filename = buildPdfFilename(empresa, rol, prefix)
-  const pdfPath = path.join(outputDir, filename)
-
-  const cmd = `node "${p('generate-pdf.mjs')}" "${htmlPath}" "${pdfPath}"`
-  try {
-    await execAsync(cmd, { cwd: CAREER_OPS_PATH, timeout: 60000 })
-    return { pdfPath, filename }
-  } catch (err: unknown) {
-    throw new Error(`HTML PDF failed: ${(err as Error).message}`)
-  }
+export function readCvTemplate(): string {
+  return ''
 }
 
