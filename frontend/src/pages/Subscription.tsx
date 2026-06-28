@@ -1,4 +1,4 @@
-import { Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, CreditCard } from 'lucide-react'
+import { Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, CreditCard, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useSubscription } from '../hooks/useSubscription'
 
@@ -48,6 +48,9 @@ export default function Subscription() {
     </div>
   )
 
+  // Si el status viene de un error de red, mostrar opción de reintentar
+  const canRetry = sub.status === 'expired' || sub.status === 'none'
+
   const cfg = STATUS_CFG[sub.status] ?? STATUS_CFG.none
   const StatusIcon = cfg.icon
   const canSubscribe = ['expired', 'cancelled', 'pending_payment', 'none'].includes(sub.status)
@@ -65,6 +68,11 @@ export default function Subscription() {
         <div className="flex items-center gap-2.5 mb-1">
           <StatusIcon size={18} className={cfg.color} />
           <span className={`font-semibold ${cfg.color}`}>{cfg.label}</span>
+          {canRetry && (
+            <button onClick={() => sub.refresh()} className="ml-auto text-gray-500 hover:text-gray-300 transition-colors" title="Reintentar">
+              <RefreshCw size={14} />
+            </button>
+          )}
         </div>
         <p className="text-gray-400 text-sm">
           {sub.status === 'trial'    && `${sub.daysLeft} día${sub.daysLeft === 1 ? '' : 's'} restante${sub.daysLeft === 1 ? '' : 's'} de prueba gratuita`}
