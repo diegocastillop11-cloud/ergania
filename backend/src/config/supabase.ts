@@ -5,9 +5,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const stripBOM = (s: string) => s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s
-const url = stripBOM(process.env.SUPABASE_URL ?? '')
-const key = stripBOM(process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
+const clean = (s: string) => { const t = (s ?? '').trim(); return t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t }
+const url = clean(process.env.SUPABASE_URL ?? '')
+const key = clean(process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
+
+console.log('[Supabase] URL prefix:', url.substring(0, 30))
 
 if (!url || !key) {
   console.warn('[Supabase] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados — usando modo local')
