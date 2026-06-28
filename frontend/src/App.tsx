@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
+import Landing from './pages/Landing'
 import CareersDashboard from './pages/careers/CareersDashboard'
 import CareersPipeline from './pages/careers/CareersPipeline'
 import CareersTracker from './pages/careers/CareersTracker'
@@ -30,17 +31,18 @@ function ProtectedLayout() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<ProtectedLayout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard"       element={<CareersDashboard />} />
-        <Route path="busqueda"        element={<CareersBusqueda />} />
-        <Route path="scanner"         element={<CareersScanner />} />
-        <Route path="pipeline"        element={<CareersPipeline />} />
-        <Route path="postulaciones"   element={<CareersPostulaciones />} />
-        <Route path="tracker"         element={<CareersTracker />} />
-        <Route path="portals"         element={<CareersPortals />} />
-        <Route path="profile"         element={<CareersProfile />} />
+      {/* Layout route — wraps all protected paths without changing their URLs */}
+      <Route element={<ProtectedLayout />}>
+        <Route path="/dashboard"       element={<CareersDashboard />} />
+        <Route path="/busqueda"        element={<CareersBusqueda />} />
+        <Route path="/scanner"         element={<CareersScanner />} />
+        <Route path="/pipeline"        element={<CareersPipeline />} />
+        <Route path="/postulaciones"   element={<CareersPostulaciones />} />
+        <Route path="/tracker"         element={<CareersTracker />} />
+        <Route path="/portals"         element={<CareersPortals />} />
+        <Route path="/profile"         element={<CareersProfile />} />
       </Route>
     </Routes>
   )

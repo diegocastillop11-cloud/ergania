@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
-  Briefcase, Radio, Send, Target, LogOut,
+  Briefcase, Radio, Send, Target, LogOut, Crown,
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
+import type { SubscriptionState } from '../../hooks/useSubscription'
 
 const nav = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
@@ -16,7 +17,9 @@ const nav = [
   { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
 ]
 
-export default function Sidebar() {
+interface Props { sub: SubscriptionState }
+
+export default function Sidebar({ sub }: Props) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -69,6 +72,30 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Subscription CTA — siempre visible cuando no está suscrito */}
+      {!sub.loading && !sub.isActive && (
+        <div className="px-3 pb-2">
+          <button
+            onClick={sub.openCheckout}
+            className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
+          >
+            <Crown size={13} />
+            Suscribirse — $9.990/mes
+          </button>
+        </div>
+      )}
+      {!sub.loading && sub.status === 'trial' && (
+        <div className="px-3 pb-2">
+          <button
+            onClick={sub.openCheckout}
+            className="w-full flex items-center justify-center gap-2 border border-blue-700 text-blue-400 hover:bg-blue-950 text-xs font-semibold py-2 rounded-lg transition-colors"
+          >
+            <Crown size={12} />
+            {sub.daysLeft}d gratis · Suscribirse
+          </button>
+        </div>
+      )}
 
       {/* User footer */}
       {user && (

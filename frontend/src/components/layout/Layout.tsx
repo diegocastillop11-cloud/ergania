@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import ApiKeySettingsModal from '../careers/ApiKeySettingsModal'
+import SubscriptionBanner from '../subscription/SubscriptionBanner'
 import { loadApiKeys } from '../../lib/userApiKeys'
+import { useSubscription } from '../../hooks/useSubscription'
 import { Key } from 'lucide-react'
 
 export default function Layout() {
   const [showApiModal, setShowApiModal] = useState(false)
   const [hasKeys, setHasKeys] = useState(true)
+  const sub = useSubscription()
 
   useEffect(() => {
     const keys = loadApiKeys()
@@ -27,8 +30,9 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950">
-      <Sidebar />
+      <Sidebar sub={sub} />
       <main className="flex-1 overflow-y-auto p-6">
+        <SubscriptionBanner sub={sub} />
         {!hasKeys && !showApiModal && (
           <div className="mb-4 flex items-center gap-3 bg-yellow-950/60 border border-yellow-700/50 rounded-xl px-4 py-3">
             <Key size={16} className="text-yellow-400 shrink-0" />

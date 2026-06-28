@@ -5,6 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true })
 import express from 'express'
 import cors from 'cors'
 import { careersRoutes } from './routes/careers'
+import { subscriptionRoutes } from './routes/subscription'
 
 const app = express()
 
@@ -29,6 +30,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
 app.use('/api/careers', careersRoutes)
+app.use('/api/subscription', subscriptionRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
