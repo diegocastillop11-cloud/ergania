@@ -3,7 +3,14 @@ import { supabaseAdmin } from '../config/supabase'
 const stripBOM = (s: string) => s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s
 const MP_TOKEN = () => stripBOM(process.env.MERCADOPAGO_ACCESS_TOKEN || '')
 const MP_API   = 'https://api.mercadopago.com'
-const BACK_URL = () => stripBOM(process.env.FRONTEND_URL || 'https://career-ops-ui-gules.vercel.app')
+const BACK_URL = () => {
+  const raw = stripBOM(process.env.FRONTEND_URL || '')
+  // Rechazar localhost o http:// — MP exige HTTPS público
+  if (!raw || raw.includes('localhost') || !raw.startsWith('https://')) {
+    return 'https://career-ops-ui-gules.vercel.app'
+  }
+  return raw.replace(/\/$/, '') // quitar trailing slash
+}
 const TRIAL_DAYS   = 3
 const PLAN_AMOUNT  = 9990
 const PLAN_CURRENCY = 'CLP'
