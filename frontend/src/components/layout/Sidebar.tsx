@@ -16,6 +16,7 @@ const nav = [
   { to: '/tracker',       icon: List,            label: 'Tracker' },
   { to: '/portals',       icon: Globe,           label: 'Portales Chile' },
   { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
+  { to: '/subscription',  icon: Crown,           label: 'Suscripción' },
 ]
 
 interface Props { sub: SubscriptionState }

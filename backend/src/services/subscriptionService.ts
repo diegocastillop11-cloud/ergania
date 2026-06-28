@@ -59,6 +59,11 @@ export async function getSubscriptionStatus(userId: string) {
 
   if (!data) return { status: 'none' as const, daysLeft: 0 }
 
+  // Cuenta exenta (admin/test) — siempre activa sin pago
+  if (data.is_exempt === true) {
+    return { status: 'active' as const, daysLeft: null, isExempt: true }
+  }
+
   const now = new Date()
 
   if (data.status === 'trial') {

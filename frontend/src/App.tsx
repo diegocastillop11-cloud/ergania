@@ -3,6 +3,7 @@ import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
+import Subscription from './pages/Subscription'
 import CareersDashboard from './pages/careers/CareersDashboard'
 import CareersPipeline from './pages/careers/CareersPipeline'
 import CareersTracker from './pages/careers/CareersTracker'
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       {/* Layout route — wraps all protected paths without changing their URLs */}
       <Route element={<ProtectedLayout />}>
+        <Route path="/subscription"    element={<Subscription />} />
         <Route path="/dashboard"       element={<CareersDashboard />} />
         <Route path="/busqueda"        element={<CareersBusqueda />} />
         <Route path="/scanner"         element={<CareersScanner />} />
