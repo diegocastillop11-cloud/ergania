@@ -29,12 +29,18 @@ async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: obje
 }
 
 export async function getOrCreateSubscription(userId: string) {
-  const { data } = await supabaseAdmin
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const { data, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
     .select('*')
     .eq('user_id', userId)
     .single()
 
+  // PGRST116 = no rows found — normal case for new users
+  if (selectErr && selectErr.code !== 'PGRST116') {
+    console.error('[sub/select] error:', selectErr.message, selectErr.code)
+    throw new Error(`DB error: ${selectErr.message}`)
+  }
   if (data) return data
 
   const trialEndsAt = new Date()
@@ -46,11 +52,15 @@ export async function getOrCreateSubscription(userId: string) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error('[sub/insert] error:', error.message, error.code)
+    throw error
+  }
   return created
 }
 
 export async function getSubscriptionStatus(userId: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   let { data } = await supabaseAdmin
     .from('subscriptions')
     .select('*')

@@ -18,12 +18,15 @@ async function getUserFromToken(req: Request) {
 export async function getStatus(req: Request, res: Response) {
   try {
     const user = await getUserFromToken(req)
+    console.log('[getStatus] user.id:', user.id)
     const status = await svc.getOrCreateSubscription(user.id)
     const computed = await svc.getSubscriptionStatus(user.id)
     res.json({ subscription: status, computed })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Error'
-    res.status(401).json({ error: msg })
+    console.error('[getStatus] catch:', msg)
+    const isAuthError = msg.includes('Token') || msg.includes('requerido') || msg.includes('configurados')
+    res.status(isAuthError ? 401 : 500).json({ error: msg })
   }
 }
 
