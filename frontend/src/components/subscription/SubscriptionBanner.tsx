@@ -11,7 +11,8 @@ export default function SubscriptionBanner({ sub }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
-  if (sub.loading || sub.isActive && dismissed) return null
+  if (sub.loading || sub.status === 'active') return null
+  if (sub.status === 'trial' && dismissed) return null
 
   const handleSubscribe = async () => {
     setLoadingCheckout(true)
