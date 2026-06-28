@@ -5,8 +5,9 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const url = process.env.SUPABASE_URL ?? ''
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+const stripBOM = (s: string) => s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s
+const url = stripBOM(process.env.SUPABASE_URL ?? '')
+const key = stripBOM(process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
 
 if (!url || !key) {
   console.warn('[Supabase] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados — usando modo local')
