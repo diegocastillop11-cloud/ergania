@@ -6,10 +6,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const clean = (s: string) => { const t = (s ?? '').trim(); return t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t }
-const url = clean(process.env.SUPABASE_URL ?? '')
+// VITE_SUPABASE_URL como fallback — garantiza el mismo proyecto que el frontend
+const url = clean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '')
 const key = clean(process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
 
-console.log('[Supabase] URL prefix:', url.substring(0, 30))
+console.log('[Supabase] url:', url.substring(0, 40), '| key prefix:', key.substring(0, 10))
 
 if (!url || !key) {
   console.warn('[Supabase] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados — usando modo local')

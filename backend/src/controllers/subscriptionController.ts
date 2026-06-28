@@ -8,7 +8,10 @@ async function getUserFromToken(req: Request) {
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) throw new Error('Token requerido')
   const { data, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !data?.user) throw new Error(`Token inválido: ${error?.message}`)
+  if (error || !data?.user) {
+    console.error('[sub/auth] getUser error:', error?.message, '| token prefix:', token.substring(0, 20))
+    throw new Error(`Token inválido: ${error?.message}`)
+  }
   return data.user
 }
 
