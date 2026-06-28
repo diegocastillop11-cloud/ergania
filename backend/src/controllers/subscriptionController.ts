@@ -3,11 +3,12 @@ import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/subscriptionService'
 
 async function getUserFromToken(req: Request) {
+  if (!supabaseAdmin) throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados en Vercel')
   const auth = req.headers['authorization']
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
   if (!token) throw new Error('Token requerido')
   const { data, error } = await supabaseAdmin.auth.getUser(token)
-  if (error || !data?.user) throw new Error('Token inválido')
+  if (error || !data?.user) throw new Error(`Token inválido: ${error?.message}`)
   return data.user
 }
 

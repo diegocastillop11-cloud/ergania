@@ -10,6 +10,15 @@ api.interceptors.request.use(async config => {
   return config
 })
 
+// Extrae el campo "error" del body JSON del backend y lo lanza como mensaje
+api.interceptors.response.use(
+  res => res,
+  err => {
+    const msg = err.response?.data?.error || err.message
+    return Promise.reject(new Error(msg))
+  }
+)
+
 export async function fetchSubscriptionStatus() {
   const { data } = await api.get<{
     subscription: SubscriptionRecord
