@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
   Briefcase, Radio, Send, Target, LogOut, Crown,
@@ -22,6 +23,16 @@ interface Props { sub: SubscriptionState }
 export default function Sidebar({ sub }: Props) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+
+  const handleCheckout = async () => {
+    setCheckoutError(null)
+    try {
+      await sub.openCheckout()
+    } catch (e) {
+      setCheckoutError(e instanceof Error ? e.message : 'Error al conectar con MercadoPago')
+    }
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -75,25 +86,27 @@ export default function Sidebar({ sub }: Props) {
 
       {/* Subscription CTA — siempre visible cuando no está suscrito */}
       {!sub.loading && !sub.isActive && (
-        <div className="px-3 pb-2">
+        <div className="px-3 pb-2 flex flex-col gap-1">
           <button
-            onClick={sub.openCheckout}
+            onClick={handleCheckout}
             className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
           >
             <Crown size={13} />
             Suscribirse — $9.990/mes
           </button>
+          {checkoutError && <p className="text-[11px] text-red-400 text-center leading-tight">{checkoutError}</p>}
         </div>
       )}
       {!sub.loading && sub.status === 'trial' && (
-        <div className="px-3 pb-2">
+        <div className="px-3 pb-2 flex flex-col gap-1">
           <button
-            onClick={sub.openCheckout}
+            onClick={handleCheckout}
             className="w-full flex items-center justify-center gap-2 border border-blue-700 text-blue-400 hover:bg-blue-950 text-xs font-semibold py-2 rounded-lg transition-colors"
           >
             <Crown size={12} />
             {sub.daysLeft}d gratis · Suscribirse
           </button>
+          {checkoutError && <p className="text-[11px] text-red-400 text-center leading-tight">{checkoutError}</p>}
         </div>
       )}
 
