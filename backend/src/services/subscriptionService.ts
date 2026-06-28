@@ -77,11 +77,17 @@ export async function getSubscriptionStatus(userId: string) {
   }
 
   if (data.status === 'active') {
-    return {
-      status: 'active' as const,
-      daysLeft: null,
-      currentPeriodEnd: data.current_period_end,
+    // Verificar si el período mensual venció → expirar y forzar renovación
+    if (data.current_period_end) {
+      const end = new Date(data.current_period_end)
+      if (now > end) {
+        await supabaseAdmin!.from('subscriptions').update({ status: 'expired' }).eq('user_id', userId)
+        return { status: 'expired' as const, daysLeft: 0 }
+      }
+      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86_400_000)
+      return { status: 'active' as const, daysLeft, currentPeriodEnd: data.current_period_end }
     }
+    return { status: 'active' as const, daysLeft: null, currentPeriodEnd: null }
   }
 
   return { status: data.status as 'expired' | 'cancelled' | 'pending_payment', daysLeft: 0 }
