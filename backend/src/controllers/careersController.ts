@@ -718,6 +718,74 @@ export const getApplicationById = async (req: Request, res: Response) => {
   }
 }
 
+// ── CV prompt builder (shared between createApplication & regenerateCV) ────────
+function buildCvJsonPrompt(
+  rol: string,
+  empresa: string,
+  jd: string,
+  cv: string,
+  cand: Record<string, string>,
+  contactInfo: Record<string, string>,
+  cvInstructions?: string,
+): string {
+  return `Actúa como recruiter senior de ${empresa} evaluando candidatos para ${rol}.
+Tu tarea es DOBLE: (1) asegurarte de que este CV pase los filtros ATS, y (2) reescribirlo para que detenga el scroll en una pila de 200 CVs.
+
+ANÁLISIS PREVIO (aplica mentalmente antes de generar):
+- Identifica las 5 keywords críticas del JD que faltan o están débiles en el CV actual → inyéctalas en bullets y resumen
+- Identifica los 3 puntos que harían que un recruiter descarte este CV en 10 segundos → elimínalos o corrígelos
+- Identifica qué secciones se saltaría un reclutador cansado → reescríbelas para que sean específicas e impactantes
+
+JD DEL CARGO (extrae keywords ATS, úsalas literalmente):
+${jd.slice(0, 2500)}
+
+CV DEL CANDIDATO (incluye TODA la experiencia; no omitas ninguna empresa):
+${cv}
+
+REGLAS DE REDACCIÓN:
+- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos.
+- Resumen: 3-4 frases específicas. Menciona el cargo objetivo, las 2-3 habilidades clave del JD y un logro cuantificado. CERO frases genéricas.
+- ATS: usa keywords exactas del JD en bullets y resumen; no parafrasees si la keyword es técnica.
+- Cada sección debe "detener el scroll": números, tecnologías específicas, impacto de negocio. Nada que un recruiter cansado se salte.
+- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo.
+- Skills: ordena por relevancia para la JD. Incluye ≥3 keywords técnicas del JD.
+- Experiencia: ≥3 bullets por empresa reciente, 1 para HP. Mínimo 1 bullet con métrica concreta por empresa.
+- Proyectos personales: ≥1 proyecto con IA + datos + UI/UX; nombra el proyecto y su impacto real.
+- Si el JD pide Python o bases de datos, menciona esa habilidad en resumen Y en un bullet de experiencia.
+${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}
+Devuelve SOLO JSON válido, sin markdown ni explicaciones:
+{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Punto Ticket","location":"Santiago, Chile","role":"Analista de Base de Datos Senior","dates":"Nov. 2019 – Feb. 2026","bullets":["..."]},{"company":"Imperial S.A.","location":"Santiago, Chile","role":"Analista Funcional","dates":"Jun. 2017 – Nov. 2019","bullets":["..."]},{"company":"OB GROUP PARK","location":"Santiago, Chile","role":"Analista de Sistemas y TI","dates":"Mayo 2014 – Abril 2017","bullets":["..."]},{"company":"Hewlett-Packard Company","location":"Santiago, Chile","role":"Agente de Mesa de Ayuda Nivel 1","dates":"Ago. 2013 – Mayo 2014","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Datos & Cloud":"SQL Server (Experto), Azure SQL, Oracle, PostgreSQL, MongoDB, Microsoft Azure","Desarrollo & IA":"Python, C#, Node.js, Go, React, Prompt Engineering (Claude / Gemini)","Frontend & Diseño":"TypeScript, JavaScript (ES6+), HTML5/CSS3, UI/UX Design","Herramientas & Metodologías":"Git, Docker, Power BI, Excel Avanzado, Scrum/Kanban"},"education":[{"title":"Business Analytics & Data Science","institution":"Universidad de Chile","year":"2024"},{"title":"Especialización SQL Server","institution":"","year":"2023"},{"title":"Desarrollo de Apps Móviles","institution":"Universidad Complutense de Madrid","year":"2017"},{"title":"Analista Programador","institution":"INACAP","year":"2013"}]}`
+}
+
+function buildCoverLetterPrompt(
+  candidateName: string,
+  empresa: string,
+  rol: string,
+  jd: string,
+  cv: string,
+): string {
+  return `Actúa como experto en comunicación ejecutiva para el mercado laboral chileno.
+Redacta una carta de presentación personalizada para esta postulación específica.
+
+EMPRESA: ${empresa}
+CARGO: ${rol}
+JD (extracto clave): ${jd.slice(0, 1500)}
+CV RESUMIDO: ${cv.slice(0, 1000)}
+
+ESTRUCTURA (3 párrafos, máx 200 palabras total):
+1. Apertura: menciona empresa + cargo + por qué ESTA empresa específicamente te interesa (no genérico)
+2. Propuesta de valor: 2-3 logros concretos del CV con métrica que conecten directamente con los requisitos del JD. Usa keywords del JD.
+3. Cierre: disponibilidad + llamado a acción directo y seguro
+
+REGLAS:
+- Tono profesional pero directo, nunca corporativo ni servil
+- Cada frase debe aportar información nueva; elimina lo que el recruiter ya sabe o que no detiene el scroll
+- PROHIBIDO: "proactivo", "apasionado", "trabajo en equipo" sin respaldo, frases de relleno
+- Termina exactamente con: "Quedo disponible para conversar. Saludos, ${candidateName}"
+
+Responde SOLO con el texto de la carta.`
+}
+
 export const createApplication = async (req: Request, res: Response) => {
   try {
     const userEmail = await getUserEmail(req)
@@ -744,32 +812,7 @@ export const createApplication = async (req: Request, res: Response) => {
       github: cand.github || '',
     }
 
-    // Una sola llamada → JSON estructurado → HTML + LaTeX se construyen en el servidor (ahorra tokens)
-    const cvJsonPrompt = `Genera datos para un CV Harvard personalizado. Devuelve SOLO JSON válido, sin markdown.
-
-CARGO: ${rol}
-EMPRESA: ${empresa}
-
-JD (extrae keywords ATS y úsalas literalmente en los bullets de experiencia):
-${jd.slice(0, 2000)}
-
-CV DEL CANDIDATO (incluye TODA la experiencia, no omitas ninguna empresa; incluye proyectos personales relevantes y experiencia con IA y desarrollo personal, aunque sea menor a un año):
-${cv}
-
-REGLAS:
-- Resume y adapta el CV para pasar filtros ATS e IA. Prohibido mencionar años de experiencia, "X+ años", "años de experiencia", "más de 5 años" o "senior/junior" basado en tiempo. Usa logros, tecnologías y resultados.
-- Resumen: 3-4 frases específicas para este rol/empresa. Menciona explícitamente el cargo objetivo y cómo tu experiencia se relaciona con ese rol. Incluye las habilidades clave del JD y un logro cuantificado. Sin frases genéricas.
-- Experiencia: conecta cada experiencia relevante con el cargo objetivo, especialmente si es QA, control de calidad o testing manual. Incluye TODAS las empresas del CV. Mínimo 3 bullets por empresa reciente, 1 para HP.
-- ATS: usa keywords exactas de la JD en los bullets y en el resumen cuando sea posible.
-- Bullets: verbo de acción + tarea + resultado medible. Incluye métricas concretas cuando sea posible.
-- Skills: ordena categorías por relevancia para la JD. Extrae y menciona al menos 3 habilidades clave del JD.
-- Proyectos personales: agrega mínimo 1 proyecto personal destacado que muestre IA + React + base de datos + UI/UX, nómbralo y explica su impacto.
-- Destaca experiencia con IA (Claude, Gemini, prompt engineering) y desarrollo de apps con bases de datos seguras, mantenimiento de datos y UI/UX.
-- Si la JD pide Python o bases de datos, menciona esa habilidad claramente en algún bullet y en el resumen.
-- No uses palabras vagas como "proactivo", "apasionado" o "dinámico".
-${cvInstructions ? '\nINSTRUCCIONES PERSONALES DEL CANDIDATO (respétalas con prioridad máxima sobre las reglas anteriores):\n' + cvInstructions + '\n' : ''}
-JSON exacto a retornar:
-{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Punto Ticket","location":"Santiago, Chile","role":"Analista de Base de Datos Senior","dates":"Nov. 2019 – Feb. 2026","bullets":["..."]},{"company":"Imperial S.A.","location":"Santiago, Chile","role":"Analista Funcional","dates":"Jun. 2017 – Nov. 2019","bullets":["..."]},{"company":"OB GROUP PARK","location":"Santiago, Chile","role":"Analista de Sistemas y TI","dates":"Mayo 2014 – Abril 2017","bullets":["..."]},{"company":"Hewlett-Packard Company","location":"Santiago, Chile","role":"Agente de Mesa de Ayuda Nivel 1","dates":"Ago. 2013 – Mayo 2014","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Datos & Cloud":"SQL Server (Experto), Azure SQL, Oracle, PostgreSQL, MongoDB, Microsoft Azure","Desarrollo & IA":"Python, C#, Node.js, Go, React, Prompt Engineering (Claude / Gemini)","Frontend & Diseño":"TypeScript, JavaScript (ES6+), HTML5/CSS3, UI/UX Design","Herramientas & Metodologías":"Git, Docker, Power BI, Excel Avanzado, Scrum/Kanban"},"education":[{"title":"Business Analytics & Data Science","institution":"Universidad de Chile","year":"2024"},{"title":"Especialización SQL Server","institution":"","year":"2023"},{"title":"Desarrollo de Apps Móviles","institution":"Universidad Complutense de Madrid","year":"2017"},{"title":"Analista Programador","institution":"INACAP","year":"2013"}]}`
+    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd, cv, cand, contactInfo, cvInstructions)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
@@ -805,20 +848,7 @@ JSON exacto a retornar:
     const cvTex  = svc.buildCvLatex(cvData)
 
     // Generar carta de presentación
-    const coverLetterPrompt = `Redacta una carta de presentación profesional en español para la siguiente postulación.
-CANDIDATO: ${cand.full_name || 'Diego Castillo'}
-EMPRESA: ${empresa}
-CARGO: ${rol}
-DESCRIPCIÓN DEL PUESTO (extracto): ${jd.slice(0, 1200)}
-CV RESUMIDO: ${cv.slice(0, 1000)}
-
-REGLAS:
-- 3 párrafos breves: (1) presentación y motivación específica por la empresa, (2) por qué eres el candidato ideal usando 2-3 logros concretos del CV, (3) cierre con disponibilidad y llamado a acción
-- Tono profesional pero cercano, no corporativo ni genérico
-- Menciona el nombre de la empresa y el cargo en el primer párrafo
-- NO uses frases como "proactivo", "apasionado", "trabajo en equipo" sin respaldo concreto
-- Máximo 200 palabras
-- Termina con: "Quedo disponible para conversar. Saludos, ${cand.full_name || 'Diego Castillo'}"`
+    const coverLetterPrompt = buildCoverLetterPrompt(cand.full_name || 'Diego Castillo', empresa, rol, jd, cv)
 
     let coverLetter: string | undefined
     try {
@@ -916,31 +946,7 @@ export const regenerateCV = async (req: Request, res: Response) => {
     }
     const { empresa, rol, jd } = app
 
-    const cvJsonPrompt = `Genera datos para un CV Harvard personalizado. Devuelve SOLO JSON válido, sin markdown.
-
-CARGO: ${rol}
-EMPRESA: ${empresa}
-
-JD (extrae keywords ATS y úsalas literalmente en los bullets de experiencia):
-${(jd || '').slice(0, 2000)}
-
-CV DEL CANDIDATO (incluye TODA la experiencia, no omitas ninguna empresa; incluye proyectos personales relevantes y experiencia con IA y desarrollo personal, aunque sea menor a un año):
-${cv}
-
-REGLAS:
-- Resume y adapta el CV para pasar filtros ATS e IA. Prohibido mencionar años de experiencia, "X+ años", "años de experiencia", "más de 5 años" o "senior/junior" basado en tiempo. Usa logros, tecnologías y resultados.
-- Resumen: 3-4 frases específicas para este rol/empresa. Menciona explícitamente el cargo objetivo y cómo tu experiencia se relaciona con ese rol. Incluye las habilidades clave del JD y un logro cuantificado. Sin frases genéricas.
-- Experiencia: conecta cada experiencia relevante con el cargo objetivo, especialmente si es QA, control de calidad o testing manual. Incluye TODAS las empresas del CV. Mínimo 3 bullets por empresa reciente, 1 para HP.
-- ATS: usa keywords exactas de la JD en los bullets y en el resumen cuando sea posible.
-- Bullets: verbo de acción + tarea + resultado medible. Incluye métricas concretas cuando sea posible.
-- Skills: ordena categorías por relevancia para la JD. Extrae y menciona al menos 3 habilidades clave del JD.
-- Proyectos personales: agrega mínimo 1 proyecto personal destacado que muestre IA + React + base de datos + UI/UX, nómbralo y explica su impacto.
-- Destaca experiencia con IA (Claude, Gemini, prompt engineering) y desarrollo de apps con bases de datos seguras, mantenimiento de datos y UI/UX.
-- Si la JD pide Python o bases de datos, menciona esa habilidad claramente en algún bullet y en el resumen.
-- No uses palabras vagas como "proactivo", "apasionado" o "dinámico".
-${cvInstructions ? '\nINSTRUCCIONES PERSONALES DEL CANDIDATO (respétalas con prioridad máxima sobre las reglas anteriores):\n' + cvInstructions + '\n' : ''}
-JSON exacto a retornar:
-{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Punto Ticket","location":"Santiago, Chile","role":"Analista de Base de Datos Senior","dates":"Nov. 2019 – Feb. 2026","bullets":["..."]},{"company":"Imperial S.A.","location":"Santiago, Chile","role":"Analista Funcional","dates":"Jun. 2017 – Nov. 2019","bullets":["..."]},{"company":"OB GROUP PARK","location":"Santiago, Chile","role":"Analista de Sistemas y TI","dates":"Mayo 2014 – Abril 2017","bullets":["..."]},{"company":"Hewlett-Packard Company","location":"Santiago, Chile","role":"Agente de Mesa de Ayuda Nivel 1","dates":"Ago. 2013 – Mayo 2014","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Datos & Cloud":"SQL Server (Experto), Azure SQL, Oracle, PostgreSQL, MongoDB, Microsoft Azure","Desarrollo & IA":"Python, C#, Node.js, Go, React, Prompt Engineering (Claude / Gemini)","Frontend & Diseño":"TypeScript, JavaScript (ES6+), HTML5/CSS3, UI/UX Design","Herramientas & Metodologías":"Git, Docker, Power BI, Excel Avanzado, Scrum/Kanban"},"education":[{"title":"Business Analytics & Data Science","institution":"Universidad de Chile","year":"2024"},{"title":"Especialización SQL Server","institution":"","year":"2023"},{"title":"Desarrollo de Apps Móviles","institution":"Universidad Complutense de Madrid","year":"2017"},{"title":"Analista Programador","institution":"INACAP","year":"2013"}]}`
+    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd || '', cv, cand, contactInfo, cvInstructions)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
