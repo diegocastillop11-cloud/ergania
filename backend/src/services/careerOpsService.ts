@@ -1142,20 +1142,28 @@ export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
     section('Resumen Profesional')
     doc.font('Times-Roman').fontSize(10.5).text(cvData.summary, { align: 'justify', lineGap: 1 })
 
+    // helper: two-column row preserving Y alignment
+    const row2 = (
+      leftText: string, leftFont: string, leftSize: number,
+      rightText: string, rightColor: string
+    ) => {
+      const rowY = doc.y
+      doc.font(leftFont).fontSize(leftSize).fillColor('#000').text(leftText, 54, rowY, { width: W * 0.65 })
+      const afterLeft = doc.y
+      doc.font('Times-Roman').fontSize(10).fillColor(rightColor).text(rightText, 54 + W * 0.65, rowY, { width: W * 0.35, align: 'right' })
+      doc.fillColor('#000')
+      doc.y = afterLeft  // restore cursor to after left-column text
+    }
+
     // ── Experiencia ───────────────────────────────────────────────────────────
     section('Experiencia Profesional')
     for (const e of cvData.experience) {
       doc.moveDown(0.35)
-      const y = doc.y
-      doc.font('Times-Bold').fontSize(10.5).text(e.company, 54, y, { continued: false, width: W * 0.65 })
-      doc.font('Times-Roman').fontSize(10).fillColor(gray).text(e.location, 54 + W * 0.65, y, { width: W * 0.35, align: 'right' })
-      doc.fillColor('#000')
-      const y2 = doc.y
-      doc.font('Times-Italic').fontSize(10.5).text(e.role, 54, y2, { width: W * 0.65 })
-      doc.font('Times-Roman').fontSize(10).fillColor(gray).text(e.dates, 54 + W * 0.65, y2, { width: W * 0.35, align: 'right' })
-      doc.fillColor('#000').moveDown(0.1)
+      row2(e.company, 'Times-Bold', 10.5, e.location, gray)
+      row2(e.role, 'Times-Italic', 10.5, e.dates, gray)
+      doc.moveDown(0.1)
       for (const b of e.bullets) {
-        doc.font('Times-Roman').fontSize(10).text(`• ${b}`, { indent: 10, align: 'justify', lineGap: 1 })
+        doc.font('Times-Roman').fontSize(10).fillColor('#000').text(`• ${b}`, 54, doc.y, { width: W, align: 'justify', lineGap: 1 })
       }
     }
 
@@ -1164,12 +1172,10 @@ export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
       section('Proyectos Destacados')
       for (const p of cvData.projects) {
         doc.moveDown(0.35)
-        const y = doc.y
-        doc.font('Times-Bold').fontSize(10.5).text(p.name, 54, y, { width: W * 0.7 })
-        if (p.year) doc.font('Times-Roman').fontSize(10).fillColor(gray).text(p.year, 54 + W * 0.7, y, { width: W * 0.3, align: 'right' })
-        doc.fillColor('#000').moveDown(0.1)
+        row2(p.name, 'Times-Bold', 10.5, p.year || '', gray)
+        doc.moveDown(0.1)
         for (const b of p.bullets) {
-          doc.font('Times-Roman').fontSize(10).text(`• ${b}`, { indent: 10, align: 'justify', lineGap: 1 })
+          doc.font('Times-Roman').fontSize(10).fillColor('#000').text(`• ${b}`, 54, doc.y, { width: W, align: 'justify', lineGap: 1 })
         }
       }
     }
@@ -1179,8 +1185,8 @@ export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
       section('Habilidades Técnicas')
       for (const [cat, vals] of Object.entries(cvData.skills)) {
         doc.moveDown(0.2)
-        doc.font('Times-Bold').fontSize(10.5).text(`${cat}: `, { continued: true })
-        doc.font('Times-Roman').text(vals, { lineGap: 1 })
+        doc.font('Times-Bold').fontSize(10.5).fillColor('#000').text(`${cat}: `, 54, doc.y, { continued: true, width: W })
+        doc.font('Times-Roman').fontSize(10.5).text(vals, { lineGap: 1 })
       }
     }
 
@@ -1190,10 +1196,7 @@ export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
       for (const ed of cvData.education) {
         doc.moveDown(0.25)
         const label = ed.institution ? `${ed.title}, ${ed.institution}` : ed.title
-        const y = doc.y
-        doc.font('Times-Bold').fontSize(10.5).text(label, 54, y, { width: W * 0.75 })
-        doc.font('Times-Roman').fontSize(10).fillColor(gray).text(ed.year, 54 + W * 0.75, y, { width: W * 0.25, align: 'right' })
-        doc.fillColor('#000')
+        row2(label, 'Times-Bold', 10.5, ed.year, gray)
       }
     }
 
