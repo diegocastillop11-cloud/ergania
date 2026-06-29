@@ -62,7 +62,7 @@ export default function Sidebar({ sub }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {nav.map(({ to, icon: Icon, label, badge }) => (
+        {nav.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -76,11 +76,6 @@ export default function Sidebar({ sub }: Props) {
           >
             <Icon size={16} />
             <span className="flex-1">{label}</span>
-            {badge && (
-              <span className="text-[10px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded-full leading-none">
-                {badge}
-              </span>
-            )}
           </NavLink>
         ))}
       </nav>
