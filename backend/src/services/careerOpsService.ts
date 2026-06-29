@@ -1036,3 +1036,146 @@ export function readCvTemplate(): string {
   return ''
 }
 
+// ── PDF via pdfmake (pure Node.js, no Chrome needed) ──────────────────────────
+
+function stripTags(s: string): string {
+  return s.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
+}
+
+export function parseCvDataFromHtml(html: string): CvData {
+  const sec = (title: string) => {
+    const re = new RegExp(`<div class="section-title">${title}<\\/div>([\\s\\S]*?)(?=<div class="section">|<\\/body>)`)
+    return html.match(re)?.[1] || ''
+  }
+
+  const name = stripTags(html.match(/<div class="name">([^<]+)<\/div>/)?.[1] || '')
+
+  // contact: two lines separated by <br>
+  const contactRaw = html.match(/<div class="contact">([\s\S]*?)<\/div>/)?.[1] || ''
+  const [line1 = '', line2 = ''] = contactRaw.split(/<br\s*\/?>/i)
+  const parts1 = line1.split(/&nbsp;\|&nbsp;/).map(stripTags).filter(Boolean)
+  const parts2 = line2.split(/&nbsp;\|&nbsp;/).map(stripTags).filter(Boolean)
+  const [city = '', phone = '', email = ''] = parts1
+  const linkedin = parts2.find(p => p.includes('linkedin')) || ''
+  const github   = parts2.find(p => p.includes('github'))   || ''
+
+  const summary = stripTags(html.match(/<div class="summary">([\s\S]*?)<\/div>/)?.[1] || '')
+
+  const parseEntries = (sectionHtml: string) =>
+    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?)<\/div>\s*<\/div>/g)].map(m => {
+      const inner = m[1]
+      const headers = [...inner.matchAll(/<div class="entry-header">([\s\S]*?)<\/div>/g)].map(h => h[1])
+      const company = stripTags(headers[0]?.match(/<span class="company">([\s\S]*?)<\/span>/)?.[1] || '')
+      const location = stripTags(headers[0]?.match(/<span class="meta">([\s\S]*?)<\/span>/)?.[1] || '')
+      const role   = stripTags(headers[1]?.match(/<span class="role">([\s\S]*?)<\/span>/)?.[1] || '')
+      const dates  = stripTags(headers[1]?.match(/<span class="meta">([\s\S]*?)<\/span>/)?.[1] || '')
+      const bullets = [...inner.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(b => stripTags(b[1]))
+      return { company, location, role, dates, bullets }
+    })
+
+  const parseProjects = (sectionHtml: string) =>
+    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?)<\/div>\s*<\/div>/g)].map(m => {
+      const inner = m[1]
+      const header = inner.match(/<div class="entry-header">([\s\S]*?)<\/div>/)?.[1] || ''
+      const name   = stripTags(header.match(/<span class="company">([\s\S]*?)<\/span>/)?.[1] || '')
+      const year   = stripTags(header.match(/<span class="meta">([\s\S]*?)<\/span>/)?.[1] || '')
+      const bullets = [...inner.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(b => stripTags(b[1]))
+      return { name, year, bullets }
+    })
+
+  const skills: Record<string, string> = {}
+  const skillsSection = sec('Habilidades T.cnicas')
+  ;[...skillsSection.matchAll(/<div class="skill-line"><strong>([^<]+):<\/strong>\s*([^<]+)<\/div>/g)]
+    .forEach(m => { skills[m[1].trim()] = m[2].trim() })
+
+  const education = [...sec('Formaci.n Acad.mica').matchAll(/<div class="edu-entry">([\s\S]*?)<\/div>/g)].map(m => {
+    const inner = m[1]
+    const title = stripTags(inner.match(/<strong>([^<]+)<\/strong>/)?.[1] || '')
+    const rest  = stripTags(inner.replace(/<strong>[^<]+<\/strong>,?\s*/, '').replace(/<span class="edu-year">([^<]+)<\/span>/, ''))
+    const year  = stripTags(inner.match(/<span class="edu-year">([^<]+)<\/span>/)?.[1] || '')
+    return { title, institution: rest.trim(), year }
+  })
+
+  return {
+    name,
+    contact: { city, phone, email, linkedin, github },
+    summary,
+    experience: parseEntries(sec('Experiencia Profesional')),
+    projects:   parseProjects(sec('Proyectos Destacados')),
+    skills,
+    education,
+  }
+}
+
+export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const PdfPrinter = require('pdfmake/src/printer')
+  const printer = new PdfPrinter({
+    Times: { normal: 'Times-Roman', bold: 'Times-Bold', italics: 'Times-Italic', bolditalics: 'Times-BoldItalic' },
+  })
+
+  const HR = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 490, y2: 0, lineWidth: 0.5 }], margin: [0, 0, 0, 3] }
+
+  const sectionTitle = (text: string) => ({ text, font: 'Times', fontSize: 11, bold: true, margin: [0, 10, 0, 1] })
+
+  const expBlocks = cvData.experience.flatMap(e => [
+    {
+      columns: [{ text: e.company, bold: true, font: 'Times' }, { text: e.location, alignment: 'right', color: '#555', font: 'Times' }],
+      margin: [0, 5, 0, 0],
+    },
+    {
+      columns: [{ text: e.role, italics: true, font: 'Times' }, { text: e.dates, alignment: 'right', color: '#555', font: 'Times' }],
+    },
+    { ul: e.bullets, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
+  ])
+
+  const projBlocks = cvData.projects.flatMap(p => [
+    {
+      columns: [{ text: p.name, bold: true, font: 'Times' }, { text: p.year || '', alignment: 'right', color: '#555', font: 'Times' }],
+      margin: [0, 5, 0, 0],
+    },
+    { ul: p.bullets, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
+  ])
+
+  const skillLines = Object.entries(cvData.skills).map(([cat, vals]) => ({
+    text: [{ text: cat + ': ', bold: true, font: 'Times' }, { text: vals, font: 'Times' }],
+    fontSize: 10.5, margin: [0, 2, 0, 0],
+  }))
+
+  const eduLines = cvData.education.map(ed => ({
+    columns: [
+      { text: [{ text: ed.title, bold: true, font: 'Times' }, { text: ed.institution ? `, ${ed.institution}` : '', font: 'Times' }] },
+      { text: ed.year, alignment: 'right', color: '#555', font: 'Times' },
+    ],
+    fontSize: 10.5, margin: [0, 3, 0, 0],
+  }))
+
+  const contact2 = [cvData.contact.linkedin, cvData.contact.github].filter(Boolean).join('  |  ')
+
+  const docDef: Record<string, unknown> = {
+    pageSize: 'A4',
+    pageMargins: [54, 50, 54, 50],
+    defaultStyle: { font: 'Times', fontSize: 11, lineHeight: 1.35 },
+    content: [
+      { text: cvData.name.toUpperCase(), font: 'Times', fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+      { text: [cvData.contact.city, cvData.contact.phone, cvData.contact.email].filter(Boolean).join('  |  '), font: 'Times', fontSize: 9.5, alignment: 'center', color: '#222' },
+      ...(contact2 ? [{ text: contact2, font: 'Times', fontSize: 9.5, alignment: 'center', color: '#222', margin: [0, 1, 0, 0] }] : []),
+      sectionTitle('RESUMEN PROFESIONAL'), HR,
+      { text: cvData.summary, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
+      sectionTitle('EXPERIENCIA PROFESIONAL'), HR, ...expBlocks,
+      ...(cvData.projects.length ? [sectionTitle('PROYECTOS DESTACADOS'), HR, ...projBlocks] : []),
+      ...(Object.keys(cvData.skills).length ? [sectionTitle('HABILIDADES TÉCNICAS'), HR, ...skillLines] : []),
+      ...(cvData.education.length ? [sectionTitle('FORMACIÓN ACADÉMICA'), HR, ...eduLines] : []),
+    ],
+  }
+
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = printer.createPdfKitDocument(docDef)
+    const chunks: Buffer[] = []
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk))
+    doc.on('end', () => resolve(Buffer.concat(chunks)))
+    doc.on('error', reject)
+    doc.end()
+  })
+}
+

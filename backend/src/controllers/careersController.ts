@@ -1250,16 +1250,22 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
   try {
     const userEmail = await getUserEmail(req)
     const app = await svc.getApplication(req.params.id, userEmail)
-    if (!app?.cvHtml) return res.status(404).json({ error: 'CV no disponible para este postulación' })
+    if (!app?.cvHtml) return res.status(404).json({ error: 'CV no disponible' })
 
     const profile = await svc.readProfile(userEmail)
     const candidateName = ((profile?.candidate as Record<string, string>)?.full_name || '').replace(/\s+/g, '_')
+    const emp = app.empresa.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
+    const rol = app.rol.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
+    const filename = `CV_${candidateName}_${emp}_${rol}.pdf`
 
-    const { buffer, filename } = await svc.generatePDFFromHtml(app.cvHtml, app.empresa, app.rol, candidateName)
+    const cvData = svc.parseCvDataFromHtml(app.cvHtml)
+    const buffer = await svc.buildPdfFromCvData(cvData)
+
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.send(buffer)
   } catch (err: unknown) {
+    console.error('downloadApplicationPdf error:', err)
     res.status(500).json({ error: (err as Error).message })
   }
 }
