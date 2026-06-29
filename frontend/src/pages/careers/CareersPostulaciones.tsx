@@ -10,14 +10,15 @@ import {
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
-async function downloadPdf(appId: string, filename: string) {
-  const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+async function downloadPdf(appId: string, _filename: string) {
+  const { data: app } = await api.get(`/applications/${appId}`)
+  const html = app?.cvHtml
+  if (!html) { alert('CV no disponible'); return }
+  const win = window.open('', '_blank')
+  if (!win) { alert('Permite ventanas emergentes para imprimir el PDF'); return }
+  win.document.write(html)
+  win.document.close()
+  setTimeout(() => { win.print() }, 600)
 }
 
 async function downloadInterviewPrepPdf(appId: string, empresa: string, rol: string) {
