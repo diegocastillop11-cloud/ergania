@@ -9,3 +9,4 @@ frontend/.env.local
 .DS_Store
 
 .vercel
+.gstack/

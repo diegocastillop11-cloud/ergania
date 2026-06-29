@@ -1036,7 +1036,7 @@ export function readCvTemplate(): string {
   return ''
 }
 
-// ── PDF via pdfmake (pure Node.js, no Chrome needed) ──────────────────────────
+// ── PDF via pdfkit (pure Node.js, no Chrome needed) ──────────────────────────
 
 function stripTags(s: string): string {
   return s.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
