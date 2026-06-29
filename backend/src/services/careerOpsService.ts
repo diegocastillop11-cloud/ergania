@@ -1109,72 +1109,94 @@ export function parseCvDataFromHtml(html: string): CvData {
 
 export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const PdfPrinter = require('pdfmake/src/printer')
-  const printer = new PdfPrinter({
-    Times: { normal: 'Times-Roman', bold: 'Times-Bold', italics: 'Times-Italic', bolditalics: 'Times-BoldItalic' },
-  })
-
-  const HR = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 490, y2: 0, lineWidth: 0.5 }], margin: [0, 0, 0, 3] }
-
-  const sectionTitle = (text: string) => ({ text, font: 'Times', fontSize: 11, bold: true, margin: [0, 10, 0, 1] })
-
-  const expBlocks = cvData.experience.flatMap(e => [
-    {
-      columns: [{ text: e.company, bold: true, font: 'Times' }, { text: e.location, alignment: 'right', color: '#555', font: 'Times' }],
-      margin: [0, 5, 0, 0],
-    },
-    {
-      columns: [{ text: e.role, italics: true, font: 'Times' }, { text: e.dates, alignment: 'right', color: '#555', font: 'Times' }],
-    },
-    { ul: e.bullets, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
-  ])
-
-  const projBlocks = cvData.projects.flatMap(p => [
-    {
-      columns: [{ text: p.name, bold: true, font: 'Times' }, { text: p.year || '', alignment: 'right', color: '#555', font: 'Times' }],
-      margin: [0, 5, 0, 0],
-    },
-    { ul: p.bullets, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
-  ])
-
-  const skillLines = Object.entries(cvData.skills).map(([cat, vals]) => ({
-    text: [{ text: cat + ': ', bold: true, font: 'Times' }, { text: vals, font: 'Times' }],
-    fontSize: 10.5, margin: [0, 2, 0, 0],
-  }))
-
-  const eduLines = cvData.education.map(ed => ({
-    columns: [
-      { text: [{ text: ed.title, bold: true, font: 'Times' }, { text: ed.institution ? `, ${ed.institution}` : '', font: 'Times' }] },
-      { text: ed.year, alignment: 'right', color: '#555', font: 'Times' },
-    ],
-    fontSize: 10.5, margin: [0, 3, 0, 0],
-  }))
-
-  const contact2 = [cvData.contact.linkedin, cvData.contact.github].filter(Boolean).join('  |  ')
-
-  const docDef: Record<string, unknown> = {
-    pageSize: 'A4',
-    pageMargins: [54, 50, 54, 50],
-    defaultStyle: { font: 'Times', fontSize: 11, lineHeight: 1.35 },
-    content: [
-      { text: cvData.name.toUpperCase(), font: 'Times', fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
-      { text: [cvData.contact.city, cvData.contact.phone, cvData.contact.email].filter(Boolean).join('  |  '), font: 'Times', fontSize: 9.5, alignment: 'center', color: '#222' },
-      ...(contact2 ? [{ text: contact2, font: 'Times', fontSize: 9.5, alignment: 'center', color: '#222', margin: [0, 1, 0, 0] }] : []),
-      sectionTitle('RESUMEN PROFESIONAL'), HR,
-      { text: cvData.summary, font: 'Times', fontSize: 10.5, margin: [0, 2, 0, 0] },
-      sectionTitle('EXPERIENCIA PROFESIONAL'), HR, ...expBlocks,
-      ...(cvData.projects.length ? [sectionTitle('PROYECTOS DESTACADOS'), HR, ...projBlocks] : []),
-      ...(Object.keys(cvData.skills).length ? [sectionTitle('HABILIDADES TÉCNICAS'), HR, ...skillLines] : []),
-      ...(cvData.education.length ? [sectionTitle('FORMACIÓN ACADÉMICA'), HR, ...eduLines] : []),
-    ],
-  }
+  const PDFDocument = require('pdfkit')
 
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = printer.createPdfKitDocument(docDef)
+    const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 54, right: 54 }, bufferPages: true })
     const chunks: Buffer[] = []
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk))
+    doc.on('data', (c: Buffer) => chunks.push(c))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
+
+    const W = doc.page.width - 108 // usable width (margins 54+54)
+    const gray = '#555555'
+
+    const hr = () => {
+      doc.moveTo(54, doc.y).lineTo(54 + W, doc.y).lineWidth(0.5).stroke('#000').moveDown(0.3)
+    }
+    const section = (title: string) => {
+      doc.moveDown(0.5).font('Times-Bold').fontSize(11).text(title.toUpperCase()).moveDown(0.1)
+      hr()
+    }
+
+    // ── Header ───────────────────────────────────────────────────────────────
+    doc.font('Times-Bold').fontSize(18).text(cvData.name.toUpperCase(), { align: 'center' })
+    doc.moveDown(0.2)
+    const c1 = [cvData.contact.city, cvData.contact.phone, cvData.contact.email].filter(Boolean).join('  |  ')
+    doc.font('Times-Roman').fontSize(9.5).fillColor(gray).text(c1, { align: 'center' })
+    const c2 = [cvData.contact.linkedin, cvData.contact.github].filter(Boolean).join('  |  ')
+    if (c2) doc.text(c2, { align: 'center' })
+    doc.fillColor('#000')
+
+    // ── Resumen ───────────────────────────────────────────────────────────────
+    section('Resumen Profesional')
+    doc.font('Times-Roman').fontSize(10.5).text(cvData.summary, { align: 'justify', lineGap: 1 })
+
+    // ── Experiencia ───────────────────────────────────────────────────────────
+    section('Experiencia Profesional')
+    for (const e of cvData.experience) {
+      doc.moveDown(0.35)
+      const y = doc.y
+      doc.font('Times-Bold').fontSize(10.5).text(e.company, 54, y, { continued: false, width: W * 0.65 })
+      doc.font('Times-Roman').fontSize(10).fillColor(gray).text(e.location, 54 + W * 0.65, y, { width: W * 0.35, align: 'right' })
+      doc.fillColor('#000')
+      const y2 = doc.y
+      doc.font('Times-Italic').fontSize(10.5).text(e.role, 54, y2, { width: W * 0.65 })
+      doc.font('Times-Roman').fontSize(10).fillColor(gray).text(e.dates, 54 + W * 0.65, y2, { width: W * 0.35, align: 'right' })
+      doc.fillColor('#000').moveDown(0.1)
+      for (const b of e.bullets) {
+        doc.font('Times-Roman').fontSize(10).text(`• ${b}`, { indent: 10, align: 'justify', lineGap: 1 })
+      }
+    }
+
+    // ── Proyectos ─────────────────────────────────────────────────────────────
+    if (cvData.projects.length) {
+      section('Proyectos Destacados')
+      for (const p of cvData.projects) {
+        doc.moveDown(0.35)
+        const y = doc.y
+        doc.font('Times-Bold').fontSize(10.5).text(p.name, 54, y, { width: W * 0.7 })
+        if (p.year) doc.font('Times-Roman').fontSize(10).fillColor(gray).text(p.year, 54 + W * 0.7, y, { width: W * 0.3, align: 'right' })
+        doc.fillColor('#000').moveDown(0.1)
+        for (const b of p.bullets) {
+          doc.font('Times-Roman').fontSize(10).text(`• ${b}`, { indent: 10, align: 'justify', lineGap: 1 })
+        }
+      }
+    }
+
+    // ── Habilidades ───────────────────────────────────────────────────────────
+    if (Object.keys(cvData.skills).length) {
+      section('Habilidades Técnicas')
+      for (const [cat, vals] of Object.entries(cvData.skills)) {
+        doc.moveDown(0.2)
+        doc.font('Times-Bold').fontSize(10.5).text(`${cat}: `, { continued: true })
+        doc.font('Times-Roman').text(vals, { lineGap: 1 })
+      }
+    }
+
+    // ── Educación ─────────────────────────────────────────────────────────────
+    if (cvData.education.length) {
+      section('Formación Académica')
+      for (const ed of cvData.education) {
+        doc.moveDown(0.25)
+        const label = ed.institution ? `${ed.title}, ${ed.institution}` : ed.title
+        const y = doc.y
+        doc.font('Times-Bold').fontSize(10.5).text(label, 54, y, { width: W * 0.75 })
+        doc.font('Times-Roman').fontSize(10).fillColor(gray).text(ed.year, 54 + W * 0.75, y, { width: W * 0.25, align: 'right' })
+        doc.fillColor('#000')
+      }
+    }
+
     doc.end()
   })
 }
