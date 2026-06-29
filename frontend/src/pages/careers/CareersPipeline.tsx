@@ -226,7 +226,17 @@ export default function CareersPipeline() {
       qc.invalidateQueries({ queryKey: ['careers-stats'] })
       if (url) removeMut.mutate(url)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al evaluar'
+      const e = err as { response?: { data?: { error?: unknown }; status?: number }; message?: string }
+      const rawErr = e?.response?.data?.error
+      const status = e?.response?.status
+      let msg: string
+      if (status === 504 || status === 524) {
+        msg = 'La evaluación tardó demasiado (timeout). Intenta nuevamente o usa el modo "Pegar texto del JD".'
+      } else if (typeof rawErr === 'string' && rawErr) {
+        msg = rawErr
+      } else {
+        msg = e?.message || 'Error al evaluar la oferta'
+      }
       setState({ loading: false, error: msg })
     }
   }
