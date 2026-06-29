@@ -2,8 +2,14 @@ import { Request, Response } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import axios from 'axios'
+import multer from 'multer'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
+import mammoth from 'mammoth'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
+
+export const uploadMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('cv')
 
 type LlmProvider = 'gemini' | 'groq' | 'anthropic' | 'openai'
 
@@ -2049,5 +2055,116 @@ export const scanPortals = async (req: Request, res: Response) => {
     send('error', { error: (err as Error).message })
   } finally {
     res.end()
+  }
+}
+
+// ── Parse CV ──────────────────────────────────────────────────────────────────
+
+export const parseCv = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    const file = (req as Request & { file?: Express.Multer.File }).file
+    if (!file) return res.status(400).json({ error: 'No se recibió ningún archivo.' })
+
+    let rawText = ''
+    const mime = file.mimetype
+
+    if (mime === 'application/pdf') {
+      const parsed = await pdfParse(file.buffer)
+      rawText = parsed.text
+    } else if (
+      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mime === 'application/msword'
+    ) {
+      const result = await mammoth.extractRawText({ buffer: file.buffer })
+      rawText = result.value
+    } else if (mime === 'text/plain') {
+      rawText = file.buffer.toString('utf-8')
+    } else {
+      return res.status(400).json({ error: 'Formato no soportado. Sube un PDF, DOCX o TXT.' })
+    }
+
+    if (!rawText.trim()) return res.status(400).json({ error: 'No se pudo extraer texto del archivo.' })
+
+    const client = getLlmClient(req)
+
+    const prompt = `Eres un extractor de datos de CVs. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
+
+{
+  "candidate": {
+    "full_name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio_url": ""
+  },
+  "narrative": {
+    "headline": "",
+    "exit_story": "",
+    "superpowers": []
+  },
+  "target_roles": {
+    "primary": []
+  },
+  "compensation": {
+    "target_range": "",
+    "currency": "",
+    "minimum": "",
+    "location_flexibility": ""
+  },
+  "location": {
+    "city": "",
+    "timezone": "",
+    "visa_status": "",
+    "country": ""
+  },
+  "cv_markdown": ""
+}
+
+Instrucciones:
+- "headline": título profesional breve del candidato (ej: "Senior Software Engineer | React · Node.js")
+- "exit_story": resumen profesional o descripción de perfil si existe
+- "superpowers": array de habilidades/tecnologías clave (máx 8), una por elemento
+- "target_roles": array de roles a los que aplica según su experiencia (infiere 2-3 roles)
+- "cv_markdown": el CV COMPLETO formateado en Markdown con toda la experiencia, educación, habilidades y logros
+- Si un campo no está disponible, deja el string vacío o el array vacío
+- No inventes información que no esté en el CV
+
+CV A ANALIZAR:
+${rawText.substring(0, 8000)}`
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const fullText = message.content
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text)
+      .join('')
+
+    let parsed: Record<string, unknown> = {}
+    const jsonMatch = fullText.match(/```json\s*([\s\S]*?)```/) ||
+                      fullText.match(/```\s*({[\s\S]*?})\s*```/)
+    if (jsonMatch?.[1]) {
+      try { parsed = JSON.parse(jsonMatch[1]) } catch { /* fallback below */ }
+    }
+    if (!Object.keys(parsed).length) {
+      const start = fullText.indexOf('{')
+      const end = fullText.lastIndexOf('}')
+      if (start !== -1 && end !== -1) {
+        try { parsed = JSON.parse(fullText.substring(start, end + 1)) } catch { /* ignore */ }
+      }
+    }
+
+    console.log(`[parse-cv] ${userEmail} — extraídos ${rawText.length} chars`)
+    res.json({ ok: true, data: parsed })
+  } catch (err: unknown) {
+    const provider = getProviderFromRequest(req)
+    const msg = friendlyAiError(err, normalizeProvider(provider))
+    res.status(500).json({ error: msg })
   }
 }

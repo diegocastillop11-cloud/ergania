@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/careersController'
+import { uploadMiddleware } from '../controllers/careersController'
 
 export const careersRoutes = Router()
 
@@ -57,3 +58,6 @@ careersRoutes.get('/scan', ctrl.scanPortals)
 // Backup / Restore
 careersRoutes.get('/backup', ctrl.exportBackup)
 careersRoutes.post('/restore', ctrl.importBackup)
+
+// Parse CV con IA
+careersRoutes.post('/parse-cv', uploadMiddleware, ctrl.parseCv)

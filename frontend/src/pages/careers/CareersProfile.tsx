@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, FileText, Save, Loader2, Check, Edit3,
   EyeOff, ChevronDown, ChevronUp, AlertCircle, MessageSquare,
-  Linkedin, Copy, CheckCircle2, Sparkles,
+  Linkedin, Copy, CheckCircle2, Sparkles, Upload,
 } from 'lucide-react'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -151,6 +151,58 @@ export default function CareersProfile() {
   const loc = profile.location || {}
   const narr = profile.narrative || {}
 
+  // ── Import CV state ───────────────────────────────────────────────────────
+  const [cvImporting, setCvImporting] = useState(false)
+  const [cvImportError, setCvImportError] = useState('')
+  const [cvImportSuccess, setCvImportSuccess] = useState(false)
+
+  const handleImportCv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setCvImporting(true)
+    setCvImportError('')
+    setCvImportSuccess(false)
+    try {
+      const provider = loadLlmProvider()
+      const userApiKey = getKeyForProvider(provider)
+      const formData = new FormData()
+      formData.append('cv', file)
+      formData.append('llmProvider', provider)
+      if (userApiKey) formData.append('userApiKey', userApiKey)
+
+      const { data } = await api.post('/parse-cv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      const d = data.data || {}
+      setProfile(prev => ({
+        ...prev,
+        candidate: { ...prev.candidate, ...Object.fromEntries(Object.entries(d.candidate || {}).filter(([, v]) => v)) },
+        narrative: {
+          ...prev.narrative,
+          ...(d.narrative?.headline ? { headline: d.narrative.headline } : {}),
+          ...(d.narrative?.exit_story ? { exit_story: d.narrative.exit_story } : {}),
+          ...(d.narrative?.superpowers?.length ? { superpowers: d.narrative.superpowers } : {}),
+        },
+        target_roles: {
+          ...prev.target_roles,
+          ...(d.target_roles?.primary?.length ? { primary: d.target_roles.primary } : {}),
+        },
+        compensation: { ...prev.compensation, ...Object.fromEntries(Object.entries(d.compensation || {}).filter(([, v]) => v)) },
+        location: { ...prev.location, ...Object.fromEntries(Object.entries(d.location || {}).filter(([, v]) => v)) },
+      }))
+      if (d.cv_markdown) setCvContent(d.cv_markdown)
+      setCvImportSuccess(true)
+      setTimeout(() => setCvImportSuccess(false), 4000)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      setCvImportError(e?.response?.data?.error || e?.message || 'Error al importar CV')
+    } finally {
+      setCvImporting(false)
+    }
+  }
+
   // ── LinkedIn Optimizer state ──────────────────────────────────────────────
   const [liLoading, setLiLoading] = useState(false)
   const [liError, setLiError] = useState('')
@@ -208,12 +260,31 @@ export default function CareersProfile() {
           <h2 className="text-2xl font-bold text-white">Perfil & CV</h2>
           <p className="text-gray-400 mt-1">Datos personales que la IA usa para evaluar y personalizar tu CV</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {cvImportSuccess && (
+            <span className="flex items-center gap-1 text-green-400 text-sm">
+              <CheckCircle2 size={14} /> CV importado — revisa los campos
+            </span>
+          )}
           {saved && (
             <span className="flex items-center gap-1 text-green-400 text-sm">
               <Check size={14} /> Perfil guardado
             </span>
           )}
+          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-purple-700 hover:bg-purple-600 text-white'}`}>
+            {cvImporting ? (
+              <><Loader2 size={14} className="animate-spin" /> Analizando CV...</>
+            ) : (
+              <><Upload size={14} /> Importar CV con IA</>
+            )}
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.txt"
+              className="hidden"
+              disabled={cvImporting}
+              onChange={handleImportCv}
+            />
+          </label>
           <button
             onClick={() => saveMut.mutate(profile)}
             disabled={saveMut.isPending}
@@ -233,8 +304,20 @@ export default function CareersProfile() {
         <p className="text-blue-300 text-sm">
           La IA lee estos datos para evaluar el match con cada oferta y personalizar tu CV.
           Mantén todo actualizado para mejores resultados.
+          {' '}Puedes subir tu CV (PDF, DOCX o TXT) con el botón <strong>"Importar CV con IA"</strong> para rellenar los campos automáticamente.
         </p>
       </div>
+
+      {cvImportError && (
+        <div className="bg-red-900/20 border border-red-700/50 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-red-300 text-sm font-medium">Error al importar CV</p>
+            <p className="text-red-400 text-xs mt-1">{cvImportError}</p>
+          </div>
+          <button onClick={() => setCvImportError('')} className="ml-auto text-red-500 hover:text-red-300 text-xs">✕</button>
+        </div>
+      )}
 
       {/* Datos personales */}
       <Section title="Datos Personales" icon={User}>
