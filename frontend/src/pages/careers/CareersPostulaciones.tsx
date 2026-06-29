@@ -196,11 +196,6 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
                 : 'Si no tienes URL, deja esto vacío y pega la descripción completa del puesto en el campo de abajo.'}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-800/50 rounded-lg px-3 py-2">
-            <span>IA activa:</span>
-            <span className="text-gray-300 font-medium capitalize">{llmProvider}</span>
-            <span className="text-gray-600">— configura en Dashboard</span>
-          </div>
 
           <div>
             <label className="text-xs text-gray-400 block mb-1">

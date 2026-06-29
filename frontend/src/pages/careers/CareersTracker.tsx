@@ -1,5 +1,5 @@
 import { api } from '../../lib/api'
-import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
+import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -170,7 +170,7 @@ export default function CareersTracker() {
   const [filterEstado, setFilterEstado] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof TrackerEntry>('fecha')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  const [llmProvider, setLlmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [reportModal, setReportModal] = useState<string | null>(null)
   const [applyStates, setApplyStates] = useState<Record<string, ApplyState>>({})
   const [postularStepIdx, setPostularStepIdx] = useState<Record<string, number>>({})
@@ -354,25 +354,6 @@ export default function CareersTracker() {
             {ESTADOS.map(e => (
               <option key={e} value={e}>{ESTADO_CONFIG[e]?.label ?? e}</option>
             ))}
-          </select>
-        </div>
-        <div className="relative">
-          <label htmlFor="llm-provider" className="sr-only">Proveedor LLM</label>
-          <select
-            id="llm-provider"
-            value={llmProvider}
-            onChange={e => {
-              const next = e.target.value as LlmProvider
-              saveLlmProvider(next)
-              setLlmProvider(next)
-            }}
-            className="bg-gray-900 border border-gray-800 rounded-lg pl-3 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-          >
-            <option value="openai">OpenAI / ChatGPT</option>
-            <option value="anthropic">Anthropic / Claude</option>
-            <option value="gemini">Gemini</option>
-            <option value="cursor">Cursor</option>
-            <option value="copilot">GitHub Copilot</option>
           </select>
         </div>
       </div>

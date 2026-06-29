@@ -269,11 +269,7 @@ export default function CareersPipeline() {
             </button>
           ))}
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <p className="text-xs text-gray-500">
-            IA: <span className="text-gray-300 font-medium capitalize">{llmProvider}</span> — cambia en el Dashboard
-          </p>
-        </div>
+        <div className="mb-4" />
       </div>
 
         {jdMode === 'url' ? (
