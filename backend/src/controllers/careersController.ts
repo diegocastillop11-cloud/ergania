@@ -355,7 +355,10 @@ export const updateCV = async (req: Request, res: Response) => {
 export const getReport = async (req: Request, res: Response) => {
   try {
     const userEmail = await getUserEmail(req)
-    const content = await svc.readReport(decodeURIComponent(req.params.slug), userEmail)
+    // El tracker guarda el slug con prefijo "reports/", pero el archivo se guarda sin él
+    const rawSlug = decodeURIComponent(req.params.slug)
+    const slug = rawSlug.replace(/^reports\//, '')
+    const content = await svc.readReport(slug, userEmail)
     res.json({ content })
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message })

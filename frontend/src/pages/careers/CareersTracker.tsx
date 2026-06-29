@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, Filter, ExternalLink, FileText, Send,
   ChevronDown, ChevronUp, Eye, CheckCircle2, X, Loader2, Star,
-  Copy, Download, Trash2,
+  Copy, Download, Trash2, ArrowUpRight,
 } from 'lucide-react'
 import { TrackerEntry, EstadoJob, ESTADO_CONFIG, SCORE_COLOR, Application } from '../../types/careers'
 
@@ -487,6 +487,20 @@ export default function CareersTracker() {
                                   : <Eye size={11} />}
                                 Ver CV
                               </button>
+                            )}
+
+                            {/* Ir a postular — solo cuando CV está listo y hay URL */}
+                            {applyState?.done && entry.url && (
+                              <a
+                                href={entry.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold transition-all"
+                                title="Abrir la oferta para postular"
+                              >
+                                <ArrowUpRight size={11} />
+                                Ir a postular
+                              </a>
                             )}
 
                             {/* Postular con IA — siempre visible */}
