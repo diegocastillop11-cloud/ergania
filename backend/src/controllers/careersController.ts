@@ -63,8 +63,8 @@ function getClientForProvider(provider: LlmProvider, userApiKey?: string) {
   if (provider === 'gemini') {
     const key = userApiKey || process.env.GEMINI_API_KEY
     if (!key) throw new Error('No hay API key de Gemini. Ingresa la tuya en "Mis API Keys" (gratis en aistudio.google.com).')
-    // gemini-1.5-flash: más estable en tier gratuito de AI Studio (15 RPM, 1500 RPD)
-    return makeOpenAiWrapper(key, 'https://generativelanguage.googleapis.com/v1beta/openai/', process.env.GEMINI_MODEL || 'gemini-1.5-flash')
+    // gemini-2.0-flash: único modelo soportado en el endpoint OpenAI-compatible de Google AI Studio
+    return makeOpenAiWrapper(key, 'https://generativelanguage.googleapis.com/v1beta/openai/', process.env.GEMINI_MODEL || 'gemini-2.0-flash')
   }
 
   if (provider === 'groq') {
@@ -131,7 +131,10 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
     return `Error en la solicitud a ${activeProvider} (400).${apiMsg ? ` ${apiMsg}` : ' Puede ser un problema con el modelo o el formato.'}`
   }
   if (status === 404) {
-    return `Modelo de ${activeProvider} no encontrado (404). Prueba cambiar a otro proveedor en el Dashboard.`
+    if (provider === 'gemini') {
+      return `Gemini: API key inválida o sin acceso al modelo (404). Verifica que tu key sea de Google AI Studio (aistudio.google.com) y que empiece con "AIzaSy".`
+    }
+    return `Modelo de ${activeProvider} no encontrado (404). Verifica tu API key o cambia de proveedor en el Dashboard.`
   }
   return apiMsg || msg || `Error desconocido al llamar a ${activeProvider}`
 }
@@ -161,7 +164,7 @@ export async function testAi(req: Request, res: Response) {
     const text = result.content?.[0]?.type === 'text' ? result.content[0].text : ''
     const ms = Date.now() - t0
     const modelMap: Record<LlmProvider, string> = {
-      gemini:    process.env.GEMINI_MODEL    || 'gemini-1.5-flash',
+      gemini:    process.env.GEMINI_MODEL    || 'gemini-2.0-flash',
       groq:      process.env.GROQ_MODEL      || 'llama-3.1-8b-instant',
       anthropic: 'claude-haiku-4-5',
       openai:    process.env.OPENAI_MODEL    || 'gpt-4o-mini',
