@@ -2,10 +2,11 @@ import { Request, Response } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import axios from 'axios'
-import multer from 'multer'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const multer = require('multer') as typeof import('multer')
 export const uploadMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('cv')
 
 type LlmProvider = 'gemini' | 'groq' | 'anthropic' | 'openai'
