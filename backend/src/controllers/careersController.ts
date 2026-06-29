@@ -560,7 +560,7 @@ ${rol ? `Rol: ${rol}` : ''}
 ${jd}
 ---
 
-Entrega los 7 bloques completos (A-G) y al final incluye EXACTAMENTE este JSON:
+PRIMERO incluye EXACTAMENTE este JSON con los datos clave, LUEGO entrega el análisis completo (bloques A-G):
 
 \`\`\`json
 {
