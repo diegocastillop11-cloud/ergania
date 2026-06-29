@@ -36,12 +36,12 @@ function makeOpenAiWrapper(apiKey: string, baseURL: string, model: string) {
 }
 
 function normalizeProvider(raw?: string): LlmProvider {
-  const value = (raw || process.env.DEFAULT_LLM_PROVIDER || 'gemini').toString().trim().toLowerCase()
+  const value = (raw || process.env.DEFAULT_LLM_PROVIDER || 'anthropic').toString().trim().toLowerCase()
   if (value === 'gemini') return 'gemini'
   if (value === 'anthropic' || value === 'claude') return 'anthropic'
   if (value === 'groq' || value === 'llama' || value === 'groq/llama') return 'groq'
   if (value === 'openai' || value === 'chatgpt') return 'openai'
-  return 'gemini' // default: Gemini (tier gratuito, sin límites restrictivos)
+  return 'anthropic' // default: Claude (key del servidor)
 }
 
 function getProviderFromRequest(req: Request): LlmProvider {
@@ -75,8 +75,9 @@ function getClientForProvider(provider: LlmProvider, userApiKey?: string) {
   }
 
   if (provider === 'anthropic') {
-    const key = userApiKey || process.env.ANTHROPIC_API_KEY
-    if (!key) throw new Error('No hay API key de Anthropic. Ingresa la tuya en "Mis API Keys".')
+    // Priorizar key del servidor — el usuario no necesita configurar nada
+    const key = process.env.ANTHROPIC_API_KEY || userApiKey
+    if (!key) throw new Error('No hay API key de Anthropic configurada en el servidor.')
     return new Anthropic({ apiKey: key }) as unknown as ReturnType<typeof makeOpenAiWrapper>
   }
 

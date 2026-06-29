@@ -183,8 +183,8 @@ export default function CareersDashboard() {
         </div>
       </div>
 
-      {/* Configuración de IA */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      {/* Configuración de IA — temporalmente oculta, el servidor provee la key */}
+      {false && <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-5">
           <Bot size={18} className="text-blue-400" />
           <h3 className="text-white font-semibold">Configuración de IA</h3>
@@ -292,7 +292,7 @@ export default function CareersDashboard() {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
 
       {(statsError || trackerError) && (
         <div className="rounded-2xl border border-red-700 bg-red-900/20 p-4 text-sm text-red-200">
