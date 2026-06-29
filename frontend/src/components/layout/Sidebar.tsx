@@ -9,13 +9,13 @@ import type { SubscriptionState } from '../../hooks/useSubscription'
 
 const nav = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/busqueda',      icon: Target,          label: 'Mi Búsqueda',   badge: 'NEW' },
+  { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
+  { to: '/busqueda',      icon: Target,          label: 'Mi Búsqueda' },
   { to: '/scanner',       icon: Radio,           label: 'Escáner' },
   { to: '/pipeline',      icon: Inbox,           label: 'Evaluar Oferta' },
   { to: '/postulaciones', icon: Send,            label: 'Postulaciones' },
   { to: '/tracker',       icon: List,            label: 'Tracker' },
   { to: '/portals',       icon: Globe,           label: 'Portales Chile' },
-  { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
   { to: '/subscription',  icon: Crown,           label: 'Suscripción' },
 ]
 
