@@ -176,23 +176,56 @@ export default function CareersProfile() {
       })
 
       const d = data.data || {}
-      setProfile(prev => ({
-        ...prev,
-        candidate: { ...prev.candidate, ...Object.fromEntries(Object.entries(d.candidate || {}).filter(([, v]) => v)) },
+
+      const newProfile: ProfileData = {
+        ...profileData,
+        candidate: { ...profileData?.candidate, ...Object.fromEntries(Object.entries(d.candidate || {}).filter(([, v]) => v)) },
         narrative: {
-          ...prev.narrative,
+          ...profileData?.narrative,
           ...(d.narrative?.headline ? { headline: d.narrative.headline } : {}),
           ...(d.narrative?.exit_story ? { exit_story: d.narrative.exit_story } : {}),
           ...(d.narrative?.superpowers?.length ? { superpowers: d.narrative.superpowers } : {}),
         },
         target_roles: {
-          ...prev.target_roles,
+          ...profileData?.target_roles,
           ...(d.target_roles?.primary?.length ? { primary: d.target_roles.primary } : {}),
         },
-        compensation: { ...prev.compensation, ...Object.fromEntries(Object.entries(d.compensation || {}).filter(([, v]) => v)) },
-        location: { ...prev.location, ...Object.fromEntries(Object.entries(d.location || {}).filter(([, v]) => v)) },
-      }))
+        compensation: { ...profileData?.compensation, ...Object.fromEntries(Object.entries(d.compensation || {}).filter(([, v]) => v)) },
+        location: { ...profileData?.location, ...Object.fromEntries(Object.entries(d.location || {}).filter(([, v]) => v)) },
+      }
+      setProfile(newProfile)
+
       if (d.cv_markdown) setCvContent(d.cv_markdown)
+
+      // Guardar perfil y CV automáticamente
+      await api.put('/profile', newProfile)
+      if (d.cv_markdown) await api.put('/cv', { content: d.cv_markdown })
+
+      // Guardar config de búsqueda si el CV la trae
+      const sc = d.search_config
+      if (sc && (sc.keywords_positive?.length || sc.keywords_negative?.length || sc.search_queries?.length)) {
+        const { data: portalsData } = await api.get('/portals')
+        const updatedPortals = {
+          ...portalsData,
+          title_filter: {
+            ...portalsData?.title_filter,
+            ...(sc.keywords_positive?.length ? { positive: sc.keywords_positive } : {}),
+            ...(sc.keywords_negative?.length ? { negative: sc.keywords_negative } : {}),
+          },
+          ...(sc.search_queries?.length ? {
+            search_queries: sc.search_queries.map((q: { name: string; query: string }) => ({
+              name: q.name, query: q.query, enabled: true,
+            })),
+          } : {}),
+        }
+        await api.put('/portals', updatedPortals)
+      }
+
+      qc.invalidateQueries({ queryKey: ['careers-profile'] })
+      qc.invalidateQueries({ queryKey: ['careers-cv'] })
+      qc.invalidateQueries({ queryKey: ['portals'] })
+      qc.invalidateQueries({ queryKey: ['profile'] })
+
       setCvImportSuccess(true)
       setTimeout(() => setCvImportSuccess(false), 4000)
     } catch (err: unknown) {

@@ -2097,7 +2097,7 @@ export const parseCv = async (req: Request, res: Response) => {
 
     const client = getLlmClient(req)
 
-    const prompt = `Eres un extractor de datos de CVs. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
+    const prompt = `Eres un extractor de datos de CVs para un buscador de empleo en Chile. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
 
 {
   "candidate": {
@@ -2129,16 +2129,24 @@ export const parseCv = async (req: Request, res: Response) => {
     "visa_status": "",
     "country": ""
   },
+  "search_config": {
+    "keywords_positive": [],
+    "keywords_negative": [],
+    "search_queries": []
+  },
   "cv_markdown": ""
 }
 
 Instrucciones:
-- "headline": título profesional breve del candidato (ej: "Senior Software Engineer | React · Node.js")
-- "exit_story": resumen profesional o descripción de perfil si existe
+- "headline": título profesional breve (ej: "Senior DBA | SQL Server · Azure · ETL")
+- "exit_story": resumen profesional o perfil del candidato si existe en el CV
 - "superpowers": array de habilidades/tecnologías clave (máx 8), una por elemento
-- "target_roles": array de roles a los que aplica según su experiencia (infiere 2-3 roles)
+- "target_roles.primary": array de títulos de cargo exactos para buscar (ej: ["Analista de Base de Datos", "DBA SQL Server", "Data Engineer"]) — infiere 4-6 roles realistas según la experiencia
+- "search_config.keywords_positive": tecnologías y skills del candidato útiles para filtrar ofertas (ej: ["SQL Server", "T-SQL", "Azure", "ETL"]) — máx 15
+- "search_config.keywords_negative": palabras que descartan ofertas no relevantes (ej: ["Call Center", "Ventas", "Telemarketing", "Junior"]) — máx 10, infiere según el perfil
+- "search_config.search_queries": array de 4-6 objetos con formato {"name": "Nombre corto", "query": "consulta de búsqueda para portales de empleo"} — combina rol + tecnología + ubicación (ej: "DBA SQL Server Senior Chile")
 - "cv_markdown": el CV COMPLETO formateado en Markdown con toda la experiencia, educación, habilidades y logros
-- Si un campo no está disponible, deja el string vacío o el array vacío
+- Si un campo no está disponible, deja string vacío o array vacío
 - No inventes información que no esté en el CV
 
 CV A ANALIZAR:
