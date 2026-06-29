@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search, Filter, ExternalLink, FileText, Send,
@@ -166,6 +167,7 @@ const POSTULAR_STEPS = [
 
 export default function CareersTracker() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof TrackerEntry>('fecha')
@@ -472,53 +474,61 @@ export default function CareersTracker() {
                               </button>
                             )}
 
-                            {/* Ver CV — siempre visible */}
-                            {(entry.pdf || applyState?.done) && (
+                            {/* CV ya generado (persistido o recién hecho) */}
+                            {(entry.pdf || applyState?.done) ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    if (applyState?.app) { setCvModal(applyState.app); return }
+                                    handleVerCvExistente(entry)
+                                  }}
+                                  disabled={cvLoadStates[entry.id]}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                                >
+                                  {cvLoadStates[entry.id] ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />}
+                                  Ver CV
+                                </button>
+
+                                {entry.url && (
+                                  <a
+                                    href={entry.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold transition-all"
+                                  >
+                                    <ArrowUpRight size={11} />
+                                    Ir a postular
+                                  </a>
+                                )}
+
+                                <button
+                                  onClick={() => navigate('/postulaciones')}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600/20 hover:bg-violet-600 text-violet-400 hover:text-white rounded-lg text-xs font-medium transition-all"
+                                >
+                                  <Send size={11} />
+                                  Postulaciones
+                                </button>
+
+                                <button
+                                  onClick={() => handlePostular(entry)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg text-xs font-medium transition-all"
+                                  title="Regenerar CV con IA"
+                                >
+                                  <Send size={11} />
+                                  Regenerar
+                                </button>
+                              </>
+                            ) : (
+                              /* Sin CV aún — generar */
                               <button
-                                onClick={() => {
-                                  if (applyState?.app) { setCvModal(applyState.app); return }
-                                  handleVerCvExistente(entry)
-                                }}
-                                disabled={cvLoadStates[entry.id]}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                                onClick={() => handlePostular(entry)}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all"
+                                title="Genera CV personalizado con IA y guarda en Postulaciones"
                               >
-                                {cvLoadStates[entry.id]
-                                  ? <Loader2 size={11} className="animate-spin" />
-                                  : <Eye size={11} />}
-                                Ver CV
+                                <Send size={11} />
+                                Postular con IA
                               </button>
                             )}
-
-                            {/* Ir a postular — solo cuando CV está listo y hay URL */}
-                            {applyState?.done && entry.url && (
-                              <a
-                                href={entry.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold transition-all"
-                                title="Abrir la oferta para postular"
-                              >
-                                <ArrowUpRight size={11} />
-                                Ir a postular
-                              </a>
-                            )}
-
-                            {/* Postular con IA — siempre visible */}
-                            <button
-                              onClick={() => {
-                                handlePostular(entry)
-                                if (entry.url) window.open(entry.url, '_blank', 'noopener')
-                              }}
-                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                applyState?.done
-                                  ? 'bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white'
-                                  : 'bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white'
-                              }`}
-                              title={entry.url ? 'Genera CV con IA y abre la página del empleo' : 'Genera CV con IA y guarda en Postulaciones'}
-                            >
-                              <Send size={11} />
-                              {applyState?.done ? 'Regenerar' : 'Postular con IA'}
-                            </button>
                           </div>
                         )}
                         {applyState?.error && (
