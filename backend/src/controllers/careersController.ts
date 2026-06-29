@@ -35,13 +35,9 @@ function makeOpenAiWrapper(apiKey: string, baseURL: string, model: string) {
   }
 }
 
-function normalizeProvider(raw?: string): LlmProvider {
-  const value = (raw || process.env.DEFAULT_LLM_PROVIDER || 'anthropic').toString().trim().toLowerCase()
-  if (value === 'gemini') return 'gemini'
-  if (value === 'anthropic' || value === 'claude') return 'anthropic'
-  if (value === 'groq' || value === 'llama' || value === 'groq/llama') return 'groq'
-  if (value === 'openai' || value === 'chatgpt') return 'openai'
-  return 'anthropic' // default: Claude (key del servidor)
+function normalizeProvider(_raw?: string): LlmProvider {
+  // Siempre usar Anthropic — key configurada en el servidor
+  return (process.env.DEFAULT_LLM_PROVIDER as LlmProvider) || 'anthropic'
 }
 
 function getProviderFromRequest(req: Request): LlmProvider {
