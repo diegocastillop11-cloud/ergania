@@ -11,40 +11,13 @@ import {
 import { TrackerEntry, EstadoJob, ESTADO_CONFIG, SCORE_COLOR, Application } from '../../types/careers'
 
 async function downloadPdf(appId: string, filename: string) {
-  const { data: app } = await api.get(`/applications/${appId}`)
-  const html = app?.cvHtml
-  if (!html) { alert('CV no disponible'); return }
-  await exportHtmlToPdf(html, filename)
-}
-
-async function exportHtmlToPdf(html: string, filename: string) {
-  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-    import('jspdf'),
-    import('html2canvas'),
-  ])
-  const container = document.createElement('div')
-  container.innerHTML = html
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;'
-  document.body.appendChild(container)
-  try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false })
-    const imgData = canvas.toDataURL('image/jpeg', 0.95)
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgH = (canvas.height * pageW) / canvas.width
-    let yPos = 0
-    let remaining = imgH
-    while (remaining > 0) {
-      if (yPos > 0) pdf.addPage()
-      pdf.addImage(imgData, 'JPEG', 0, -yPos, pageW, imgH)
-      yPos += pageH
-      remaining -= pageH
-    }
-    pdf.save(filename.endsWith('.pdf') ? filename : filename + '.pdf')
-  } finally {
-    document.body.removeChild(container)
-  }
+  const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
+  const url = URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 const ESTADOS: EstadoJob[] = [

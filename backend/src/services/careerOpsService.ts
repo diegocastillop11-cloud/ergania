@@ -978,30 +978,37 @@ export function buildInterviewPrepHtml(prep: string, empresa: string, rol: strin
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prep. Entrevista ${empresa}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:24px;line-height:1.6;}h1,h2,h3{color:#111;margin-top:1.4rem;}h1{font-size:26px;}h2{font-size:20px;}h3{font-size:17px;}p{margin:0.9rem 0;}ul,ol{margin:0.8rem 0 0.8rem 1.4rem;}code{background:#f3f4f6;padding:0.15rem 0.35rem;border-radius:0.3rem;}pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e5e7eb;padding:16px;border-radius:12px;}</style></head><body><h1>Preparación de Entrevista</h1><p><strong>Empresa:</strong> ${empresa}</p><p><strong>Cargo:</strong> ${rol}</p><pre>${safePrep}</pre></body></html>`
 }
 
+// URL del binario de Chromium para @sparticuz/chromium-min (descarga en /tmp en cold start)
+const CHROMIUM_BINARY_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
+
 async function launchBrowser() {
-  // In production (Vercel/Lambda) use @sparticuz/chromium; locally use installed Chrome
-  let executablePath: string
-  let args: string[]
-  try {
-    const chromium = await import('@sparticuz/chromium')
-    executablePath = await chromium.default.executablePath()
-    args = chromium.default.args
-  } catch {
-    // Local fallback: use puppeteer-core with system Chrome
-    const chromePaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/usr/bin/google-chrome',
-    ]
-    executablePath = chromePaths.find(p => { try { return fs.existsSync(p) } catch { return false } }) || ''
-    args = ['--no-sandbox', '--disable-setuid-sandbox']
+  const isServerless = !!process.env.VERCEL || !!process.env.AWS_EXECUTION_ENV
+
+  if (isServerless) {
+    const chromium = (await import('@sparticuz/chromium-min')).default
+    const puppeteer = (await import('puppeteer-core')).default
+    return puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(CHROMIUM_BINARY_URL),
+      headless: true,
+    })
   }
 
-  const puppeteer = await import('puppeteer-core')
-  return puppeteer.default.launch({
+  // Local: system Chrome
+  const chromePaths = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+  ]
+  const executablePath = chromePaths.find(p => { try { return fs.existsSync(p) } catch { return false } })
+  if (!executablePath) throw new Error('Chrome no encontrado. Instala Chrome o configura CHROME_PATH.')
+  const puppeteer = (await import('puppeteer-core')).default
+  return puppeteer.launch({
     executablePath,
-    args,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
     headless: true,
   })
 }
