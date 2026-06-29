@@ -513,7 +513,7 @@ Responde con análisis breve Y este JSON al final:
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
-      maxTokens = 4000
+      maxTokens = 2000
       systemPrompt = `Eres un experto en búsqueda de trabajo en Chile y evaluación de ofertas laborales.
 
 CONTEXTO DEL CANDIDATO:
@@ -581,7 +581,7 @@ Entrega los 7 bloques completos (A-G) y al final incluye EXACTAMENTE este JSON:
     }
 
     const message = await getLlmClient(req).messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-haiku-4-5',
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
