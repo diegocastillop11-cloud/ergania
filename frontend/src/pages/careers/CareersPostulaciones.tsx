@@ -10,14 +10,21 @@ import {
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
-async function downloadPdf(appId: string, filename: string) {
-  const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+async function downloadPdf(appId: string, _filename: string) {
+  const { data: app } = await api.get(`/applications/${appId}`)
+  const html: string = app?.cvHtml
+  if (!html) { alert('CV no disponible'); return }
+  printHtmlAsPdf(html)
+}
+
+function printHtmlAsPdf(html: string) {
+  const script = `<script>window.addEventListener('load',()=>{setTimeout(()=>window.print(),400)})<\/script>`
+  const enhanced = html.replace('</body>', script + '</body>').replace('</head>',
+    `<style>@media screen{body::before{content:'Selecciona "Guardar como PDF" como destino y haz clic en Guardar';display:block;background:#1e40af;color:#fff;text-align:center;padding:10px 16px;font-family:sans-serif;font-size:14px;position:sticky;top:0;z-index:9999}}@media print{body::before{display:none}}</style></head>`)
+  const blob = new Blob([enhanced], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
 async function downloadInterviewPrepPdf(appId: string, empresa: string, rol: string) {
