@@ -3,9 +3,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import axios from 'axios'
 import multer from 'multer'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
-import mammoth from 'mammoth'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
 
@@ -2070,12 +2067,16 @@ export const parseCv = async (req: Request, res: Response) => {
     const mime = file.mimetype
 
     if (mime === 'application/pdf') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
       const parsed = await pdfParse(file.buffer)
       rawText = parsed.text
     } else if (
       mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       mime === 'application/msword'
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mammoth = require('mammoth') as { extractRawText: (o: { buffer: Buffer }) => Promise<{ value: string }> }
       const result = await mammoth.extractRawText({ buffer: file.buffer })
       rawText = result.value
     } else if (mime === 'text/plain') {
