@@ -63,8 +63,8 @@ function getClientForProvider(provider: LlmProvider, userApiKey?: string) {
   if (provider === 'gemini') {
     const key = userApiKey || process.env.GEMINI_API_KEY
     if (!key) throw new Error('No hay API key de Gemini. Ingresa la tuya en "Mis API Keys" (gratis en aistudio.google.com).')
-    // gemini-2.0-flash: modelo principal del tier gratuito de AI Studio (1500 req/día, 1M TPM)
-    return makeOpenAiWrapper(key, 'https://generativelanguage.googleapis.com/v1beta/openai/', process.env.GEMINI_MODEL || 'gemini-2.0-flash')
+    // gemini-1.5-flash: más estable en tier gratuito de AI Studio (15 RPM, 1500 RPD)
+    return makeOpenAiWrapper(key, 'https://generativelanguage.googleapis.com/v1beta/openai/', process.env.GEMINI_MODEL || 'gemini-1.5-flash')
   }
 
   if (provider === 'groq') {
@@ -114,15 +114,18 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
     return `API Key de ${activeProvider} inválida o sin permisos (${status ?? 'auth error'}). Verifica tu key en el Dashboard → Configuración de IA.`
   }
   if (status === 429 || msg.includes('429') || apiMsg.toLowerCase().includes('rate') || apiMsg.toLowerCase().includes('quota')) {
-    const isTokenLimit   = apiMsg.toLowerCase().includes('token') || apiMsg.toLowerCase().includes('tpm')
+    const isTokenLimit    = apiMsg.toLowerCase().includes('token') || apiMsg.toLowerCase().includes('tpm')
     const isQuotaExceeded = apiMsg.toLowerCase().includes('quota') || apiMsg.toLowerCase().includes('exceeded') || apiMsg.toLowerCase().includes('billing')
     if (isQuotaExceeded) {
-      return `Sin créditos en ${activeProvider}. Cambia a ${freeAlternative} en el Dashboard.`
+      return `Cuota diaria agotada en ${activeProvider}. Cambia a ${freeAlternative} en Dashboard → Configuración de IA.`
     }
     if (isTokenLimit) {
-      return `${activeProvider}: límite de tokens por minuto alcanzado. Espera 60 segundos y reintenta, o cambia a ${freeAlternative}.`
+      return `${activeProvider}: límite de tokens por minuto. Espera 60s y reintenta, o cambia a ${freeAlternative} en el Dashboard.`
     }
-    return `Límite de requests de ${activeProvider} alcanzado (${status ?? 429}). Espera 1 minuto y reintenta, o cambia a ${freeAlternative}.`
+    if (provider === 'gemini') {
+      return `Gemini: límite de requests alcanzado (15 req/min en tier gratuito). Espera 1 minuto y reintenta. Si persiste, cambia a Groq (gratis, sin límites prácticos) en Dashboard → Configuración de IA.`
+    }
+    return `Límite de requests de ${activeProvider} alcanzado. Espera 1 minuto y reintenta, o cambia a ${freeAlternative} en el Dashboard.`
   }
   if (status === 400) {
     return `Error en la solicitud a ${activeProvider} (400).${apiMsg ? ` ${apiMsg}` : ' Puede ser un problema con el modelo o el formato.'}`
@@ -158,7 +161,7 @@ export async function testAi(req: Request, res: Response) {
     const text = result.content?.[0]?.type === 'text' ? result.content[0].text : ''
     const ms = Date.now() - t0
     const modelMap: Record<LlmProvider, string> = {
-      gemini:    process.env.GEMINI_MODEL    || 'gemini-2.0-flash',
+      gemini:    process.env.GEMINI_MODEL    || 'gemini-1.5-flash',
       groq:      process.env.GROQ_MODEL      || 'llama-3.1-8b-instant',
       anthropic: 'claude-haiku-4-5',
       openai:    process.env.OPENAI_MODEL    || 'gpt-4o-mini',
