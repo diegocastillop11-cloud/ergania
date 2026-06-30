@@ -87,6 +87,16 @@ export default function Sidebar({ sub, onClose }: Props) {
             <span className="flex-1">{label}</span>
           </NavLink>
         ))}
+
+        <div className="pt-1 mt-1 border-t border-gray-800">
+          <button
+            onClick={() => setShowContact(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-gray-400 hover:text-white hover:bg-gray-800"
+          >
+            <MessageSquare size={16} />
+            <span className="flex-1 text-left">Contacto</span>
+          </button>
+        </div>
       </nav>
 
       {/* Subscription CTA — siempre visible cuando no está suscrito */}
@@ -127,14 +137,6 @@ export default function Sidebar({ sub, onClose }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-300 truncate">{user.email}</p>
             </div>
-            {/* Contacto */}
-            <button
-              onClick={() => setShowContact(true)}
-              title="Contacto"
-              className="text-gray-600 hover:text-blue-400 transition-colors shrink-0"
-            >
-              <MessageSquare size={14} />
-            </button>
             {/* Logout */}
             <button
               onClick={handleLogout}
