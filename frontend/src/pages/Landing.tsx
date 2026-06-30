@@ -264,10 +264,7 @@ export default function Landing() {
           <h2 style={{ fontFamily: serif, fontSize: 44, fontWeight: 700, color: C.white, letterSpacing: -0.5, lineHeight: 1.15, marginBottom: 16 }}>
             Empieza tu búsqueda hoy.
           </h2>
-          <p style={{ fontFamily: sans, fontSize: 17, color: 'rgba(250,247,242,.82)', lineHeight: 1.6, marginBottom: 40 }}>
-            Sin suscripción. Solo trae tu API key de Gemini y comienza.
-          </p>
-          <Link to="/login" className="lp-btn-outline">Probar Ergania gratis →</Link>
+          <Link to="/login" className="lp-btn-outline" style={{ marginTop: 24 }}>Probar Ergania gratis →</Link>
         </div>
       </section>
 
