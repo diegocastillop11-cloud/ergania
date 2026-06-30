@@ -438,9 +438,9 @@ export default function CareersDashboard() {
           <div className="flex items-start gap-3">
             <HardDrive size={18} className="text-gray-400 mt-0.5 shrink-0" />
             <div>
-              <h3 className="text-white font-semibold text-sm">Datos y Persistencia</h3>
+              <h3 className="text-white font-semibold text-sm">Respalda tu perfil</h3>
               <p className="text-gray-400 text-xs mt-1 max-w-lg">
-                Tus datos se guardan en disco local (<code className="text-gray-300 bg-gray-800 px-1 rounded">D:/career-ops-main/career-ops/</code>), <strong className="text-white">no en el navegador</strong> — persisten entre sesiones y navegadores del mismo PC. Para usar en otro equipo o hacer respaldo, descarga el backup.
+                Descarga una copia de tus datos para no perderlos o para continuar en otro dispositivo.
               </p>
               {restoreMsg && (
                 <div className={`flex items-center gap-2 mt-2 text-xs ${restoreMsg.ok ? 'text-green-400' : 'text-red-400'}`}>

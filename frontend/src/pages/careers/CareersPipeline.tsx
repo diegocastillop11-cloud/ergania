@@ -284,33 +284,35 @@ export default function CareersPipeline() {
 
         {jdMode === 'url' ? (
           <>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2">
               <input
                 value={newUrl}
                 onChange={e => setNewUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleDirectEval()}
                 placeholder="https://getOnBoard.com/jobs/... o LinkedIn, GetOnBoard, Bumeran, etc."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
               />
-              <button
-                onClick={() => { if (newUrl.startsWith('http')) addMut.mutate(newUrl.trim()) }}
-                disabled={!newUrl.startsWith('http')}
-                className="px-3 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors disabled:opacity-40"
-                title="Agregar al pipeline sin evaluar"
-              >
-                <Plus size={16} />
-              </button>
-              <button
-                onClick={handleDirectEval}
-                disabled={!newUrl.startsWith('http') || directEval.loading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                {directEval.loading ? (
-                  <><Loader2 size={15} className="animate-spin" /> Evaluando...</>
-                ) : (
-                  <><Zap size={15} /> Evaluar con IA</>
-                )}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDirectEval}
+                  disabled={!newUrl.startsWith('http') || directEval.loading}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {directEval.loading ? (
+                    <><Loader2 size={15} className="animate-spin" /> Evaluando...</>
+                  ) : (
+                    <><Zap size={15} /> Evaluar con IA</>
+                  )}
+                </button>
+                <button
+                  onClick={() => { if (newUrl.startsWith('http')) addMut.mutate(newUrl.trim()) }}
+                  disabled={!newUrl.startsWith('http')}
+                  className="px-3 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm transition-colors disabled:opacity-40"
+                  title="Agregar al pipeline sin evaluar"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </div>
             {newUrl && (newUrl.includes('indeed.com') || newUrl.includes('linkedin.com') || newUrl.includes('computrabajo.com')) && (
               <div className="mt-3 p-3 bg-amber-900/30 border border-amber-800/50 rounded-lg text-amber-300 text-xs flex items-start gap-2">
@@ -331,12 +333,12 @@ export default function CareersPipeline() {
               rows={8}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-gray-500">{jdText.length} caracteres</p>
               <button
                 onClick={handleDirectEval}
                 disabled={jdText.trim().length < 100 || directEval.loading}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {directEval.loading ? (
                   <><Loader2 size={15} className="animate-spin" /> Evaluando con IA...</>

@@ -46,7 +46,7 @@ export default function Sidebar({ sub, onClose }: Props) {
     : '?'
 
   return (
-    <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
+    <aside className="w-full lg:w-56 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 h-full">
       {/* Logo */}
       <div className="p-5 border-b border-gray-800">
         <div className="flex items-center gap-2.5">
