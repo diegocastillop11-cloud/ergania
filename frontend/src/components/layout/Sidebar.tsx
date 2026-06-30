@@ -54,7 +54,7 @@ export default function Sidebar({ sub }: Props) {
             <Briefcase size={16} className="text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white leading-none">Career Ops</h1>
+            <h1 className="text-sm font-bold text-white leading-none">Ergania</h1>
             <p className="text-xs text-gray-500 leading-none mt-0.5">Búsqueda con IA · Chile</p>
           </div>
         </div>

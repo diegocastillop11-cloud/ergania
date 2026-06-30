@@ -162,7 +162,7 @@ export default function CareersDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Career Ops</h2>
+          <h2 className="text-2xl font-bold text-white">Ergania</h2>
           <p className="text-gray-400 mt-1">Centro de comando para búsqueda de trabajo con IA</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">

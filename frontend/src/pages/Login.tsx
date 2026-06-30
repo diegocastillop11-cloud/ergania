@@ -55,7 +55,7 @@ export default function Login() {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20">
             <Briefcase size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Career Ops</h1>
+          <h1 className="text-2xl font-bold text-white">Ergania</h1>
           <p className="text-gray-500 text-sm mt-1">Búsqueda laboral con IA · Chile 🇨🇱</p>
         </div>
 
