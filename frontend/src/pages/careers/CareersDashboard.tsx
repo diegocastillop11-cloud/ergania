@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   Briefcase, FileText, Send, Award, Clock, TrendingUp,
-  Plus, Search, ChevronRight, Star, Download, Upload,
+  Search, ChevronRight, Star, Download, Upload,
   HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
