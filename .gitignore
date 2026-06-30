@@ -10,3 +10,4 @@ frontend/.env.local
 
 .vercel
 .gstack/
+.claude/
