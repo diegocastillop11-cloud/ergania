@@ -1,6 +1,29 @@
 import { Request, Response } from 'express'
+import crypto from 'crypto'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/subscriptionService'
+
+function verifyMPSignature(req: Request): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET
+  if (!secret) return true // verificación no configurada aún — permitir
+
+  const sig = req.headers['x-signature'] as string | undefined
+  const reqId = req.headers['x-request-id'] as string | undefined
+  const dataId = (req.query['data.id'] || req.query.id) as string | undefined
+  if (!sig || !reqId || !dataId) return false
+
+  const ts = sig.match(/ts=(\d+)/)?.[1]
+  const v1 = sig.match(/v1=([a-f0-9]+)/)?.[1]
+  if (!ts || !v1) return false
+
+  const manifest = `id:${dataId};request-id:${reqId};ts:${ts};`
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+  try {
+    return crypto.timingSafeEqual(Buffer.from(v1, 'hex'), Buffer.from(expected, 'hex'))
+  } catch {
+    return false
+  }
+}
 
 async function getUserFromToken(req: Request) {
   if (!supabaseAdmin) throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados en Vercel')
@@ -55,6 +78,10 @@ export async function cancelSub(req: Request, res: Response) {
 
 // MercadoPago IPN — no auth, MP signs the request
 export async function webhook(req: Request, res: Response) {
+  if (!verifyMPSignature(req)) {
+    console.warn('[webhook] Firma MP inválida — ignorando')
+    return res.sendStatus(200) // 200 para evitar reintentos de MP
+  }
   try {
     const topic = (req.query.topic || req.query.type) as string
     const id    = (req.query.id || req.query['data.id']) as string

@@ -229,7 +229,7 @@ export default function CareersScanner() {
   const [evaluatingUrl, setEvaluatingUrl] = useState<string | null>(null)
   const [evalResult, setEvalResult] = useState<{ titulo: string; score: number; recomendacion: string } | null>(null)
   const [confirmation, setConfirmation] = useState<EvaluationConfirmation | null>(null)
-  const esRef = useRef<EventSource | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const addLog = useCallback((type: LogEntry['type'], data: Record<string, unknown>) => {
     const entry: LogEntry = { type, timestamp: new Date().toLocaleTimeString('es-CL'), data }
@@ -245,83 +245,100 @@ export default function CareersScanner() {
     setSearchInfo(null)
     setEvalResult(null)
 
-    // EventSource no puede enviar headers personalizados — pasamos el JWT, provider y key como query params
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     const provider = loadLlmProvider()
     const userApiKey = getKeyForProvider(provider)
     const params = new URLSearchParams()
-    if (token) params.set('token', token)
     params.set('llmProvider', provider)
     if (userApiKey) params.set('userApiKey', userApiKey)
-    const scanUrl = `/api/careers/scan?${params.toString()}`
 
-    const es = new EventSource(scanUrl)
-    esRef.current = es
+    const controller = new AbortController()
+    abortRef.current = controller
 
-    es.addEventListener('search_info', (e) => {
-      const data = JSON.parse(e.data) as { queries: string[]; keywords_positivas: string[] }
-      setSearchInfo(data)
-    })
+    const handleEvent = (eventType: string, rawData: string) => {
+      try {
+        const data = JSON.parse(rawData) as Record<string, unknown>
+        if (eventType === 'search_info') {
+          setSearchInfo(data as { queries: string[]; keywords_positivas: string[] })
+        } else if (eventType === 'start') {
+          addLog('start', data)
+        } else if (eventType === 'portal') {
+          const pe = data as unknown as PortalEvent
+          setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...pe, seenAt: Date.now() } }))
+          addLog('portal', data)
+        } else if (eventType === 'portal_done') {
+          const pe = data as unknown as PortalEvent
+          setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...prev[pe.nombre], ...pe, seenAt: prev[pe.nombre]?.seenAt || Date.now() } }))
+          addLog('portal_done', data)
+        } else if (eventType === 'portal_error') {
+          const pe = data as unknown as PortalEvent
+          setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...prev[pe.nombre], ...pe, seenAt: prev[pe.nombre]?.seenAt || Date.now() } }))
+          addLog('portal_error', data)
+        } else if (eventType === 'portal_warn') {
+          addLog('portal_warn', data)
+        } else if (eventType === 'done') {
+          setSummary({
+            total: data.total_portales as number,
+            encontradas: data.ofertas_encontradas as number,
+            agregadas: data.agregadas_pipeline as number,
+          })
+          addLog('done', data)
+          setScanning(false)
+          qc.invalidateQueries({ queryKey: ['careers-pipeline'] })
+          qc.invalidateQueries({ queryKey: ['careers-stats'] })
+        } else if (eventType === 'error') {
+          addLog('error', data)
+          setScanning(false)
+        }
+      } catch { /* ignore parse errors */ }
+    }
 
-    es.addEventListener('start', (e) => {
-      const data = JSON.parse(e.data) as Record<string, unknown>
-      addLog('start', data)
-    })
-
-    es.addEventListener('portal', (e) => {
-      const data = JSON.parse(e.data) as PortalEvent
-      setPortalEvents(prev => ({ ...prev, [data.nombre]: { ...data, seenAt: Date.now() } }))
-      addLog('portal', data as unknown as Record<string, unknown>)
-    })
-
-    es.addEventListener('portal_done', (e) => {
-      const data = JSON.parse(e.data) as PortalEvent
-      setPortalEvents(prev => ({ ...prev, [data.nombre]: { ...prev[data.nombre], ...data, seenAt: prev[data.nombre]?.seenAt || Date.now() } }))
-      addLog('portal_done', data as unknown as Record<string, unknown>)
-    })
-
-    es.addEventListener('portal_error', (e) => {
-      const data = JSON.parse(e.data) as PortalEvent
-      setPortalEvents(prev => ({ ...prev, [data.nombre]: { ...prev[data.nombre], ...data, seenAt: prev[data.nombre]?.seenAt || Date.now() } }))
-      addLog('portal_error', data as unknown as Record<string, unknown>)
-    })
-
-    es.addEventListener('portal_warn', (e) => {
-      const data = JSON.parse(e.data) as PortalEvent
-      addLog('portal_warn', data as unknown as Record<string, unknown>)
-    })
-
-    es.addEventListener('done', (e) => {
-      const data = JSON.parse(e.data) as Record<string, unknown>
-      setSummary({
-        total: data.total_portales as number,
-        encontradas: data.ofertas_encontradas as number,
-        agregadas: data.agregadas_pipeline as number,
+    try {
+      const response = await fetch(`/api/careers/scan?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       })
-      addLog('done', data)
-      setScanning(false)
-      es.close()
-      qc.invalidateQueries({ queryKey: ['careers-pipeline'] })
-      qc.invalidateQueries({ queryKey: ['careers-stats'] })
-    })
 
-    es.addEventListener('error', (e) => {
-      const data = (e as MessageEvent).data ? JSON.parse((e as MessageEvent).data) : { error: 'Error de conexión' }
-      addLog('error', data as Record<string, unknown>)
-      setScanning(false)
-      es.close()
-    })
+      if (!response.ok || !response.body) {
+        addLog('error', { error: `Error ${response.status}: ${response.statusText}` })
+        setScanning(false)
+        return
+      }
 
-    es.onerror = () => {
-      if (!scanning) return
-      setScanning(false)
-      es.close()
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+
+        let idx
+        while ((idx = buf.indexOf('\n\n')) !== -1) {
+          const block = buf.slice(0, idx)
+          buf = buf.slice(idx + 2)
+
+          let eventType = 'message'
+          let dataLine = ''
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim()
+            else if (line.startsWith('data: ')) dataLine = line.slice(6)
+          }
+          if (dataLine) handleEvent(eventType, dataLine)
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        addLog('error', { error: (err as Error).message || 'Error de conexión' })
+        setScanning(false)
+      }
     }
   }, [scanning, addLog, qc])
 
   const stopScan = useCallback(() => {
-    esRef.current?.close()
+    abortRef.current?.abort()
     setScanning(false)
     addLog('error', { error: 'Escaneo detenido por el usuario' })
   }, [addLog])

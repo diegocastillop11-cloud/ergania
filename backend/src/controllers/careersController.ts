@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import axios from 'axios'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
+import { getSubscriptionStatus } from '../services/subscriptionService'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const multer = require('multer') as typeof import('multer')
@@ -172,32 +173,47 @@ export async function testAi(req: Request, res: Response) {
   }
 }
 
-/**
- * Extrae el email del usuario a partir del Bearer JWT de Supabase.
- * Acepta el token desde el header Authorization O desde el query param ?token=
- * (necesario para EventSource/SSE que no puede enviar headers personalizados).
- */
-async function getUserEmail(req: Request): Promise<string> {
+function authErr(msg: string): never {
+  throw Object.assign(new Error(msg), { status: 401 })
+}
+
+function validateUrl(rawUrl: string): void {
+  let parsed: URL
+  try { parsed = new URL(rawUrl) } catch { throw new Error('URL inválida') }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Solo se permiten URLs HTTP/HTTPS')
+  const h = parsed.hostname.toLowerCase()
+  if (/^(localhost$|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|::1$)/.test(h))
+    throw new Error('URL no permitida')
+}
+
+async function getUser(req: Request): Promise<{ email: string; userId: string }> {
   const auth = req.headers['authorization']
-  const tokenParam = typeof req.query.token === 'string' ? req.query.token : undefined
-  const rawToken = auth?.startsWith('Bearer ') ? auth.slice(7) : tokenParam
+  const rawToken = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined
   if (!rawToken) {
     console.warn('[Auth] Authorization token missing')
-    throw new Error('Token de autenticación no encontrado. Inicia sesión de nuevo.')
+    authErr('Token de autenticación no encontrado. Inicia sesión de nuevo.')
   }
-
   if (!supabaseAdmin) {
     console.warn('[Auth] Supabase admin cliente no configurado')
-    throw new Error('Supabase no está configurado en el servidor.')
+    authErr('Supabase no está configurado en el servidor.')
   }
-
-  const { data, error } = await supabaseAdmin.auth.getUser(rawToken)
+  const { data, error } = await supabaseAdmin!.auth.getUser(rawToken!)
   if (error || !data?.user?.email) {
-    console.warn('[Auth] Token inválido o usuario no encontrado', { error: error?.message, email: data?.user?.email })
-    throw new Error('Token de autenticación inválido o expirado. Inicia sesión de nuevo.')
+    console.warn('[Auth] Token inválido o usuario no encontrado', { error: error?.message })
+    authErr('Token de autenticación inválido o expirado. Inicia sesión de nuevo.')
   }
+  return { email: data.user!.email!, userId: data.user!.id }
+}
 
-  return data.user.email
+async function getUserEmail(req: Request): Promise<string> {
+  return (await getUser(req)).email
+}
+
+async function requireActiveSubscription(userId: string): Promise<void> {
+  const sub = await getSubscriptionStatus(userId)
+  if (sub.status !== 'trial' && sub.status !== 'active') {
+    throw Object.assign(new Error('Suscripción requerida para usar esta función'), { status: 402 })
+  }
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -207,7 +223,7 @@ export const getStats = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.getStats(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -218,7 +234,7 @@ export const getTracker = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.readTracker(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -230,7 +246,7 @@ export const updateTrackerStatus = async (req: Request, res: Response) => {
     await svc.updateTrackerEntry(id, { estado, notas }, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -240,7 +256,7 @@ export const markApplied = async (req: Request, res: Response) => {
     await svc.updateTrackerEntry(req.params.id, { estado: 'Postulada' }, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -250,7 +266,7 @@ export const deleteTrackerEntry = async (req: Request, res: Response) => {
     await svc.deleteTrackerEntry(req.params.id, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -261,7 +277,7 @@ export const getPipeline = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.readPipeline(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -273,7 +289,7 @@ export const addToPipeline = async (req: Request, res: Response) => {
     await svc.addToPipeline(url, source, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -283,7 +299,7 @@ export const removeFromPipeline = async (req: Request, res: Response) => {
     await svc.removeFromPipeline(req.body.url, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -294,7 +310,7 @@ export const getPortals = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.readPortals(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -304,7 +320,7 @@ export const updatePortals = async (req: Request, res: Response) => {
     await svc.writePortals(req.body, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -315,7 +331,7 @@ export const getProfile = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.readProfile(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -325,7 +341,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     await svc.writeProfile(req.body, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -336,7 +352,7 @@ export const getCV = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json({ content: await svc.readCV(userEmail) })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -346,7 +362,7 @@ export const updateCV = async (req: Request, res: Response) => {
     await svc.writeCV(req.body.content, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -361,7 +377,7 @@ export const getReport = async (req: Request, res: Response) => {
     const content = await svc.readReport(slug, userEmail)
     res.json({ content })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -370,14 +386,15 @@ export const listReports = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.listReports(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message }) }
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message }) }
 }
 
 // ── Evaluate ──────────────────────────────────────────────────────────────────
 
 export const evaluateJob = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const { jd: jdRaw, url, empresa, rol } = req.body
     if (!jdRaw && !url) return res.status(400).json({ error: 'Se requiere el texto de la oferta (jd) o una URL' })
 
@@ -385,6 +402,7 @@ export const evaluateJob = async (req: Request, res: Response) => {
     let scrapedContent = ''
     if (url && (!jdRaw || jdRaw.length < 300)) {
       try {
+        validateUrl(url)
         // Primero intenta con axios
         const { data: html } = await axios.get(url, {
           headers: {
@@ -659,7 +677,7 @@ ${fullText}
     res.json({ ok: true, entry, reportSlug, meta, report: reportContent })
   } catch (err: unknown) {
     console.error('evaluateJob error:', err)
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
@@ -667,7 +685,8 @@ ${fullText}
 
 export const generateCV = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const { entryId, empresa, rol } = req.body
     if (!empresa || !rol) return res.status(400).json({ error: 'empresa y rol son requeridos' })
 
@@ -692,7 +711,7 @@ export const generateCV = async (req: Request, res: Response) => {
     if (entryId) await svc.updateTrackerEntry(entryId, { pdf: false, estado: 'CV Generado' }, userEmail)
     res.json({ ok: true, cvHtml })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -703,7 +722,7 @@ export const listApplications = async (req: Request, res: Response) => {
     const userEmail = await getUserEmail(req)
     res.json(await svc.readApplications(userEmail))
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -714,7 +733,7 @@ export const getApplicationById = async (req: Request, res: Response) => {
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
     res.json(app)
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -788,7 +807,8 @@ Responde SOLO con el texto de la carta.`
 
 export const createApplication = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const { jd: jdRaw, empresa, rol, url, score, reportSlug } = req.body
     if (!empresa || !rol) return res.status(400).json({ error: 'empresa y rol son requeridos' })
 
@@ -923,13 +943,14 @@ export const createApplication = async (req: Request, res: Response) => {
     res.json({ ok: true, application: appWithoutHtml })
   } catch (err: unknown) {
     console.error('createApplication error:', err)
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
 export const regenerateCV = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
 
@@ -987,13 +1008,14 @@ export const regenerateCV = async (req: Request, res: Response) => {
     res.json({ ok: true, application: appWithoutHtml })
   } catch (err: unknown) {
     console.error('regenerateCV error:', err)
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
 export const generateInterviewPrep = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
 
@@ -1055,13 +1077,14 @@ Lista verificación para el día antes y el día de la entrevista`,
 
     res.json({ ok: true, prep })
   } catch (err: unknown) {
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
 export const answerQuestion = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const { question } = req.body
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
@@ -1097,13 +1120,14 @@ Escribe SOLO la respuesta (3 frases máx, 60-70 palabras):`,
 
     res.json({ ok: true, answer })
   } catch (err: unknown) {
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
 export const generateCoverLetter = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
 
@@ -1147,13 +1171,14 @@ REGLAS:
 
     res.json({ ok: true, coverLetter })
   } catch (err: unknown) {
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
 export const generateApplyKit = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const app = await svc.getApplication(req.params.id, userEmail)
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
 
@@ -1163,6 +1188,7 @@ export const generateApplyKit = async (req: Request, res: Response) => {
     let pageContent = app.jd || ''
     if (app.url) {
       try {
+        validateUrl(app.url)
         const { data } = await axios.get(app.url, {
           timeout: 10000,
           headers: {
@@ -1227,7 +1253,7 @@ REGLAS:
 
     res.json({ ok: true, kit, formulario_detectado: kit.formulario_detectado ?? false })
   } catch (err: unknown) {
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
@@ -1242,7 +1268,7 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
     await svc.saveApplication(app, userEmail)
     res.json({ ok: true })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -1266,7 +1292,7 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
     res.send(buffer)
   } catch (err: unknown) {
     console.error('downloadApplicationPdf error:', err)
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -1282,7 +1308,7 @@ export const downloadInterviewPrepPdf = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.send(buffer)
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -1290,7 +1316,8 @@ export const downloadInterviewPrepPdf = async (req: Request, res: Response) => {
 
 export const linkedinOptimize = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const cv      = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail) as Record<string, unknown>
     const cand    = (profile.candidate as Record<string, string>) || {}
@@ -1364,7 +1391,8 @@ Genera las siguientes secciones del perfil LinkedIn optimizadas. Devuelve JSON e
 
 export const suggestTargets = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const cv      = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail) as Record<string, unknown>
     const portals = await svc.readPortals(userEmail)
@@ -1412,7 +1440,7 @@ REGLAS:
 
     res.json({ ok: true, suggestions })
   } catch (err: unknown) {
-    if (!res.headersSent) res.status(500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
@@ -1444,7 +1472,7 @@ export const exportBackup = async (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json')
     res.json(backup)
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -1465,7 +1493,7 @@ export const importBackup = async (req: Request, res: Response) => {
     }
     res.json({ ok: true, message: 'Backup restaurado correctamente' })
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
 
@@ -1701,14 +1729,14 @@ export const scanPortals = async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
-  res.setHeader('Access-Control-Allow-Origin', '*')
   res.flushHeaders()
 
   const send = (event: string, data: unknown) =>
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const portalsConfig = await svc.readPortals(userEmail)
     const profile       = await svc.readProfile(userEmail) as Record<string, unknown>
     const positive      = portalsConfig.title_filter?.positive || []
@@ -2078,7 +2106,8 @@ export const scanPortals = async (req: Request, res: Response) => {
 
 export const parseCv = async (req: Request, res: Response) => {
   try {
-    const userEmail = await getUserEmail(req)
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
     const file = (req as Request & { file?: Express.Multer.File }).file
     if (!file) return res.status(400).json({ error: 'No se recibió ningún archivo.' })
 
