@@ -104,7 +104,7 @@ export default function Landing() {
           </span>
 
           <h1 className="lp-hero-h1" style={{ fontFamily: serif, fontSize: 56, fontWeight: 700, lineHeight: 1.13, color: C.brown, letterSpacing: -1, marginBottom: 22 }}>
-            Encuentra trabajo con IA<br />que entiende Chile
+            Encuentra tu trabajo ideal,<br />deja que la IA te ayude
           </h1>
 
           <p style={{ fontFamily: sans, fontSize: 18, fontWeight: 400, lineHeight: 1.65, color: C.brownSec, maxWidth: 520, margin: '0 auto 36px' }}>
@@ -167,7 +167,6 @@ export default function Landing() {
               { title: 'CV Adaptado con IA',           desc: 'Ajusta automáticamente tu CV para cada cargo, resaltando lo que importa al reclutador.' },
               { title: 'Evaluación de Ofertas',        desc: 'Score de compatibilidad: sueldo, stack, cultura y distancia. Sabe si conviene postular antes de gastar tiempo.' },
               { title: 'Preparación para entrevistas', desc: 'Preguntas frecuentes del rol, respuestas guiadas y consejos específicos para esa empresa.' },
-              { title: 'Tu API key, tus datos',        desc: 'Usa tu propia key de Gemini (gratis) o Claude. Tu información nunca sale del navegador.' },
             ].map(f => (
               <div key={f.title} className="lp-feature-card">
                 <h3 style={{ fontFamily: serif, fontSize: 19, fontWeight: 700, color: C.brown, marginBottom: 10 }}>{f.title}</h3>
