@@ -43,6 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password })
+    if (!error && data?.session) {
+      fetch('/api/admin/notify-signup', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${data.session.access_token}` },
+      }).catch(() => {})
+    }
     return { error: error ? translateAuthError(error.message) : null, session: data?.session ?? null }
   }
 

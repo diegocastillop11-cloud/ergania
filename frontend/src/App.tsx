@@ -13,6 +13,7 @@ import CareersProfile from './pages/careers/CareersProfile'
 import CareersScanner from './pages/careers/CareersScanner'
 import CareersPostulaciones from './pages/careers/CareersPostulaciones'
 import CareersBusqueda from './pages/careers/CareersBusqueda'
+import Admin from './pages/Admin'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/portals"         element={<CareersPortals />} />
         <Route path="/profile"         element={<CareersProfile />} />
       </Route>
+      <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

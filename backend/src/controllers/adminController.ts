@@ -1,0 +1,74 @@
+import { Request, Response } from 'express'
+import { supabaseAdmin } from '../config/supabase'
+
+const ADMIN_EMAIL = 'ergania.ai@gmail.com'
+
+async function getAdminUser(req: Request) {
+  const auth = req.headers['authorization']
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
+  if (!token || !supabaseAdmin) return null
+  const { data, error } = await supabaseAdmin.auth.getUser(token)
+  if (error || !data.user) return null
+  return data.user
+}
+
+export async function getStats(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return res.status(403).json({ error: 'Acceso denegado' })
+  }
+
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const [usersRes, subsRes, messagesRes] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
+    supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
+  ])
+
+  const users = usersRes.data?.users ?? []
+  const subs  = subsRes.data ?? []
+  const msgs  = messagesRes.data ?? []
+
+  const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
+
+  const userList = users.map((u: any) => ({
+    id:        u.id,
+    email:     u.email,
+    createdAt: u.created_at,
+    sub:       subsByUserId[u.id] ?? null,
+  }))
+
+  const statusCount = subs.reduce((acc: any, s: any) => {
+    acc[s.status] = (acc[s.status] ?? 0) + 1
+    return acc
+  }, {})
+
+  const payments = subs
+    .filter((s: any) => s.status === 'active' && s.mp_payment_id)
+    .map((s: any) => ({
+      userId:    s.user_id,
+      paymentId: s.mp_payment_id,
+      amount:    9990,
+      date:      s.updated_at,
+    }))
+
+  res.json({
+    totalUsers:    users.length,
+    statusCount,
+    payments,
+    userList,
+    contactMessages: msgs,
+  })
+}
+
+export async function notifySignup(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user) return res.status(401).json({ error: 'No autorizado' })
+
+  const { sendNewUserNotification } = await import('../services/emailService')
+  sendNewUserNotification(user.email ?? 'desconocido')
+    .catch(err => console.error('[admin] Error notificación signup:', err))
+
+  res.json({ ok: true })
+}

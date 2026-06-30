@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { sendContactEmail } from '../services/emailService'
+import { supabaseAdmin } from '../config/supabase'
 
 export async function sendContact(req: Request, res: Response) {
   const { name, email, category, message } = req.body
@@ -14,6 +15,14 @@ export async function sendContact(req: Request, res: Response) {
 
   try {
     await sendContactEmail(name.trim(), email.trim(), category.trim(), message.trim())
+
+    supabaseAdmin?.from('contact_messages').insert({
+      name: name.trim(), email: email.trim(),
+      category: category.trim(), message: message.trim(),
+    }).then(({ error }) => {
+      if (error) console.error('[contact] Error guardando en DB:', error.message)
+    })
+
     res.json({ ok: true })
   } catch (err) {
     console.error('[contact] Error al enviar email:', err)

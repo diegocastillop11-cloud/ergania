@@ -7,6 +7,7 @@ import cors from 'cors'
 import { careersRoutes } from './routes/careers'
 import { subscriptionRoutes } from './routes/subscription'
 import { contactRoutes } from './routes/contact'
+import { adminRoutes } from './routes/admin'
 
 const app = express()
 
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/api/careers', careersRoutes)
 app.use('/api/subscription', subscriptionRoutes)
 app.use('/api/contact', contactRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

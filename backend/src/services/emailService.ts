@@ -20,6 +20,23 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
+export async function sendNewUserNotification(email: string) {
+  const date = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#2563eb;border-bottom:2px solid #2563eb;padding-bottom:8px;">
+        🎉 Nuevo usuario registrado
+      </h2>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <tr><td style="padding:8px 0;color:#666;width:120px;"><strong>Email</strong></td><td style="padding:8px 0;"><a href="mailto:${email}">${email}</a></td></tr>
+        <tr><td style="padding:8px 0;color:#666;"><strong>Fecha</strong></td><td style="padding:8px 0;">${date}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Notificación automática de registro</p>
+    </div>
+  `
+  await sendEmail(ADMIN_EMAIL, `[Ergania] Nuevo usuario — ${email}`, html)
+}
+
 export async function sendContactEmail(name: string, email: string, category: string, message: string) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
