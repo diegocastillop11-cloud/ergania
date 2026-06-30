@@ -262,7 +262,7 @@ export default function Landing() {
         <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,.05)', bottom: -80, right: 60, pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 600, margin: '0 auto' }}>
           <h2 style={{ fontFamily: serif, fontSize: 44, fontWeight: 700, color: C.white, letterSpacing: -0.5, lineHeight: 1.15, marginBottom: 16 }}>
-            Empieza tu búsqueda hoy
+            Empieza tu búsqueda hoy.
           </h2>
           <p style={{ fontFamily: sans, fontSize: 17, color: 'rgba(250,247,242,.82)', lineHeight: 1.6, marginBottom: 40 }}>
             Sin suscripción. Solo trae tu API key de Gemini y comienza.
@@ -281,7 +281,7 @@ export default function Landing() {
             ))}
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(250,247,242,.30)' }}>
-            Hecho con <span style={{ color: C.terra }}>♥</span> en Chile · 2026
+            Hecho en Chile · 2026
           </p>
         </div>
       </footer>
