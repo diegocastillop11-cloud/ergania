@@ -51,6 +51,7 @@ export default function App() {
         <Route path="/portals"         element={<CareersPortals />} />
         <Route path="/profile"         element={<CareersProfile />} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
