@@ -76,7 +76,7 @@ export default function Landing() {
       {/* ── NAV ── */}
       <header style={{ background: C.cream, borderBottom: `1px solid rgba(46,21,8,.08)`, position: 'sticky', top: 0, zIndex: 100 }}>
         <nav style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 24, color: C.brown }}>ergania</span>
+          <img src="/logo.png" alt="Ergania" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
           <div className="lp-hide-sm" style={{ display: 'flex', gap: 32 }}>
             <a href="#como-funciona" className="lp-nav-link">Funciones</a>
             <a href="#precios"       className="lp-nav-link">Precios</a>
@@ -271,7 +271,7 @@ export default function Landing() {
       {/* ── FOOTER ── */}
       <footer style={{ background: C.brown, padding: '44px 48px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-          <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 26, color: C.cream }}>ergania</span>
+          <img src="/logo.png" alt="Ergania" style={{ height: 40, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
             {['Funciones', 'Precios', 'Privacidad'].map(l => (
               <a key={l} href={l === 'Precios' ? '#precios' : '#'} style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>{l}</a>

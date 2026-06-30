@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
-  Briefcase, Radio, Send, Target, LogOut, Crown,
+  Radio, Send, Target, LogOut, Crown,
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import type { SubscriptionState } from '../../hooks/useSubscription'
@@ -50,9 +50,7 @@ export default function Sidebar({ sub }: Props) {
       {/* Logo */}
       <div className="p-5 border-b border-gray-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0">
-            <Briefcase size={16} className="text-white" />
-          </div>
+          <img src="/logo.png" alt="Ergania" className="w-8 h-8 rounded-lg object-contain shrink-0" />
           <div>
             <h1 className="text-sm font-bold text-white leading-none">Ergania</h1>
             <p className="text-xs text-gray-500 leading-none mt-0.5">Búsqueda con IA · Chile</p>
