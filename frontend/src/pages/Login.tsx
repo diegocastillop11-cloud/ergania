@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Briefcase, Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
 type Mode = 'login' | 'register'
@@ -53,9 +53,7 @@ export default function Login() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20">
-            <Briefcase size={28} className="text-white" />
-          </div>
+          <img src="/logo.png" alt="Ergania" className="w-14 h-14 rounded-2xl mb-4 shadow-lg object-contain" />
           <h1 className="text-2xl font-bold text-white">Ergania</h1>
           <p className="text-gray-500 text-sm mt-1">Búsqueda laboral con IA · Chile 🇨🇱</p>
         </div>
