@@ -246,7 +246,7 @@ export default function CareersBusqueda() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl w-full min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -283,11 +283,11 @@ export default function CareersBusqueda() {
       {/* Grid principal */}
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Cargos objetivo */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Search size={15} className="text-blue-400" />
-            <h3 className="text-white font-semibold text-sm">Cargos Objetivo</h3>
-            <span className="ml-auto text-xs text-gray-500">{getTargetRoles().length} configurados</span>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+          <div className="flex items-center gap-2 mb-4 min-w-0">
+            <Search size={15} className="text-blue-400 shrink-0" />
+            <h3 className="text-white font-semibold text-sm truncate">Cargos Objetivo</h3>
+            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getTargetRoles().length} configurados</span>
           </div>
           <p className="text-xs text-gray-500 mb-3">
             Títulos de cargo exactos que buscas — el escáner filtra portales con estas palabras
@@ -301,11 +301,11 @@ export default function CareersBusqueda() {
         </div>
 
         {/* Keywords positivas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Tag size={15} className="text-green-400" />
-            <h3 className="text-white font-semibold text-sm">Skills / Keywords</h3>
-            <span className="ml-auto text-xs text-gray-500">{getKwPos().length} configuradas</span>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+          <div className="flex items-center gap-2 mb-4 min-w-0">
+            <Tag size={15} className="text-green-400 shrink-0" />
+            <h3 className="text-white font-semibold text-sm truncate">Skills / Keywords</h3>
+            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getKwPos().length} configuradas</span>
           </div>
           <p className="text-xs text-gray-500 mb-3">
             Tecnologías y habilidades clave — si aparecen en el título de una oferta, tiene prioridad
@@ -319,11 +319,11 @@ export default function CareersBusqueda() {
         </div>
 
         {/* Keywords negativas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Ban size={15} className="text-red-400" />
-            <h3 className="text-white font-semibold text-sm">Excluir (Keywords Negativas)</h3>
-            <span className="ml-auto text-xs text-gray-500">{getKwNeg().length} configuradas</span>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+          <div className="flex items-center gap-2 mb-4 min-w-0">
+            <Ban size={15} className="text-red-400 shrink-0" />
+            <h3 className="text-white font-semibold text-sm truncate">Excluir</h3>
+            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getKwNeg().length} configuradas</span>
           </div>
           <p className="text-xs text-gray-500 mb-3">
             Palabras que descartan una oferta automáticamente — call center, ventas, etc.

@@ -15,7 +15,7 @@ const nav = [
   { to: '/pipeline',      icon: Inbox,           label: 'Evaluar Oferta' },
   { to: '/postulaciones', icon: Send,            label: 'Postulaciones' },
   { to: '/tracker',       icon: List,            label: 'Tracker' },
-  { to: '/portals',       icon: Globe,           label: 'Portales Chile' },
+  { to: '/portals',       icon: Globe,           label: 'Portales' },
   { to: '/subscription',  icon: Crown,           label: 'Suscripción' },
 ]
 

@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   Briefcase, FileText, Send, Award, Clock, TrendingUp,
   Plus, Search, ChevronRight, Star, Download, Upload,
-  HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2,
+  HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
 } from 'lucide-react'
+import GuideModal from '../../components/GuideModal'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
 import { CareerStats, TrackerEntry, ESTADO_CONFIG, SCORE_COLOR } from '../../types/careers'
@@ -56,6 +57,7 @@ export default function CareersDashboard() {
   const [showKey, setShowKey] = useState<Record<string, boolean>>({})
   const [keysSaved, setKeysSaved] = useState(false)
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; ms?: number; model?: string; error?: string } | 'loading'>>({})
+  const [showGuide, setShowGuide] = useState(false)
 
   const handleTestAi = async (providerId: string) => {
     setTestResults(r => ({ ...r, [providerId]: 'loading' }))
@@ -159,25 +161,27 @@ export default function CareersDashboard() {
 
   return (
     <div className="space-y-6">
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-white">Ergania</h2>
           <p className="text-gray-400 mt-1">Centro de comando para búsqueda de trabajo con IA</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
           <button
-            onClick={() => navigate('/pipeline')}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-700"
+            onClick={() => setShowGuide(true)}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-700"
           >
-            <Plus size={16} />
-            Agregar Oferta
+            <BookOpen size={15} />
+            Aprende a usar Ergania
           </button>
           <button
             onClick={() => navigate('/pipeline')}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
           >
-            <Search size={16} />
+            <Zap size={16} />
             Evaluar Oferta
           </button>
         </div>
