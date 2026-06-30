@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
-  Radio, Send, Target, LogOut, Crown,
+  Radio, Send, Target, LogOut, Crown, X,
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import type { SubscriptionState } from '../../hooks/useSubscription'
@@ -19,9 +19,9 @@ const nav = [
   { to: '/subscription',  icon: Crown,           label: 'Suscripción' },
 ]
 
-interface Props { sub: SubscriptionState }
+interface Props { sub: SubscriptionState; onClose?: () => void }
 
-export default function Sidebar({ sub }: Props) {
+export default function Sidebar({ sub, onClose }: Props) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -51,10 +51,19 @@ export default function Sidebar({ sub }: Props) {
       <div className="p-5 border-b border-gray-800">
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="Ergania" className="w-8 h-8 rounded-lg object-contain shrink-0" />
-          <div>
+          <div className="flex-1">
             <h1 className="text-sm font-bold text-white leading-none">Ergania</h1>
             <p className="text-xs text-gray-500 leading-none mt-0.5">Búsqueda con IA · Chile</p>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden text-gray-500 hover:text-white transition-colors p-1"
+              aria-label="Cerrar menú"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -39,8 +39,9 @@ export default function Login() {
       if (error) setError(error)
       else navigate('/dashboard')
     } else {
-      const { error } = await signUp(email, password)
+      const { error, session } = await signUp(email, password)
       if (error) setError(error)
+      else if (session) navigate('/dashboard')
       else setInfo('¡Cuenta creada! Revisa tu correo para confirmar y luego inicia sesión.')
     }
 
