@@ -16,6 +16,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   if (!res.ok) {
     const text = await res.text()
     console.error('[email] Resend error:', res.status, text)
+    throw new Error(`Resend error ${res.status}: ${text}`)
   }
 }
 
