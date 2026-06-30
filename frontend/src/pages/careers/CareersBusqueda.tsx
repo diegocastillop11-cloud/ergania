@@ -32,9 +32,9 @@ function TagList({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 min-h-[36px]">
         {items.map((item, i) => (
-          <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${colorClass}`}>
-            {item}
-            <button onClick={() => remove(i)} className="hover:opacity-70">
+          <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium max-w-full ${colorClass}`}>
+            <span className="truncate min-w-0" title={item}>{item}</span>
+            <button onClick={() => remove(i)} className="hover:opacity-70 shrink-0">
               <X size={11} />
             </button>
           </span>
@@ -281,7 +281,7 @@ export default function CareersBusqueda() {
       </div>
 
       {/* Grid principal */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2 min-w-0">
         {/* Cargos objetivo */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
