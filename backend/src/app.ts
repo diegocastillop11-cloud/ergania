@@ -12,7 +12,8 @@ const app = express()
 
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:3001',
-  'https://frontend-wheat-one-85.vercel.app',
+  'https://ergania.com',
+  'https://www.ergania.com',
   /\.vercel\.app$/,
 ]
 

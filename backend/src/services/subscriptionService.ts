@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../config/supabase'
 const stripBOM = (s: string) => s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s
 const MP_TOKEN = () => stripBOM(process.env.MERCADOPAGO_ACCESS_TOKEN || '')
 const MP_API   = 'https://api.mercadopago.com'
-const PROD_URL = 'https://career-ops-ui-gules.vercel.app'
+const PROD_URL = 'https://ergania.com'
 
 const BACK_URL = () => {
   const raw = stripBOM(process.env.FRONTEND_URL || '').trim()

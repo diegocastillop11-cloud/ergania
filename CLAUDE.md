@@ -3,7 +3,7 @@
 ## Proyecto: Ergania
 
 Career ops UI — frontend React/Vite + backend Express/TypeScript con Supabase.
-URL producción: https://career-ops-ui-gules.vercel.app
+URL producción: https://ergania.com
 
 ## Reglas generales
 
@@ -32,7 +32,7 @@ Backend llama `supabaseAdmin.auth.getUser(token)` para verificar.
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 MERCADOPAGO_ACCESS_TOKEN     # access token de MP (empieza con APP_USR-)
-FRONTEND_URL                 # https://career-ops-ui-gules.vercel.app
+FRONTEND_URL                 # https://ergania.com
 ```
 
 Frontend (prefix `VITE_`):
