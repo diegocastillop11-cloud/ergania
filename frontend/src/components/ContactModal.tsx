@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { X, MessageSquare, Loader, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAuth } from '../lib/AuthContext'
 
 const CATEGORIES = [
   'Consulta general',
@@ -15,8 +16,9 @@ interface Props {
 }
 
 export default function ContactModal({ onClose }: Props) {
+  const { user } = useAuth()
   const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
+  const [email,    setEmail]    = useState(user?.email ?? '')
   const [category, setCategory] = useState('')
   const [message,  setMessage]  = useState('')
   const [loading,  setLoading]  = useState(false)
