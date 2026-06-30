@@ -43,13 +43,13 @@ function TagList({
           <span className="text-xs text-gray-600 italic">Sin items — agrega abajo</span>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 min-w-0">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
           placeholder={placeholder}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
+          className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
         />
         <button
           onClick={add}
@@ -283,7 +283,7 @@ export default function CareersBusqueda() {
       {/* Grid principal */}
       <div className="grid gap-5 lg:grid-cols-2 min-w-0">
         {/* Cargos objetivo */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Search size={15} className="text-blue-400 shrink-0" />
             <h3 className="text-white font-semibold text-sm truncate">Cargos Objetivo</h3>
@@ -301,7 +301,7 @@ export default function CareersBusqueda() {
         </div>
 
         {/* Keywords positivas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Tag size={15} className="text-green-400 shrink-0" />
             <h3 className="text-white font-semibold text-sm truncate">Skills / Keywords</h3>
@@ -319,7 +319,7 @@ export default function CareersBusqueda() {
         </div>
 
         {/* Keywords negativas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 overflow-hidden min-w-0">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Ban size={15} className="text-red-400 shrink-0" />
             <h3 className="text-white font-semibold text-sm truncate">Excluir</h3>
