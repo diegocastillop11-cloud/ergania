@@ -85,7 +85,7 @@ export default function Landing() {
             <Link to="/login" style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.brownSec, textDecoration: 'none' }}>
               Iniciar sesión
             </Link>
-            <Link to="/login" className="lp-btn-primary" style={{ padding: '9px 20px', fontSize: 14, borderRadius: 8 }}>
+            <Link to="/login?tab=registro" className="lp-btn-primary" style={{ padding: '9px 20px', fontSize: 14, borderRadius: 8 }}>
               Probar ahora
             </Link>
           </div>
@@ -113,7 +113,7 @@ export default function Landing() {
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 44 }}>
-            <Link to="/login" className="lp-btn-primary" style={{ fontSize: 17, padding: '13px 32px', borderRadius: 10 }}>
+            <Link to="/login?tab=registro" className="lp-btn-primary" style={{ fontSize: 17, padding: '13px 32px', borderRadius: 10 }}>
               Probar gratis 3 días →
             </Link>
             <a href="#como-funciona" className="lp-btn-ghost">Ver cómo funciona</a>
@@ -224,7 +224,7 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link to="/login" style={{ display: 'block', textAlign: 'center', border: `1.5px solid ${C.terra}`, color: C.terra, fontFamily: sans, fontSize: 15, fontWeight: 700, padding: '12px 0', borderRadius: 8, textDecoration: 'none' }}>
+              <Link to="/login?tab=registro" style={{ display: 'block', textAlign: 'center', border: `1.5px solid ${C.terra}`, color: C.terra, fontFamily: sans, fontSize: 15, fontWeight: 700, padding: '12px 0', borderRadius: 8, textDecoration: 'none' }}>
                 Comenzar gratis
               </Link>
             </div>
@@ -244,7 +244,7 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link to="/login" className="lp-btn-primary" style={{ display: 'block', textAlign: 'center', padding: '13px 0', borderRadius: 8, fontSize: 15 }}>
+              <Link to="/login?tab=registro" className="lp-btn-primary" style={{ display: 'block', textAlign: 'center', padding: '13px 0', borderRadius: 8, fontSize: 15 }}>
                 Probar 3 días gratis →
               </Link>
             </div>
@@ -264,7 +264,7 @@ export default function Landing() {
           <h2 style={{ fontFamily: serif, fontSize: 44, fontWeight: 700, color: C.white, letterSpacing: -0.5, lineHeight: 1.15, marginBottom: 16 }}>
             Empieza tu búsqueda hoy.
           </h2>
-          <Link to="/login" className="lp-btn-outline" style={{ marginTop: 24 }}>Probar Ergania gratis →</Link>
+          <Link to="/login?tab=registro" className="lp-btn-outline" style={{ marginTop: 24 }}>Probar Ergania gratis →</Link>
         </div>
       </section>
 

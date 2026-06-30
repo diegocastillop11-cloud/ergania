@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Briefcase, Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -8,8 +8,9 @@ type Mode = 'login' | 'register'
 export default function Login() {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const [mode,      setMode]      = useState<Mode>('login')
+  const [mode,      setMode]      = useState<Mode>(searchParams.get('tab') === 'registro' ? 'register' : 'login')
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
   const [confirm,   setConfirm]   = useState('')
