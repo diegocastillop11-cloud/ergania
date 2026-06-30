@@ -45,13 +45,20 @@ export default function ContactModal({ onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Overlay */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+
+      {/* Panel derecho */}
+      <div className="relative w-full max-w-sm bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl animate-slide-in-right">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center shrink-0">
               <MessageSquare size={16} className="text-blue-400" />
             </div>
             <div>
@@ -64,12 +71,12 @@ export default function ContactModal({ onClose }: Props) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5">
+        {/* Body — scrollable */}
+        <div className="flex-1 overflow-y-auto p-5">
           {sent ? (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle size={40} className="text-green-400" />
-              <p className="text-white font-semibold">¡Mensaje enviado!</p>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <CheckCircle size={48} className="text-green-400" />
+              <p className="text-white font-semibold text-base">¡Mensaje enviado!</p>
               <p className="text-sm text-gray-400">Lo revisaremos pronto y te responderemos por correo.</p>
               <button
                 onClick={onClose}
@@ -79,11 +86,11 @@ export default function ContactModal({ onClose }: Props) {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-4">
 
               {/* Nombre */}
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Nombre</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Nombre</label>
                 <input
                   type="text"
                   required
@@ -96,7 +103,7 @@ export default function ContactModal({ onClose }: Props) {
 
               {/* Email */}
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Correo electrónico</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Correo electrónico</label>
                 <input
                   type="email"
                   required
@@ -109,7 +116,7 @@ export default function ContactModal({ onClose }: Props) {
 
               {/* Categoría */}
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Categoría</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Categoría</label>
                 <select
                   required
                   value={category}
@@ -125,10 +132,10 @@ export default function ContactModal({ onClose }: Props) {
 
               {/* Mensaje */}
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Mensaje</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Mensaje</label>
                 <textarea
                   required
-                  rows={4}
+                  rows={5}
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="Cuéntanos en qué podemos ayudarte..."
@@ -148,7 +155,7 @@ export default function ContactModal({ onClose }: Props) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
               >
                 {loading
                   ? <><Loader size={14} className="animate-spin" /> Enviando...</>
