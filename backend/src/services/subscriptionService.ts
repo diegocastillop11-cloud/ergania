@@ -150,6 +150,14 @@ export async function handleWebhook(topic: string, id: string) {
     current_period_end: periodEnd.toISOString(),
     updated_at: new Date().toISOString(),
   }).eq('user_id', userId)
+
+  const { sendPaymentNotification } = await import('./emailService')
+  sendPaymentNotification(
+    userId,
+    String(payment.id),
+    payment.transaction_amount ?? 0,
+    payment.payer?.email ?? 'desconocido',
+  ).catch(err => console.error('[webhook] Error enviando notificación de pago:', err))
 }
 
 export async function cancelSubscription(userId: string) {

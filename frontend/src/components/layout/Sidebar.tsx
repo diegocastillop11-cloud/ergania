@@ -2,10 +2,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
-  Radio, Send, Target, LogOut, Crown, X,
+  Radio, Send, Target, LogOut, Crown, X, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import type { SubscriptionState } from '../../hooks/useSubscription'
+import ContactModal from '../ContactModal'
 
 const nav = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
@@ -25,6 +26,7 @@ export default function Sidebar({ sub, onClose }: Props) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [showContact,   setShowContact]   = useState(false)
 
   const handleCheckout = async () => {
     setCheckoutError(null)
@@ -125,6 +127,14 @@ export default function Sidebar({ sub, onClose }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-300 truncate">{user.email}</p>
             </div>
+            {/* Contacto */}
+            <button
+              onClick={() => setShowContact(true)}
+              title="Contacto"
+              className="text-gray-600 hover:text-blue-400 transition-colors shrink-0"
+            >
+              <MessageSquare size={14} />
+            </button>
             {/* Logout */}
             <button
               onClick={handleLogout}
@@ -136,6 +146,8 @@ export default function Sidebar({ sub, onClose }: Props) {
           </div>
         </div>
       )}
+
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
     </aside>
   )
 }

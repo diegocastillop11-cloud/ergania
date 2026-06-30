@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff, MessageSquare } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import ContactModal from '../components/ContactModal'
 
 type Mode = 'login' | 'register'
 
@@ -19,6 +20,8 @@ export default function Login() {
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState('')
   const [info,      setInfo]      = useState('')
+
+  const [showContact, setShowContact] = useState(false)
 
   const reset = (m: Mode) => { setMode(m); setError(''); setInfo(''); setConfirm('') }
 
@@ -197,7 +200,20 @@ export default function Login() {
         <p className="text-center text-xs text-gray-600 mt-6">
           Tus datos se guardan en tu propia cuenta y nadie más los ve.
         </p>
+
+        <div className="flex justify-center mt-3">
+          <button
+            onClick={() => setShowContact(true)}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <MessageSquare size={12} />
+            ¿Tienes dudas? Contáctanos
+          </button>
+        </div>
+
       </div>
+
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
     </div>
   )
 }
