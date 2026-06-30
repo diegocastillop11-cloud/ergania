@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Subscription from './pages/Subscription'
+import SubscriptionCallback from './pages/SubscriptionCallback'
 import CareersDashboard from './pages/careers/CareersDashboard'
 import CareersPipeline from './pages/careers/CareersPipeline'
 import CareersTracker from './pages/careers/CareersTracker'
@@ -34,6 +35,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      {/* Redirect pages from MercadoPago — must be public, no auth required */}
+      <Route path="/subscription/success" element={<SubscriptionCallback />} />
+      <Route path="/subscription/failure" element={<SubscriptionCallback />} />
+      <Route path="/subscription/pending" element={<SubscriptionCallback />} />
       {/* Layout route — wraps all protected paths without changing their URLs */}
       <Route element={<ProtectedLayout />}>
         <Route path="/subscription"    element={<Subscription />} />
