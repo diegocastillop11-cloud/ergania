@@ -25,6 +25,7 @@ export default function PerfilTabs() {
     qc.invalidateQueries({ queryKey: ['careers-profile'] })
     qc.invalidateQueries({ queryKey: ['careers-cv'] })
     qc.invalidateQueries({ queryKey: ['portals'] })
+    qc.invalidateQueries({ queryKey: ['careers-portals'] })
     qc.invalidateQueries({ queryKey: ['profile'] })
     qc.invalidateQueries({ queryKey: ['careers-pipeline'] })
   }

@@ -6,6 +6,7 @@ import {
   Loader2, Search, Check, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import { PortalsConfig, Portal } from '../../types/careers'
+import PerfilTabs from '../../components/careers/PerfilTabs'
 
 
 // Portales chilenos preconfigurados
@@ -198,6 +199,8 @@ export default function CareersPortals() {
 
   return (
     <div className="space-y-6">
+      <PerfilTabs />
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-white">Portales de Empleo</h2>
