@@ -737,6 +737,25 @@ export const getApplicationById = async (req: Request, res: Response) => {
   }
 }
 
+// ── Detección de idioma del JD (heurística por stopwords, sin costo de LLM) ───
+export function detectLanguage(text: string): 'es' | 'en' {
+  const sample = (text || '').toLowerCase().slice(0, 3000)
+  const words = sample.match(/[a-záéíóúñü]+/g) || []
+  const EN = new Set(['the', 'and', 'with', 'for', 'you', 'will', 'our', 'are', 'this', 'that', 'have', 'your', 'from', 'work', 'team', 'skills', 'experience', 'we'])
+  const ES = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'que', 'con', 'para', 'una', 'en', 'se', 'por', 'como', 'más', 'experiencia', 'equipo', 'nuestro'])
+  let en = 0, es = 0
+  for (const w of words) {
+    if (EN.has(w)) en++
+    if (ES.has(w)) es++
+  }
+  return en > es ? 'en' : 'es'
+}
+
+const LANGUAGE_RULE: Record<'es' | 'en', string> = {
+  es: '',
+  en: `\nIDIOMA (obligatorio): la oferta está en INGLÉS. Escribe TODO el contenido del CV en inglés profesional nativo: summary, bullets, roles, nombres de skills y títulos de educación. Mantén nombres propios (empresas, instituciones) tal cual. Las claves del JSON no cambian.\n`,
+}
+
 // ── CV prompt builder (shared between createApplication & regenerateCV) ────────
 function buildCvJsonPrompt(
   rol: string,
@@ -746,6 +765,7 @@ function buildCvJsonPrompt(
   cand: Record<string, string>,
   contactInfo: Record<string, string>,
   cvInstructions?: string,
+  idioma: 'es' | 'en' = 'es',
 ): string {
   return `Actúa como recruiter senior de ${empresa} evaluando candidatos para ${rol}.
 Tu tarea es DOBLE: (1) asegurarte de que este CV pase los filtros ATS, y (2) reescribirlo para que detenga el scroll en una pila de 200 CVs.
@@ -771,7 +791,7 @@ REGLAS DE REDACCIÓN:
 - Experiencia: ≥3 bullets por empresa reciente, 1 para HP. Mínimo 1 bullet con métrica concreta por empresa.
 - Proyectos personales: ≥1 proyecto con IA + datos + UI/UX; nombra el proyecto y su impacto real.
 - Si el JD pide Python o bases de datos, menciona esa habilidad en resumen Y en un bullet de experiencia.
-${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}
+${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}${LANGUAGE_RULE[idioma]}
 Devuelve SOLO JSON válido, sin markdown ni explicaciones:
 {"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Punto Ticket","location":"Santiago, Chile","role":"Analista de Base de Datos Senior","dates":"Nov. 2019 – Feb. 2026","bullets":["..."]},{"company":"Imperial S.A.","location":"Santiago, Chile","role":"Analista Funcional","dates":"Jun. 2017 – Nov. 2019","bullets":["..."]},{"company":"OB GROUP PARK","location":"Santiago, Chile","role":"Analista de Sistemas y TI","dates":"Mayo 2014 – Abril 2017","bullets":["..."]},{"company":"Hewlett-Packard Company","location":"Santiago, Chile","role":"Agente de Mesa de Ayuda Nivel 1","dates":"Ago. 2013 – Mayo 2014","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Datos & Cloud":"SQL Server (Experto), Azure SQL, Oracle, PostgreSQL, MongoDB, Microsoft Azure","Desarrollo & IA":"Python, C#, Node.js, Go, React, Prompt Engineering (Claude / Gemini)","Frontend & Diseño":"TypeScript, JavaScript (ES6+), HTML5/CSS3, UI/UX Design","Herramientas & Metodologías":"Git, Docker, Power BI, Excel Avanzado, Scrum/Kanban"},"education":[{"title":"Business Analytics & Data Science","institution":"Universidad de Chile","year":"2024"},{"title":"Especialización SQL Server","institution":"","year":"2023"},{"title":"Desarrollo de Apps Móviles","institution":"Universidad Complutense de Madrid","year":"2017"},{"title":"Analista Programador","institution":"INACAP","year":"2013"}]}`
 }
@@ -782,7 +802,30 @@ function buildCoverLetterPrompt(
   rol: string,
   jd: string,
   cv: string,
+  idioma: 'es' | 'en' = 'es',
 ): string {
+  if (idioma === 'en') {
+    return `Act as an executive communication expert for international job applications.
+Write a personalized cover letter in native professional ENGLISH for this specific application.
+
+COMPANY: ${empresa}
+ROLE: ${rol}
+JD (key excerpt): ${jd.slice(0, 1500)}
+CV SUMMARY: ${cv.slice(0, 1000)}
+
+STRUCTURE (3 paragraphs, max 200 words total):
+1. Opening: mention company + role + why THIS company specifically (not generic)
+2. Value proposition: 2-3 concrete CV achievements with metrics that connect directly to the JD requirements. Use JD keywords.
+3. Closing: availability + direct, confident call to action
+
+RULES:
+- Professional but direct tone, never corporate filler nor servile
+- Every sentence must add new information
+- FORBIDDEN: "passionate", "proactive", "team player" without evidence, filler phrases
+- End exactly with: "I look forward to discussing further. Best regards, ${candidateName}"
+
+Reply ONLY with the letter text.`
+  }
   return `Actúa como experto en comunicación ejecutiva para el mercado laboral chileno.
 Redacta una carta de presentación personalizada para esta postulación específica.
 
@@ -832,7 +875,10 @@ export const createApplication = async (req: Request, res: Response) => {
       github: cand.github || '',
     }
 
-    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd, cv, cand, contactInfo, cvInstructions)
+    const idioma: 'es' | 'en' = req.body.idioma === 'en' || req.body.idioma === 'es'
+      ? req.body.idioma
+      : detectLanguage(jd)
+    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd, cv, cand, contactInfo, cvInstructions, idioma)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
@@ -868,7 +914,7 @@ export const createApplication = async (req: Request, res: Response) => {
     const cvTex  = svc.buildCvLatex(cvData)
 
     // Generar carta de presentación
-    const coverLetterPrompt = buildCoverLetterPrompt(cand.full_name || 'Diego Castillo', empresa, rol, jd, cv)
+    const coverLetterPrompt = buildCoverLetterPrompt(cand.full_name || 'Diego Castillo', empresa, rol, jd, cv, idioma)
 
     let coverLetter: string | undefined
     try {
@@ -906,6 +952,7 @@ export const createApplication = async (req: Request, res: Response) => {
       notas: existingApp?.notas || '',
       interviewPrep: existingApp?.interviewPrep,
       coverLetter,
+      idioma,
     }
     await svc.saveApplication(app, userEmail)
 
@@ -967,7 +1014,12 @@ export const regenerateCV = async (req: Request, res: Response) => {
     }
     const { empresa, rol, jd } = app
 
-    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd || '', cv, cand, contactInfo, cvInstructions)
+    // Prioridad: idioma pedido en el body (botón "cambiar idioma") > guardado > detectado del JD
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || detectLanguage(jd || '')
+
+    const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd || '', cv, cand, contactInfo, cvInstructions, idioma)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
@@ -1002,6 +1054,7 @@ export const regenerateCV = async (req: Request, res: Response) => {
     app.cvHtml = cvHtml
     app.cvTex  = cvTex
     app.cvPdfFilename = undefined
+    app.idioma = idioma
     await svc.saveApplication(app, userEmail)
 
     const { cvHtml: _h, ...appWithoutHtml } = app

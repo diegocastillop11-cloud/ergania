@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, FileText, Brain, MessageSquare, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Copy, CheckCircle2, X, Star, Send,
-  Download, Eye, Rocket, Mail, AlertTriangle,
+  Download, Eye, Rocket, Mail, AlertTriangle, Languages,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
@@ -267,13 +267,14 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
     }
   }
 
-  const regenerate = async () => {
+  const regenerate = async (idioma?: 'es' | 'en') => {
     setRegenerating(true)
     setRegenError('')
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       await api.post(`/applications/${app.id}/regenerate-cv`, {
         llmProvider,
+        ...(idioma ? { idioma } : {}),
         ...(userApiKey ? { userApiKey } : {}),
       })
       const { data: full } = await api.get<Application>(`/applications/${app.id}`)
@@ -286,6 +287,8 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
     }
   }
 
+  const otherLang: 'es' | 'en' = (app.idioma || 'es') === 'es' ? 'en' : 'es'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
@@ -295,17 +298,28 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
               <FileText size={16} className="text-blue-400" />
               CV — {app.rol} en {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Generado con IA y personalizado para esta oferta</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Generado con IA y personalizado para esta oferta · {(app.idioma || 'es') === 'en' ? 'English' : 'Español'}
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={regenerate}
+              onClick={() => regenerate()}
               disabled={regenerating}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
               title="Genera una nueva versión del CV con IA"
             >
               {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
               {regenerating ? 'Regenerando...' : 'Regenerar CV'}
+            </button>
+            <button
+              onClick={() => regenerate(otherLang)}
+              disabled={regenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+              title={otherLang === 'en' ? 'Regenera el CV en inglés' : 'Regenera el CV en español'}
+            >
+              <Languages size={13} />
+              {otherLang === 'en' ? 'CV en inglés' : 'CV en español'}
             </button>
             {app.id && (
               <button

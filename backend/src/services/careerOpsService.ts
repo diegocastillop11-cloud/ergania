@@ -560,6 +560,7 @@ export interface Application {
   jd: string
   cvHtml: string      // HTML para preview en iframe (puede ser LaTeX convertido o HTML nativo)
   cvTex?: string      // fuente LaTeX original si se generó con pdflatex
+  idioma?: 'es' | 'en' // idioma del CV generado (detectado del JD o elegido por el usuario)
   cvPdfFilename?: string
   estado: string
   interviewPrep?: string
@@ -854,7 +855,7 @@ async function dbReadApplications(userEmail: string): Promise<Omit<Application, 
   if (!supabase) return []
   const { data, error } = await supabase
     .from('applications')
-    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep"')
+    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep", idioma')
     .eq('user_email', userEmail)
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })

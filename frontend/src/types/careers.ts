@@ -107,6 +107,7 @@ export interface Application {
   estado: string
   interviewPrep?: string
   coverLetter?: string
+  idioma?: 'es' | 'en'
   score?: number | null
   notas?: string
 }
