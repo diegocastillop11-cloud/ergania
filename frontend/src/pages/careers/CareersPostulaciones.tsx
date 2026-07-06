@@ -416,7 +416,15 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
                   <Copy size={13} /> Copiar
                 </button>
                 <button
-                  onClick={() => downloadInterviewPrepPdf(app.id, app.empresa, app.rol)}
+                  onClick={async () => {
+                    setError('')
+                    try {
+                      await downloadInterviewPrepPdf(app.id, app.empresa, app.rol)
+                    } catch (err: unknown) {
+                      setError('Error al descargar el PDF. Intenta de nuevo.')
+                      console.error(err)
+                    }
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs"
                 >
                   <Download size={13} /> Descargar PDF
