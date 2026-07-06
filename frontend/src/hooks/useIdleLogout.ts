@@ -1,34 +1,42 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
 
 const TIMEOUT_MS = 15 * 60 * 1000
+const KEY = 'ergania:lastActivity'
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart'] as const
 
+// Basado en timestamp persistido, no en setTimeout: los timers largos son
+// throttleados por el navegador en pestañas ocultas y no sobreviven recargas.
+// El chequeo corre cada 30s, al volver a la pestaña y al montar.
 export function useIdleLogout() {
   const { session, signOut } = useAuth()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const signOutRef = useRef(signOut)
-  signOutRef.current = signOut
-
   const hasSession = !!session
 
   useEffect(() => {
-    // Depende solo de hasSession (booleano): session/signOut cambian de
-    // referencia en cada refresh silencioso de token de Supabase, y si
-    // estuvieran en las deps el timer se reiniciaba solo sin actividad real.
     if (!hasSession) return
 
-    const reset = () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => signOutRef.current(), TIMEOUT_MS)
+    localStorage.setItem(KEY, String(Date.now()))
+    const mark = () => localStorage.setItem(KEY, String(Date.now()))
+
+    let closing = false
+    const check = async () => {
+      const last = Number(localStorage.getItem(KEY)) || Date.now()
+      if (!closing && Date.now() - last >= TIMEOUT_MS) {
+        closing = true
+        try { await signOut() } finally { window.location.replace('/login') }
+      }
     }
 
-    reset()
-    ACTIVITY_EVENTS.forEach(ev => window.addEventListener(ev, reset, { passive: true }))
+    ACTIVITY_EVENTS.forEach(ev => window.addEventListener(ev, mark, { passive: true }))
+    document.addEventListener('visibilitychange', check)
+    const interval = setInterval(check, 30_000)
+    check()
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      ACTIVITY_EVENTS.forEach(ev => window.removeEventListener(ev, reset))
+      clearInterval(interval)
+      ACTIVITY_EVENTS.forEach(ev => window.removeEventListener(ev, mark))
+      document.removeEventListener('visibilitychange', check)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSession])
 }
