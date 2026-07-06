@@ -265,6 +265,7 @@ export default function CareersTracker() {
         url: entry.url || '',
         reportSlug: entry.reportSlug,
         score: entry.score,
+        ...(entry.idioma ? { idioma: entry.idioma } : {}),
         llmProvider,
       })
       clearInterval(interval)

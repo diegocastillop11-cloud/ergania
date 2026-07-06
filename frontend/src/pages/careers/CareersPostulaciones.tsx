@@ -383,18 +383,22 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
   const [loading, setLoading] = useState(false)
   const [prep, setPrep] = useState(app.interviewPrep || '')
   const [error, setError] = useState('')
+  const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
 
-  const generate = async () => {
+  const generate = async (idioma?: 'es' | 'en') => {
+    const targetLang = idioma || lang
     setLoading(true)
     setError('')
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       const { data } = await api.post(`/applications/${app.id}/interview-prep`, {
         llmProvider,
+        idioma: targetLang,
         ...(userApiKey ? { userApiKey } : {}),
       })
       setPrep(data.prep)
+      setLang(targetLang)
       onGenerated(data.prep)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -423,6 +427,14 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
           <div className="flex items-center gap-2">
             {prep && (
               <>
+                <button
+                  onClick={() => generate(lang === 'es' ? 'en' : 'es')}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs"
+                  title={lang === 'es' ? 'Regenera la guía en inglés' : 'Regenera la guía en español'}
+                >
+                  <Languages size={13} /> {lang === 'es' ? 'Guía en inglés' : 'Guía en español'}
+                </button>
                 <button
                   onClick={copyPrep}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
@@ -468,7 +480,7 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
                 </p>
               </div>
               <button
-                onClick={generate}
+                onClick={() => generate()}
                 className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium"
               >
                 <Brain size={16} /> Generar Guía de Entrevista
@@ -504,6 +516,7 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
 
   const generate = async () => {
@@ -516,6 +529,7 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
       const { data } = await api.post(`/applications/${app.id}/answer`, {
         question,
         llmProvider,
+        idioma: lang,
         ...(userApiKey ? { userApiKey } : {}),
       })
       setAnswer(data.answer)
@@ -555,7 +569,25 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">La IA responde de forma humanizada basándose en tu CV</p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+              <button
+                onClick={() => setLang('es')}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                title="Respuestas en español"
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                title="Respuestas en inglés"
+              >
+                EN
+              </button>
+            </div>
+            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
@@ -834,6 +866,7 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
+  const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
 
   const letter = app.coverLetter
@@ -846,15 +879,18 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
     }
   }
 
-  const generate = async () => {
+  const generate = async (idioma?: 'es' | 'en') => {
+    const targetLang = idioma || lang
     setGenerating(true)
     setGenError('')
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       const { data } = await api.post(`/applications/${app.id}/cover-letter`, {
         llmProvider,
+        idioma: targetLang,
         ...(userApiKey ? { userApiKey } : {}),
       })
+      setLang(targetLang)
       onGenerated(data.coverLetter)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -887,14 +923,24 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
               </button>
             )}
             {letter && (
-              <button
-                onClick={generate}
-                disabled={generating}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs disabled:opacity-50"
-              >
-                {generating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                Regenerar
-              </button>
+              <>
+                <button
+                  onClick={() => generate(lang === 'es' ? 'en' : 'es')}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white rounded-lg text-xs disabled:opacity-50"
+                  title={lang === 'es' ? 'Regenera la carta en inglés' : 'Regenera la carta en español'}
+                >
+                  <Languages size={13} /> {lang === 'es' ? 'Carta en inglés' : 'Carta en español'}
+                </button>
+                <button
+                  onClick={() => generate()}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs disabled:opacity-50"
+                >
+                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  Regenerar
+                </button>
+              </>
             )}
             <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
           </div>
@@ -909,7 +955,7 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
               <Mail size={32} className="text-gray-600" />
               <p className="text-gray-400 text-sm">Esta postulación no tiene carta de presentación aún.</p>
               <button
-                onClick={generate}
+                onClick={() => generate()}
                 disabled={generating}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-sm font-medium disabled:opacity-50"
               >

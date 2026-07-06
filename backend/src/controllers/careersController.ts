@@ -670,6 +670,7 @@ ${fullText}
       reportSlug: `reports/${reportSlug}`,
       url: url || '',
       notas: (meta.recomendacion as string) || '',
+      idioma: detectLanguage(jd),
     }, userEmail)
 
     if (url) await svc.removeFromPipeline(url, userEmail)
@@ -980,6 +981,7 @@ export const createApplication = async (req: Request, res: Response) => {
           reportSlug: reportSlug || null,
           url: url || '',
           notas: '',
+          idioma,
         }, userEmail)
       }
     } catch (trackerErr) {
@@ -1075,13 +1077,20 @@ export const generateInterviewPrep = async (req: Request, res: Response) => {
     const cv = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail)
 
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || 'es'
+    const idiomaRule = idioma === 'en'
+      ? '\nIMPORTANTE: la entrevista será en INGLÉS. Escribe TODA la guía en inglés profesional (títulos de sección incluidos), con las respuestas sugeridas listas para decirse en inglés.'
+      : ''
+
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
       system: `Eres un coach de carrera experto en el mercado laboral chileno.
 Preparas candidatos para entrevistas de forma práctica.
 Actúa como reclutador senior: evalúa el CV con ojo crítico y señala qué está débil, qué falta y qué te haría rechazarlo.
-Si el candidato no tiene experiencia directa, ofrece estrategias para manejar esas preguntas con confianza y honestidad positiva.`,
+Si el candidato no tiene experiencia directa, ofrece estrategias para manejar esas preguntas con confianza y honestidad positiva.${idiomaRule}`,
       messages: [{
         role: 'user',
         content: `Prepara al candidato para entrevista en ${app.empresa} — cargo: ${app.rol}
@@ -1145,11 +1154,18 @@ export const answerQuestion = async (req: Request, res: Response) => {
 
     const cv = await svc.readCV(userEmail)
 
+    const idiomaAnswer: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || 'es'
+    const answerLangRule = idiomaAnswer === 'en'
+      ? 'Responde SIEMPRE en inglés profesional nativo (el formulario de postulación está en inglés).'
+      : 'Español chileno profesional.'
+
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 400,
-      system: `Eres experto en postulaciones laborales chilenas. Respondes preguntas de formularios de forma breve, directa y humana.
-REGLAS: máximo 3 frases (60-70 palabras). Sin relleno, sin frases genéricas tipo "apasionado" o "proactivo". Primera persona. Español chileno profesional. Nunca menciones falta de experiencia.`,
+      system: `Eres experto en postulaciones laborales. Respondes preguntas de formularios de forma breve, directa y humana.
+REGLAS: máximo 3 frases (60-70 palabras). Sin relleno, sin frases genéricas tipo "apasionado" o "proactivo". Primera persona. ${answerLangRule} Nunca menciones falta de experiencia.`,
       messages: [{
         role: 'user',
         content: `Empresa: ${app.empresa} | Cargo: ${app.rol}
@@ -1189,24 +1205,15 @@ export const generateCoverLetter = async (req: Request, res: Response) => {
     const cand = (profile?.candidate as Record<string, string>) || {}
     const name = cand.full_name || 'Diego Castillo'
 
-    const prompt = `Redacta una carta de presentación profesional en español para la siguiente postulación.
-CANDIDATO: ${name}
-EMPRESA: ${app.empresa}
-CARGO: ${app.rol}
-DESCRIPCIÓN DEL PUESTO (extracto): ${(app.jd || '').slice(0, 1200)}
-CV RESUMIDO: ${(cv || '').slice(0, 1000)}
-
-REGLAS:
-- Tono profesional y directo, sin exageraciones
-- Menciona el nombre de la empresa y el cargo en el primer párrafo
-- NO uses frases como "proactivo", "apasionado", "trabajo en equipo" sin respaldo concreto
-- Máximo 200 palabras
-- Termina con: "Quedo disponible para conversar. Saludos, ${name}"`
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || 'es'
+    const prompt = buildCoverLetterPrompt(name, app.empresa, app.rol, app.jd || '', cv || '', idioma)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 600,
-      system: 'Eres experto en redacción de cartas de presentación para el mercado laboral chileno. Responde SOLO con el texto de la carta, sin encabezados extra ni explicaciones.',
+      system: 'Eres experto en redacción de cartas de presentación. Responde SOLO con el texto de la carta, sin encabezados extra ni explicaciones.',
       messages: [{ role: 'user', content: prompt }],
     })
 

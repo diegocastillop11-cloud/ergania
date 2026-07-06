@@ -46,6 +46,7 @@ export interface TrackerEntry {
   reportSlug: string | null
   url?: string
   notas?: string
+  idioma?: 'es' | 'en'
 }
 
 export interface PipelineJob {
