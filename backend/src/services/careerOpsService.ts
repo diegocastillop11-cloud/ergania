@@ -724,10 +724,11 @@ async function dbUpdateTrackerEntry(userEmail: string, id: string, updates: Part
 
 async function dbReadPipeline(userEmail: string): Promise<PipelineJob[]> {
   if (!supabase) return []
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
     .from('pipeline_jobs')
     .select('*')
-    .eq('user_email', userEmail)
+    .match({ user_email: userEmail, perfil_id: perfilId })
     .order('added', { ascending: false })
   if (error) throw new Error(error.message)
   return (data || []).map((row: any) => ({
@@ -739,47 +740,50 @@ async function dbReadPipeline(userEmail: string): Promise<PipelineJob[]> {
 
 async function dbAddToPipeline(userEmail: string, url: string, source?: string): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error: findError } = await supabase
     .from('pipeline_jobs')
     .select('id')
-    .eq('user_email', userEmail)
-    .eq('url', url)
+    .match({ user_email: userEmail, perfil_id: perfilId, url })
     .limit(1)
   if (findError) throw new Error(findError.message)
   if ((data || []).length > 0) return
   const id = crypto.randomUUID()
   const date = new Date().toISOString().split('T')[0]
-  const { error } = await supabase.from('pipeline_jobs').insert([{ id, user_email: userEmail, url, added: date, source }])
+  const { error } = await supabase.from('pipeline_jobs').insert([{ id, user_email: userEmail, perfil_id: perfilId, url, added: date, source }])
   if (error) throw new Error(error.message)
 }
 
 async function dbRemoveFromPipeline(userEmail: string, url: string): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { error } = await supabase
     .from('pipeline_jobs')
     .delete()
-    .match({ user_email: userEmail, url })
+    .match({ user_email: userEmail, perfil_id: perfilId, url })
   if (error) throw new Error(error.message)
 }
 
 async function dbClearScannerPipeline(userEmail: string): Promise<void> {
   if (!supabase) return
-  // Elimina todos los jobs del pipeline que NO sean de fuente 'manual'
+  const perfilId = await dbGetActivePerfilId(userEmail)
+  // Elimina todos los jobs del pipeline del perfil activo que NO sean de fuente 'manual'
   // Así el escáner siempre refleja resultados frescos sin borrar lo que el usuario agregó manualmente
   const { error } = await supabase
     .from('pipeline_jobs')
     .delete()
-    .eq('user_email', userEmail)
+    .match({ user_email: userEmail, perfil_id: perfilId })
     .neq('source', 'manual')
   if (error) throw new Error(error.message)
 }
 
 async function dbReadPortals(userEmail: string): Promise<PortalsConfig> {
   if (!supabase) return { title_filter: { positive: [], negative: [], seniority_boost: [] }, tracked_companies: [], search_queries: [] }
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
-    .from('portals_config')
+    .from('perfil_portals')
     .select('config')
-    .eq('user_email', userEmail)
+    .match({ user_email: userEmail, perfil_id: perfilId })
     .single()
   if (error && error.code !== 'PGRST116') throw new Error(error.message)
   return data?.config || { title_filter: { positive: [], negative: [], seniority_boost: [] }, tracked_companies: [], search_queries: [] }
@@ -787,7 +791,8 @@ async function dbReadPortals(userEmail: string): Promise<PortalsConfig> {
 
 async function dbWritePortals(userEmail: string, config: PortalsConfig): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
-  const { error } = await supabase.from('portals_config').upsert({ user_email: userEmail, config })
+  const perfilId = await dbGetActivePerfilId(userEmail)
+  const { error } = await supabase.from('perfil_portals').upsert({ user_email: userEmail, perfil_id: perfilId, config })
   if (error) throw new Error(error.message)
 }
 
