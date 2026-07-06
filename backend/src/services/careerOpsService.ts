@@ -986,7 +986,9 @@ async function launchBrowser() {
   const isServerless = !!process.env.VERCEL || !!process.env.AWS_EXECUTION_ENV
 
   if (isServerless) {
-    const chromium = (await import('@sparticuz/chromium-min')).default
+    // Function() evita que tsc transpile import() a require(): chromium-min es ESM-only
+    const dynamicImport = new Function('specifier', 'return import(specifier)') as (s: string) => Promise<{ default: { args: string[]; defaultViewport: null; executablePath: (url?: string) => Promise<string> } }>
+    const chromium = (await dynamicImport('@sparticuz/chromium-min')).default
     const puppeteer = (await import('puppeteer-core')).default
     return puppeteer.launch({
       args: chromium.args,
