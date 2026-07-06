@@ -825,33 +825,38 @@ function buildCvJsonPrompt(
   cvInstructions?: string,
   idioma: 'es' | 'en' = 'es',
 ): string {
-  return `Actúa como recruiter senior de ${empresa} evaluando candidatos para ${rol}.
-Tu tarea es DOBLE: (1) asegurarte de que este CV pase los filtros ATS, y (2) reescribirlo para que detenga el scroll en una pila de 200 CVs.
+  return `Actúa como un panel de élite evaluando y reescribiendo este CV para ${rol} en ${empresa}: recruiter senior con 20 años en Fortune 500, hiring manager del área, especialista ATS, y career coach de perfiles tech. El estándar es el nivel de Google, Stripe, Mercado Libre o Nubank — no una corrección cosmética, una reconstrucción completa.
 
-ANÁLISIS PREVIO (aplica mentalmente antes de generar):
-- Identifica las 5 keywords críticas del JD que faltan o están débiles en el CV actual → inyéctalas en bullets y resumen
-- Identifica los 3 puntos que harían que un recruiter descarte este CV en 10 segundos → elimínalos o corrígelos
-- Identifica qué secciones se saltaría un reclutador cansado → reescríbelas para que sean específicas e impactantes
+REGLA ABSOLUTA DE VERACIDAD (por sobre cualquier otra instrucción):
+- Nunca inventes empresas, cargos, fechas, certificaciones, proyectos, tecnologías o logros que no estén en el CV o perfil del candidato.
+- Nunca exageres una métrica que no exista. Si no hay una cifra real disponible, describe el impacto con precisión cualitativa (alcance, criticidad, complejidad) en vez de inventar un número.
+- Maximiza el IMPACTO de la experiencia real; no la experiencia misma. Credibilidad > exageración: un reclutador senior detecta una métrica inflada al instante y descarta el CV completo.
+
+ANÁLISIS PREVIO (aplica mentalmente, no lo muestres en la salida):
+- Extrae del JD: tecnologías, frameworks, metodologías, herramientas, certificaciones, soft skills y verbos de acción — prioriza las 5-8 más críticas que falten o estén débiles en el CV actual
+- Detecta los 3 motivos por los que un reclutador cansado descartaría este CV en 10 segundos (genérico, desalineado, difícil de escanear) y corrígelos
+- Detecta riesgos de percepción: ¿podría leerse como junior por falta de métricas, sobrecalificado por exceso de años, o especializado en otra área? Ajusta el framing para neutralizarlos sin ocultar información
 
 JD DEL CARGO (extrae keywords ATS, úsalas literalmente):
 ${jd.slice(0, 2500)}
 
-CV DEL CANDIDATO (incluye TODA la experiencia; no omitas ninguna empresa):
+CV DEL CANDIDATO (incluye TODA la experiencia real; no omitas ninguna empresa ni la inventes):
 ${cv}
 
 REGLAS DE REDACCIÓN:
-- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos.
-- Resumen: 3-4 frases específicas. Menciona el cargo objetivo, las 2-3 habilidades clave del JD y un logro cuantificado. CERO frases genéricas.
-- ATS: usa keywords exactas del JD en bullets y resumen; no parafrasees si la keyword es técnica.
-- Cada sección debe "detener el scroll": números, tecnologías específicas, impacto de negocio. Nada que un recruiter cansado se salte.
-- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo.
-- Skills: ordena por relevancia para la JD. Incluye ≥3 keywords técnicas del JD.
-- Experiencia: ≥3 bullets por empresa reciente, 1 para HP. Mínimo 1 bullet con métrica concreta por empresa.
-- Proyectos personales: ≥1 proyecto con IA + datos + UI/UX; nombra el proyecto y su impacto real.
-- Si el JD pide Python o bases de datos, menciona esa habilidad en resumen Y en un bullet de experiencia.
+- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
+- Resumen (máx. 4 frases): quién es el candidato, su especialidad, las 2-3 habilidades clave del JD que domina, y el valor/impacto que entrega. Debe dar ganas de seguir leyendo. CERO frases genéricas.
+- ATS: usa las keywords exactas del JD en bullets y resumen; no parafrasees si la keyword es técnica (ej. no cambies "SQL Server" por "bases de datos relacionales").
+- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo concreto.
+- Skills: agrupa por categoría y ordena por relevancia para el JD, no alfabéticamente. Incluye ≥3 keywords técnicas del JD.
+- Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
+- Proyectos personales: ≥1 proyecto relevante al JD; nombra el proyecto y su impacto real, sin inflarlo.
+- Si el JD pide una habilidad puntual (ej. Python, bases de datos), menciónala en el resumen Y en al menos un bullet de experiencia real donde se haya usado.
 ${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}${LANGUAGE_RULE[idioma]}
-Devuelve SOLO JSON válido, sin markdown ni explicaciones:
-{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Punto Ticket","location":"Santiago, Chile","role":"Analista de Base de Datos Senior","dates":"Nov. 2019 – Feb. 2026","bullets":["..."]},{"company":"Imperial S.A.","location":"Santiago, Chile","role":"Analista Funcional","dates":"Jun. 2017 – Nov. 2019","bullets":["..."]},{"company":"OB GROUP PARK","location":"Santiago, Chile","role":"Analista de Sistemas y TI","dates":"Mayo 2014 – Abril 2017","bullets":["..."]},{"company":"Hewlett-Packard Company","location":"Santiago, Chile","role":"Agente de Mesa de Ayuda Nivel 1","dates":"Ago. 2013 – Mayo 2014","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Datos & Cloud":"SQL Server (Experto), Azure SQL, Oracle, PostgreSQL, MongoDB, Microsoft Azure","Desarrollo & IA":"Python, C#, Node.js, Go, React, Prompt Engineering (Claude / Gemini)","Frontend & Diseño":"TypeScript, JavaScript (ES6+), HTML5/CSS3, UI/UX Design","Herramientas & Metodologías":"Git, Docker, Power BI, Excel Avanzado, Scrum/Kanban"},"education":[{"title":"Business Analytics & Data Science","institution":"Universidad de Chile","year":"2024"},{"title":"Especialización SQL Server","institution":"","year":"2023"},{"title":"Desarrollo de Apps Móviles","institution":"Universidad Complutense de Madrid","year":"2017"},{"title":"Analista Programador","institution":"INACAP","year":"2013"}]}`
+Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
+
+Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
+{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}]}`
 }
 
 function buildCoverLetterPrompt(
