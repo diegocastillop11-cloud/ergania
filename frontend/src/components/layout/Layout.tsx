@@ -5,12 +5,14 @@ import Sidebar from './Sidebar'
 import ApiKeySettingsModal from '../careers/ApiKeySettingsModal'
 import SubscriptionBanner from '../subscription/SubscriptionBanner'
 import { useSubscription } from '../../hooks/useSubscription'
+import { useIdleLogout } from '../../hooks/useIdleLogout'
 
 export default function Layout() {
   const [showApiModal, setShowApiModal] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const sub = useSubscription()
   const location = useLocation()
+  useIdleLogout()
 
   // Cerrar sidebar al navegar en mobile
   useEffect(() => {
