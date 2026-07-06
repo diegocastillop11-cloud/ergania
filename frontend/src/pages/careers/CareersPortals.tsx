@@ -413,7 +413,7 @@ export default function CareersPortals() {
           </div>
         </div>
         <p className="text-xs text-gray-600 mt-3">
-          Para editar los filtros, modifica directamente el archivo <code className="text-gray-400">portals.yml</code> en career-ops.
+          Para editar los filtros, ve a <code className="text-gray-400">Mi Búsqueda</code>.
         </p>
       </div>
     </div>
