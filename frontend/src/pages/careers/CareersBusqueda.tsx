@@ -6,6 +6,7 @@ import {
   Search, Tag, Ban, ListFilter, RefreshCw,
 } from 'lucide-react'
 import { PortalsConfig } from '../../types/careers'
+import PerfilTabs from '../../components/careers/PerfilTabs'
 
 
 // ── Editable tag list ─────────────────────────────────────────────────────────
@@ -247,6 +248,8 @@ export default function CareersBusqueda() {
 
   return (
     <div className="space-y-6 max-w-4xl w-full min-w-0">
+      <PerfilTabs />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

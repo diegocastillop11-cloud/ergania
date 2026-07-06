@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
+import PerfilTabs from '../../components/careers/PerfilTabs'
 import {
   Radio, Play, Square, ExternalLink, CheckCircle2,
   XCircle, Zap, Globe, ChevronDown, ChevronUp,
@@ -374,6 +375,8 @@ export default function CareersScanner() {
 
   return (
     <div className="space-y-5">
+      <PerfilTabs />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
