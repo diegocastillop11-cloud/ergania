@@ -368,10 +368,12 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
 function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; onClose: () => void; onGenerated: (prep: string) => void }) {
   const [loading, setLoading] = useState(false)
   const [prep, setPrep] = useState(app.interviewPrep || '')
+  const [error, setError] = useState('')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
 
   const generate = async () => {
     setLoading(true)
+    setError('')
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       const { data } = await api.post(`/applications/${app.id}/interview-prep`, {
@@ -381,6 +383,10 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
       setPrep(data.prep)
       onGenerated(data.prep)
     } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        || (err as Error)?.message
+        || 'Error al generar la guía de entrevista'
+      setError(msg)
       console.error(err)
     } finally {
       setLoading(false)
@@ -422,6 +428,12 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
+          {error && !loading && (
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-xl text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
           {!prep && !loading && (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
               <div className="w-16 h-16 rounded-2xl bg-violet-900/30 flex items-center justify-center">
