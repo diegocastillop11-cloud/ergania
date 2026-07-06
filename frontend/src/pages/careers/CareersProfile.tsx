@@ -100,7 +100,7 @@ function PerfilTabs() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const { data, isLoading } = useQuery<{ perfiles: Perfil[] }>({
+  const { data, isLoading, isError, refetch } = useQuery<{ perfiles: Perfil[] }>({
     queryKey: ['perfiles'],
     queryFn: () => api.get('/perfiles').then(r => r.data),
   })
@@ -149,6 +149,21 @@ function PerfilTabs() {
   }
 
   if (isLoading) return null
+
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3 p-3 bg-amber-900/20 border border-amber-800/50 rounded-xl text-amber-300 text-sm">
+        <AlertCircle size={16} className="shrink-0" />
+        <span>No se pudieron cargar tus perfiles. Tu perfil Principal sigue intacto — reintenta en unos segundos.</span>
+        <button
+          onClick={() => refetch()}
+          className="ml-auto px-3 py-1 bg-amber-800/50 hover:bg-amber-800 rounded-lg text-xs font-medium shrink-0"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>

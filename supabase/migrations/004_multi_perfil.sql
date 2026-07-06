@@ -65,3 +65,7 @@ SELECT c.user_email,
        c.content
 FROM cvs c
 ON CONFLICT (user_email, perfil_id) DO NOTHING;
+
+-- Fuerza a PostgREST a reconocer las tablas nuevas de inmediato (si no, tarda
+-- unos segundos y las primeras requests fallan con "table not found in schema cache").
+NOTIFY pgrst, 'reload schema';
