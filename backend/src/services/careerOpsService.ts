@@ -791,12 +791,123 @@ async function dbWritePortals(userEmail: string, config: PortalsConfig): Promise
   if (error) throw new Error(error.message)
 }
 
+// ── Perfiles (multi-perfil) ───────────────────────────────────────────────────
+
+export interface Perfil {
+  id: string
+  nombre: string
+  isActive: boolean
+}
+
+const LOCAL_PERFIL: Perfil = { id: 'local', nombre: 'Principal', isActive: true }
+
+async function dbGetActivePerfilId(userEmail: string): Promise<string> {
+  if (!supabase) throw new Error('Supabase no está configurado')
+  const { data, error } = await supabase
+    .from('perfiles')
+    .select('id, is_active')
+    .eq('user_email', userEmail)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+
+  const active = (data || []).find(p => p.is_active)
+  if (active) return active.id
+  if (data && data.length > 0) {
+    // Hay perfiles pero ninguno activo: activar el primero
+    await supabase.from('perfiles').update({ is_active: true }).eq('id', data[0].id)
+    return data[0].id
+  }
+  // Usuario nuevo: crear perfil Principal
+  const { data: created, error: insErr } = await supabase
+    .from('perfiles')
+    .insert([{ user_email: userEmail, nombre: 'Principal', is_active: true }])
+    .select('id')
+    .single()
+  if (insErr) throw new Error(insErr.message)
+  return created.id
+}
+
+export async function listPerfiles(userEmail?: string): Promise<Perfil[]> {
+  if (!dbEnabled()) return [LOCAL_PERFIL]
+  const email = normalizeUserEmail(userEmail)
+  await dbGetActivePerfilId(email) // asegura que exista al menos uno
+  const { data, error } = await supabase!
+    .from('perfiles')
+    .select('id, nombre, is_active')
+    .eq('user_email', email)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data || []).map(p => ({ id: p.id, nombre: p.nombre, isActive: p.is_active }))
+}
+
+export async function createPerfil(nombre: string, userEmail?: string): Promise<Perfil> {
+  if (!dbEnabled()) throw new Error('Multi-perfil requiere Supabase')
+  const email = normalizeUserEmail(userEmail)
+  await supabase!.from('perfiles').update({ is_active: false }).eq('user_email', email)
+  const { data, error } = await supabase!
+    .from('perfiles')
+    .insert([{ user_email: email, nombre, is_active: true }])
+    .select('id, nombre, is_active')
+    .single()
+  if (error) throw new Error(error.message)
+  return { id: data.id, nombre: data.nombre, isActive: data.is_active }
+}
+
+export async function renamePerfil(id: string, nombre: string, userEmail?: string): Promise<void> {
+  if (!dbEnabled()) throw new Error('Multi-perfil requiere Supabase')
+  const email = normalizeUserEmail(userEmail)
+  const { error } = await supabase!
+    .from('perfiles')
+    .update({ nombre })
+    .match({ id, user_email: email })
+  if (error) throw new Error(error.message)
+}
+
+export async function activatePerfil(id: string, userEmail?: string): Promise<void> {
+  if (!dbEnabled()) return
+  const email = normalizeUserEmail(userEmail)
+  const { data, error } = await supabase!
+    .from('perfiles')
+    .select('id')
+    .match({ id, user_email: email })
+    .single()
+  if (error || !data) throw new Error('Perfil no encontrado')
+  await supabase!.from('perfiles').update({ is_active: false }).eq('user_email', email)
+  const { error: actErr } = await supabase!.from('perfiles').update({ is_active: true }).match({ id, user_email: email })
+  if (actErr) throw new Error(actErr.message)
+}
+
+export async function deletePerfil(id: string, userEmail?: string): Promise<void> {
+  if (!dbEnabled()) throw new Error('Multi-perfil requiere Supabase')
+  const email = normalizeUserEmail(userEmail)
+  const { data, error } = await supabase!
+    .from('perfiles')
+    .select('id, is_active')
+    .eq('user_email', email)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  if (!data || data.length <= 1) throw new Error('No puedes eliminar tu único perfil')
+  const target = data.find(p => p.id === id)
+  if (!target) throw new Error('Perfil no encontrado')
+
+  await supabase!.from('profiles').delete().match({ user_email: email, perfil_id: id })
+  await supabase!.from('cvs').delete().match({ user_email: email, perfil_id: id })
+  const { error: delErr } = await supabase!.from('perfiles').delete().match({ id, user_email: email })
+  if (delErr) throw new Error(delErr.message)
+
+  if (target.is_active) {
+    const remaining = data.find(p => p.id !== id)
+    if (remaining) await supabase!.from('perfiles').update({ is_active: true }).eq('id', remaining.id)
+  }
+}
+
 async function dbReadProfile(userEmail: string): Promise<Record<string, unknown>> {
   if (!supabase) return {}
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
     .from('profiles')
     .select('data')
-    .eq('user_email', userEmail)
+    .match({ user_email: userEmail, perfil_id: perfilId })
     .single()
   if (error && error.code !== 'PGRST116') throw new Error(error.message)
   return data?.data || {}
@@ -804,16 +915,18 @@ async function dbReadProfile(userEmail: string): Promise<Record<string, unknown>
 
 async function dbWriteProfile(userEmail: string, data: Record<string, unknown>): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
-  const { error } = await supabase.from('profiles').upsert({ user_email: userEmail, data })
+  const perfilId = await dbGetActivePerfilId(userEmail)
+  const { error } = await supabase.from('profiles').upsert({ user_email: userEmail, perfil_id: perfilId, data })
   if (error) throw new Error(error.message)
 }
 
 async function dbReadCV(userEmail: string): Promise<string> {
   if (!supabase) return ''
+  const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
     .from('cvs')
     .select('content')
-    .eq('user_email', userEmail)
+    .match({ user_email: userEmail, perfil_id: perfilId })
     .single()
   if (error && error.code !== 'PGRST116') throw new Error(error.message)
   return data?.content || ''
@@ -821,7 +934,8 @@ async function dbReadCV(userEmail: string): Promise<string> {
 
 async function dbWriteCV(userEmail: string, content: string): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
-  const { error } = await supabase.from('cvs').upsert({ user_email: userEmail, content })
+  const perfilId = await dbGetActivePerfilId(userEmail)
+  const { error } = await supabase.from('cvs').upsert({ user_email: userEmail, perfil_id: perfilId, content })
   if (error) throw new Error(error.message)
 }
 

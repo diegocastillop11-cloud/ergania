@@ -345,6 +345,63 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 }
 
+// ── Perfiles (multi-perfil) ───────────────────────────────────────────────────
+
+export const listPerfiles = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    res.json({ perfiles: await svc.listPerfiles(userEmail) })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+export const createPerfil = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    const nombre = String(req.body?.nombre || '').trim()
+    if (!nombre) return res.status(400).json({ error: 'nombre es requerido' })
+    if (nombre.length > 60) return res.status(400).json({ error: 'nombre demasiado largo (máx 60)' })
+    const perfil = await svc.createPerfil(nombre, userEmail)
+    res.json({ ok: true, perfil })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+export const renamePerfil = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    const nombre = String(req.body?.nombre || '').trim()
+    if (!nombre) return res.status(400).json({ error: 'nombre es requerido' })
+    if (nombre.length > 60) return res.status(400).json({ error: 'nombre demasiado largo (máx 60)' })
+    await svc.renamePerfil(req.params.id, nombre, userEmail)
+    res.json({ ok: true })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+export const activatePerfil = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    await svc.activatePerfil(req.params.id, userEmail)
+    res.json({ ok: true })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+export const deletePerfil = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    await svc.deletePerfil(req.params.id, userEmail)
+    res.json({ ok: true })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
 // ── CV ────────────────────────────────────────────────────────────────────────
 
 export const getCV = async (req: Request, res: Response) => {

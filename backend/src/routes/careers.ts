@@ -21,6 +21,13 @@ careersRoutes.put('/portals', ctrl.updatePortals)
 careersRoutes.get('/profile', ctrl.getProfile)
 careersRoutes.put('/profile', ctrl.updateProfile)
 
+// Perfiles (multi-perfil)
+careersRoutes.get('/perfiles', ctrl.listPerfiles)
+careersRoutes.post('/perfiles', ctrl.createPerfil)
+careersRoutes.patch('/perfiles/:id', ctrl.renamePerfil)
+careersRoutes.post('/perfiles/:id/activate', ctrl.activatePerfil)
+careersRoutes.delete('/perfiles/:id', ctrl.deletePerfil)
+
 careersRoutes.get('/cv', ctrl.getCV)
 careersRoutes.put('/cv', ctrl.updateCV)
 
