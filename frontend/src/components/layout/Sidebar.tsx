@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../lib/AuthContext'
 import type { SubscriptionState } from '../../hooks/useSubscription'
 import ContactModal from '../ContactModal'
+import PerfilSwitcher from '../careers/PerfilSwitcher'
 
 const nav = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
@@ -68,6 +69,8 @@ export default function Sidebar({ sub, onClose }: Props) {
           )}
         </div>
       </div>
+
+      <PerfilSwitcher />
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
