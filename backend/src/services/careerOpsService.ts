@@ -890,8 +890,8 @@ export async function deletePerfil(id: string, userEmail?: string): Promise<void
   const target = data.find(p => p.id === id)
   if (!target) throw new Error('Perfil no encontrado')
 
-  await supabase!.from('profiles').delete().match({ user_email: email, perfil_id: id })
-  await supabase!.from('cvs').delete().match({ user_email: email, perfil_id: id })
+  await supabase!.from('perfil_profiles').delete().match({ user_email: email, perfil_id: id })
+  await supabase!.from('perfil_cvs').delete().match({ user_email: email, perfil_id: id })
   const { error: delErr } = await supabase!.from('perfiles').delete().match({ id, user_email: email })
   if (delErr) throw new Error(delErr.message)
 
@@ -905,7 +905,7 @@ async function dbReadProfile(userEmail: string): Promise<Record<string, unknown>
   if (!supabase) return {}
   const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
-    .from('profiles')
+    .from('perfil_profiles')
     .select('data')
     .match({ user_email: userEmail, perfil_id: perfilId })
     .single()
@@ -916,7 +916,7 @@ async function dbReadProfile(userEmail: string): Promise<Record<string, unknown>
 async function dbWriteProfile(userEmail: string, data: Record<string, unknown>): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
   const perfilId = await dbGetActivePerfilId(userEmail)
-  const { error } = await supabase.from('profiles').upsert({ user_email: userEmail, perfil_id: perfilId, data })
+  const { error } = await supabase.from('perfil_profiles').upsert({ user_email: userEmail, perfil_id: perfilId, data })
   if (error) throw new Error(error.message)
 }
 
@@ -924,7 +924,7 @@ async function dbReadCV(userEmail: string): Promise<string> {
   if (!supabase) return ''
   const perfilId = await dbGetActivePerfilId(userEmail)
   const { data, error } = await supabase
-    .from('cvs')
+    .from('perfil_cvs')
     .select('content')
     .match({ user_email: userEmail, perfil_id: perfilId })
     .single()
@@ -935,7 +935,7 @@ async function dbReadCV(userEmail: string): Promise<string> {
 async function dbWriteCV(userEmail: string, content: string): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
   const perfilId = await dbGetActivePerfilId(userEmail)
-  const { error } = await supabase.from('cvs').upsert({ user_email: userEmail, perfil_id: perfilId, content })
+  const { error } = await supabase.from('perfil_cvs').upsert({ user_email: userEmail, perfil_id: perfilId, content })
   if (error) throw new Error(error.message)
 }
 
