@@ -980,7 +980,7 @@ export function buildInterviewPrepHtml(prep: string, empresa: string, rol: strin
 
 // URL del binario de Chromium para @sparticuz/chromium-min (descarga en /tmp en cold start)
 const CHROMIUM_BINARY_URL =
-  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.tar'
+  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar'
 
 async function launchBrowser() {
   const isServerless = !!process.env.VERCEL || !!process.env.AWS_EXECUTION_ENV
