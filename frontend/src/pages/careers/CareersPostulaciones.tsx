@@ -257,6 +257,7 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   const [copied, setCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [regenError, setRegenError] = useState('')
+  const [lang, setLang] = useState<'es' | 'en'>(initialApp.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
 
   const copyHtml = () => {
@@ -267,14 +268,14 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
     }
   }
 
-  const regenerate = async (idioma?: 'es' | 'en') => {
+  const regenerate = async () => {
     setRegenerating(true)
     setRegenError('')
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       await api.post(`/applications/${app.id}/regenerate-cv`, {
         llmProvider,
-        ...(idioma ? { idioma } : {}),
+        idioma: lang,
         ...(userApiKey ? { userApiKey } : {}),
       })
       const { data: full } = await api.get<Application>(`/applications/${app.id}`)
@@ -286,8 +287,6 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
       setRegenerating(false)
     }
   }
-
-  const otherLang: 'es' | 'en' = (app.idioma || 'es') === 'es' ? 'en' : 'es'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -303,23 +302,28 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma del CV">
+              <button
+                onClick={() => setLang('es')}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                EN
+              </button>
+            </div>
             <button
               onClick={() => regenerate()}
               disabled={regenerating}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-              title="Genera una nueva versión del CV con IA"
+              title="Genera una nueva versión del CV en el idioma seleccionado"
             >
               {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
               {regenerating ? 'Regenerando...' : 'Regenerar CV'}
-            </button>
-            <button
-              onClick={() => regenerate(otherLang)}
-              disabled={regenerating}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-              title={otherLang === 'en' ? 'Regenera el CV en inglés' : 'Regenera el CV en español'}
-            >
-              <Languages size={13} />
-              {otherLang === 'en' ? 'CV en inglés' : 'CV en español'}
             </button>
             {app.id && (
               <button
@@ -425,15 +429,29 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
             <p className="text-xs text-gray-500 mt-0.5">Guía personalizada basada en tu CV y la oferta</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma de la guía">
+              <button
+                onClick={() => setLang('es')}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                EN
+              </button>
+            </div>
             {prep && (
               <>
                 <button
-                  onClick={() => generate(lang === 'es' ? 'en' : 'es')}
+                  onClick={() => generate()}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs"
-                  title={lang === 'es' ? 'Regenera la guía en inglés' : 'Regenera la guía en español'}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white rounded-lg text-xs"
+                  title="Regenera la guía en el idioma seleccionado"
                 >
-                  <Languages size={13} /> {lang === 'es' ? 'Guía en inglés' : 'Guía en español'}
+                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />} Regenerar
                 </button>
                 <button
                   onClick={copyPrep}
@@ -922,25 +940,30 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
                 {copied ? <><CheckCircle2 size={13} className="text-green-400" /> Copiado</> : <><Copy size={13} /> Copiar</>}
               </button>
             )}
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma de la carta">
+              <button
+                onClick={() => setLang('es')}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+              >
+                EN
+              </button>
+            </div>
             {letter && (
-              <>
-                <button
-                  onClick={() => generate(lang === 'es' ? 'en' : 'es')}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white rounded-lg text-xs disabled:opacity-50"
-                  title={lang === 'es' ? 'Regenera la carta en inglés' : 'Regenera la carta en español'}
-                >
-                  <Languages size={13} /> {lang === 'es' ? 'Carta en inglés' : 'Carta en español'}
-                </button>
-                <button
-                  onClick={() => generate()}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs disabled:opacity-50"
-                >
-                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                  Regenerar
-                </button>
-              </>
+              <button
+                onClick={() => generate()}
+                disabled={generating}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs disabled:opacity-50"
+                title="Regenera la carta en el idioma seleccionado"
+              >
+                {generating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                Regenerar
+              </button>
             )}
             <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
           </div>

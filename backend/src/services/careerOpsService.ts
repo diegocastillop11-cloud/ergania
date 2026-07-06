@@ -682,6 +682,7 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     reportSlug: row.report_slug || null,
     url: row.url || '',
     notas: row.notas || '',
+    idioma: row.idioma || undefined,
   }))
 }
 
