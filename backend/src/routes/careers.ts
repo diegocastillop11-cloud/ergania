@@ -36,6 +36,7 @@ careersRoutes.get('/reports/:slug', ctrl.getReport)
 
 careersRoutes.post('/evaluate', ctrl.evaluateJob)
 careersRoutes.post('/generate-cv', ctrl.generateCV)
+careersRoutes.post('/salary-recommendation', ctrl.getSalaryRecommendation)
 
 // Postulaciones
 careersRoutes.get('/applications', ctrl.listApplications)

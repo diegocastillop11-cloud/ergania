@@ -95,6 +95,9 @@ export default function CareersProfile() {
   const [cvEdit, setCvEdit] = useState(false)
   const [cvContent, setCvContent] = useState('')
   const [profile, setProfile] = useState<ProfileData>({})
+  const [salaryRec, setSalaryRec] = useState<{ rango_min: number; rango_max: number; moneda: string; explicacion: string; basadoEnAncla: boolean } | null>(null)
+  const [loadingSalaryRec, setLoadingSalaryRec] = useState(false)
+  const [salaryRecError, setSalaryRecError] = useState('')
 
   const { data: profileData, isLoading: profileLoading } = useQuery<ProfileData>({
     queryKey: ['careers-profile'],
@@ -145,6 +148,30 @@ export default function CareersProfile() {
       current[path[path.length - 1]] = value
       return next as ProfileData
     })
+  }
+
+  const recommendSalary = async () => {
+    setLoadingSalaryRec(true)
+    setSalaryRecError('')
+    setSalaryRec(null)
+    try {
+      const provider = loadLlmProvider()
+      const userApiKey = getKeyForProvider(provider)
+      const { data } = await api.post('/salary-recommendation', {
+        llmProvider: provider,
+        ...(userApiKey ? { userApiKey } : {}),
+      })
+      setSalaryRec(data)
+    } catch (err: unknown) {
+      setSalaryRecError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar la recomendación')
+    } finally {
+      setLoadingSalaryRec(false)
+    }
+  }
+
+  const applySalaryRec = () => {
+    if (!salaryRec) return
+    set(['compensation', 'target_range'], `${salaryRec.rango_min.toLocaleString('es-CL')}-${salaryRec.rango_max.toLocaleString('es-CL')} ${salaryRec.moneda}`)
   }
 
   const c = profile.candidate || {}
@@ -372,12 +399,37 @@ export default function CareersProfile() {
       {/* Compensación */}
       <Section title="Compensación & Disponibilidad" icon={FileText}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field
-            label="Rango objetivo"
-            value={comp.target_range || ''}
-            onChange={v => set(['compensation', 'target_range'], v)}
-            placeholder="$80M-120M CLP o USD 2000-3500/mes"
-          />
+          <div>
+            <Field
+              label="Rango objetivo"
+              value={comp.target_range || ''}
+              onChange={v => set(['compensation', 'target_range'], v)}
+              placeholder="$80M-120M CLP o USD 2000-3500/mes"
+            />
+            <button
+              onClick={recommendSalary}
+              disabled={loadingSalaryRec}
+              className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
+            >
+              {loadingSalaryRec ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {loadingSalaryRec ? 'Calculando...' : '¿Cuánto debería cobrar?'}
+            </button>
+            {salaryRecError && <p className="text-red-400 text-xs mt-1">{salaryRecError}</p>}
+            {salaryRec && (
+              <div className="mt-2 p-3 bg-gray-800/60 border border-gray-700 rounded-lg">
+                <p className="text-white text-sm font-semibold">
+                  {salaryRec.rango_min.toLocaleString('es-CL')} - {salaryRec.rango_max.toLocaleString('es-CL')} {salaryRec.moneda}
+                  <span className="ml-2 text-xs font-normal text-gray-500">
+                    {salaryRec.basadoEnAncla ? '· con referencia interna' : '· estimación general'}
+                  </span>
+                </p>
+                <p className="text-gray-400 text-xs mt-1">{salaryRec.explicacion}</p>
+                <button onClick={applySalaryRec} className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline">
+                  Usar este rango
+                </button>
+              </div>
+            )}
+          </div>
           <Field
             label="Mínimo aceptable"
             value={comp.minimum || ''}

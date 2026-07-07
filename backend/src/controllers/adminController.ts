@@ -62,6 +62,62 @@ export async function getStats(req: Request, res: Response) {
   })
 }
 
+export async function listSalaryAnchors(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('salary_anchors')
+    .select('*')
+    .order('carrera', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ anchors: data ?? [] })
+}
+
+export async function createSalaryAnchor(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { carrera, pais, rango_min, rango_max, moneda, nota } = req.body ?? {}
+  if (!carrera || !pais || !Number.isFinite(rango_min) || !Number.isFinite(rango_max)) {
+    return res.status(400).json({ error: 'carrera, pais, rango_min y rango_max son requeridos' })
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('salary_anchors')
+    .insert({ carrera, pais, rango_min, rango_max, moneda: moneda || 'CLP', nota: nota || null })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ anchor: data })
+}
+
+export async function updateSalaryAnchor(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { carrera, pais, rango_min, rango_max, moneda, nota } = req.body ?? {}
+  const { error } = await supabaseAdmin
+    .from('salary_anchors')
+    .update({ carrera, pais, rango_min, rango_max, moneda, nota })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteSalaryAnchor(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('salary_anchors').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
 export async function notifySignup(req: Request, res: Response) {
   const user = await getAdminUser(req)
   if (!user) return res.status(401).json({ error: 'No autorizado' })

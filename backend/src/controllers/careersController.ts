@@ -773,6 +773,79 @@ export const generateCV = async (req: Request, res: Response) => {
   }
 }
 
+export const getSalaryRecommendation = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+
+    const profile = await svc.readProfile(userEmail)
+    const targetRoles = (profile?.target_roles as Record<string, unknown>) || {}
+    const location = (profile?.location as Record<string, unknown>) || {}
+    const archetypes = (targetRoles.archetypes as Array<{ name: string; level: string }>) || []
+
+    const carrera: string | undefined = req.body?.carrera || (targetRoles.primary as string[])?.[0] || archetypes[0]?.name
+    const pais: string | undefined = req.body?.pais || (location.country as string)
+    const nivel: string | undefined = req.body?.nivel || archetypes[0]?.level
+
+    if (!carrera || !pais) {
+      return res.status(400).json({ error: 'Falta carrera o país. Completa tu perfil (carrera objetivo y país) o envíalos directamente.' })
+    }
+
+    let anchor: { rango_min: number; rango_max: number; moneda: string; nota?: string; pais: string } | null = null
+    if (supabaseAdmin) {
+      const exact = await supabaseAdmin
+        .from('salary_anchors')
+        .select('*')
+        .ilike('carrera', carrera)
+        .ilike('pais', pais)
+        .limit(1)
+        .maybeSingle()
+      anchor = exact.data
+      if (!anchor) {
+        const fallback = await supabaseAdmin
+          .from('salary_anchors')
+          .select('*')
+          .ilike('carrera', carrera)
+          .limit(1)
+          .maybeSingle()
+        anchor = fallback.data
+      }
+    }
+
+    const anchorContext = anchor
+      ? `Referencia interna curada para "${carrera}" en ${anchor.pais}: ${anchor.rango_min}-${anchor.rango_max} ${anchor.moneda}${anchor.nota ? ` (${anchor.nota})` : ''}. Ajusta este rango según el nivel/seniority indicado.`
+      : 'No hay una referencia interna curada para esta combinación de carrera/país — usa tu conocimiento general del mercado laboral.'
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 400,
+      system: 'Eres un experto en compensación laboral. Respondes SOLO con JSON válido, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación.',
+      messages: [{
+        role: 'user',
+        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}\n\nDame un rango salarial MENSUAL estimado y realista para esta persona postulando en ${pais}.`,
+      }],
+    })
+
+    const rawText = response.content
+      .filter((b: { type: string }) => b.type === 'text')
+      .map((b: { type: string; text: string }) => b.text)
+      .join('')
+      .trim()
+
+    let parsed: { rango_min: number; rango_max: number; moneda: string; explicacion: string }
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText)
+    } catch {
+      throw new Error('No se pudo generar la recomendación — intenta nuevamente')
+    }
+
+    res.json({ ...parsed, basadoEnAncla: !!anchor, carrera, pais })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
 // ── Postulaciones (Applications) ──────────────────────────────────────────────
 
 export const listApplications = async (req: Request, res: Response) => {

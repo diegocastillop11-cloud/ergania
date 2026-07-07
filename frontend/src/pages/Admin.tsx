@@ -1,9 +1,158 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut } from 'lucide-react'
+import { Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign, Plus, Trash2, Pencil, X } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
+
+interface SalaryAnchor {
+  id: string
+  carrera: string
+  pais: string
+  rango_min: number
+  rango_max: number
+  moneda: string
+  nota: string | null
+}
+
+const EMPTY_ANCHOR_FORM = { carrera: '', pais: '', rango_min: '', rango_max: '', moneda: 'CLP', nota: '' }
+
+function SalaryAnchorsTab({ token }: { token: string }) {
+  const [anchors, setAnchors] = useState<SalaryAnchor[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(EMPTY_ANCHOR_FORM)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch('/api/admin/salary-anchors', { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setAnchors(d.anchors || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const startEdit = (a: SalaryAnchor) => {
+    setEditingId(a.id)
+    setForm({
+      carrera: a.carrera, pais: a.pais,
+      rango_min: String(a.rango_min), rango_max: String(a.rango_max),
+      moneda: a.moneda, nota: a.nota || '',
+    })
+  }
+
+  const cancelEdit = () => { setEditingId(null); setForm(EMPTY_ANCHOR_FORM) }
+
+  const submit = async () => {
+    setError('')
+    const payload = {
+      carrera: form.carrera.trim(),
+      pais: form.pais.trim(),
+      rango_min: Number(form.rango_min),
+      rango_max: Number(form.rango_max),
+      moneda: form.moneda.trim() || 'CLP',
+      nota: form.nota.trim() || null,
+    }
+    if (!payload.carrera || !payload.pais || !Number.isFinite(payload.rango_min) || !Number.isFinite(payload.rango_max)) {
+      setError('Carrera, país y ambos rangos (numéricos) son requeridos')
+      return
+    }
+    try {
+      const res = await fetch(
+        editingId ? `/api/admin/salary-anchors/${editingId}` : '/api/admin/salary-anchors',
+        { method: editingId ? 'PUT' : 'POST', headers: authHeaders, body: JSON.stringify(payload) }
+      )
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
+      cancelEdit()
+      load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta ancla salarial?')) return
+    await fetch(`/api/admin/salary-anchors/${id}`, { method: 'DELETE', headers: authHeaders })
+    load()
+  }
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">{editingId ? 'Editar ancla' : 'Agregar ancla salarial'}</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <input placeholder="Carrera (ej: Data Analyst)" value={form.carrera}
+            onChange={e => setForm(f => ({ ...f, carrera: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="País (ej: Chile)" value={form.pais}
+            onChange={e => setForm(f => ({ ...f, pais: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="Moneda (CLP, USD...)" value={form.moneda}
+            onChange={e => setForm(f => ({ ...f, moneda: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="Rango mínimo" type="number" value={form.rango_min}
+            onChange={e => setForm(f => ({ ...f, rango_min: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="Rango máximo" type="number" value={form.rango_max}
+            onChange={e => setForm(f => ({ ...f, rango_max: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="Nota (opcional)" value={form.nota}
+            onChange={e => setForm(f => ({ ...f, nota: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={submit} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+            {editingId ? <Pencil size={13} /> : <Plus size={13} />} {editingId ? 'Guardar cambios' : 'Agregar'}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+              <X size={13} /> Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      ) : anchors.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin anclas salariales configuradas aún.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+              <th className="text-left px-3 py-2">Carrera</th>
+              <th className="text-left px-3 py-2">País</th>
+              <th className="text-left px-3 py-2">Rango</th>
+              <th className="text-left px-3 py-2">Nota</th>
+              <th className="text-right px-3 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {anchors.map(a => (
+              <tr key={a.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                <td className="px-3 py-2 text-white font-medium">{a.carrera}</td>
+                <td className="px-3 py-2 text-gray-400">{a.pais}</td>
+                <td className="px-3 py-2 text-green-400 font-mono text-xs">
+                  {a.rango_min.toLocaleString('es-CL')}-{a.rango_max.toLocaleString('es-CL')} {a.moneda}
+                </td>
+                <td className="px-3 py-2 text-gray-500 text-xs">{a.nota || '—'}</td>
+                <td className="px-3 py-2 text-right">
+                  <button onClick={() => startEdit(a)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
+                  <button onClick={() => remove(a.id)} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   trial:           { label: 'Trial',     color: 'text-blue-400'   },
@@ -26,7 +175,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages'>('users')
+  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries'>('users')
 
   useEffect(() => {
     if (!session) return
@@ -113,6 +262,7 @@ export default function Admin() {
               { key: 'users',    label: 'Usuarios',          icon: Users        },
               { key: 'payments', label: 'Pagos',             icon: CreditCard   },
               { key: 'messages', label: 'Mensajes contacto', icon: MessageSquare },
+              { key: 'salaries', label: 'Salarios',           icon: DollarSign },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -205,6 +355,9 @@ export default function Admin() {
                 ))}
               </div>
             )}
+
+            {/* Anclas salariales */}
+            {tab === 'salaries' && session && <SalaryAnchorsTab token={session.access_token} />}
 
           </div>
         </div>
