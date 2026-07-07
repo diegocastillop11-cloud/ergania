@@ -609,7 +609,7 @@ Responde con análisis breve Y este JSON al final:
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
-      maxTokens = 2000
+      maxTokens = 2600 // margen extra: con búsqueda web el modelo puede razonar antes del JSON
       systemPrompt = `Eres un experto en búsqueda de trabajo en Chile y evaluación de ofertas laborales.
 
 CONTEXTO DEL CANDIDATO:
@@ -632,17 +632,22 @@ DATOS DEL PERFIL:
 - Mínimo: ${compensation.minimum || '$1.500.000 CLP mensual'}
 - Modalidad: ${location.modalidad || 'Remoto o Híbrido en Santiago'}
 
-DATOS REALES DE MERCADO (Chile):
-- Sueldo mínimo legal: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual (Ley 21.751, ene-2026) — ningún salario_clp debe quedar por debajo salvo que la oferta sea explícitamente part-time o práctica profesional.
-${salaryAnchorsRef ? `- Referencias curadas por carrera y nivel de seniority:\n${salaryAnchorsRef}` : '- Sin referencias curadas todavía para este país — usa tu conocimiento general del mercado, siendo conservador y explícito en que es una estimación.'}
+DATOS REALES DE MERCADO:
+- Sueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual (Ley 21.751, ene-2026) — ningún salario_clp debe quedar por debajo salvo que la oferta sea explícitamente part-time o práctica profesional.
+${salaryAnchorsRef ? `- Referencias curadas como respaldo (pueden estar desactualizadas, prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}` : ''}
+
+CÓMO ESTIMAR EL SALARIO (salario_clp):
+1. Si tienes la herramienta de búsqueda web disponible, ÚSALA para investigar el sueldo real de este rol específico (considera cargo, empresa si es conocida, seniority y país) — no te quedes solo con tu conocimiento general.
+2. CUIDADO CON LAS UNIDADES: muchas fuentes (Glassdoor, levels.fyi, etc.) muestran cifras ANUALES por defecto. Antes de reportar salario_clp, verifica explícitamente si el número que encontraste es mensual o anual, y conviértelo a MENSUAL dividiendo por 12 si corresponde. Nunca reportes una cifra anual como si fuera mensual.
+3. Si no hay resultados de búsqueda útiles, usa las referencias curadas de arriba (si existen) o tu conocimiento general, siendo conservador y explícito en tu razonamiento sobre que es una estimación.
+4. Considera también el tamaño/rubro de la empresa y las responsabilidades específicas del cargo, no solo el título del rol.
 
 REGLAS CRÍTICAS PARA CHILE:
 1. TODOS los salarios se expresan en CLP (Pesos Chilenos) mensual bruto
-2. Si la oferta no menciona salario, usa las referencias reales de mercado de arriba (elige el nivel de seniority que corresponda según el JD) para estimar salario_clp — considera también el tamaño/rubro de la empresa y las responsabilidades específicas del cargo, no solo el título
-3. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
-4. Prioriza roles: Remoto > Híbrido > Presencial Santiago
-5. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
-6. Si la oferta es en inglés, evalúa igual pero responde EN ESPAÑOL
+2. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
+3. Prioriza roles: Remoto > Híbrido > Presencial Santiago
+4. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
+5. Si la oferta es en inglés, evalúa igual pero responde EN ESPAÑOL
 
 RESPONDE SIEMPRE EN ESPAÑOL. Sé directo, concreto y útil. Sin frases genéricas.${isShortfallUrl ? `
 
@@ -660,7 +665,9 @@ ${rol ? `Rol: ${rol}` : ''}
 ${jd}
 ---
 
-PRIMERO incluye EXACTAMENTE este JSON con los datos clave, LUEGO entrega el análisis completo (bloques A-G):
+Si usas la herramienta de búsqueda web, hazlo primero y no narres el proceso de búsqueda en tu respuesta — ve directo al resultado.
+
+PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar), LUEGO entrega el análisis completo (bloques A-G):
 
 \`\`\`json
 {
@@ -685,6 +692,9 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave, LUEGO entrega el aná
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
+      // Solo tiene efecto con el proveedor Anthropic (los demás lo ignoran) — permite
+      // investigar en vivo el sueldo real del rol/empresa/país en vez de solo adivinar.
+      tools: isGroq ? undefined : [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
     })
 
     const fullText = message.content
@@ -834,16 +844,18 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
 
     const salaryAnchorsRef = await getSalaryAnchorsReference(pais)
     const anchorContext = salaryAnchorsRef
-      ? `Referencias curadas reales por carrera y nivel de seniority en ${pais}:\n${salaryAnchorsRef}\nElige la fila más cercana a "${carrera}" y ajusta según el nivel/seniority indicado.`
-      : `No hay referencias curadas todavía para ${pais} — usa tu conocimiento general del mercado laboral, siendo conservador y explícito en que es una estimación.`
+      ? `Referencias curadas como respaldo (pueden estar desactualizadas — prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}`
+      : ''
     const minWageLine = /chile/i.test(pais)
       ? `\nSueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual — ningún rango debe quedar por debajo salvo práctica/part-time.`
       : ''
+    const provider = getProviderFromRequest(req)
+    const isGroqRec = provider === 'groq'
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 400,
-      system: 'Eres un experto en compensación laboral. Respondes SOLO con JSON válido, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación.',
+      max_tokens: 1500,
+      system: 'Eres un experto en compensación laboral. Si tienes la herramienta de búsqueda web disponible, ÚSALA para investigar el rango real del rol/empresa/país en vez de solo tu conocimiento general. CUIDADO: muchas fuentes muestran cifras ANUALES por defecto — verifica la unidad antes de reportar y convierte a MENSUAL (÷12) si corresponde. Razona brevemente (máximo 3-4 líneas) y luego SIEMPRE termina tu respuesta con el bloque JSON, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación. El bloque JSON es obligatorio y debe quedar completo — no lo omitas ni lo cortes.',
       messages: [{
         role: 'user',
         content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}${minWageLine}` +
@@ -851,6 +863,7 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
           (jd ? `\nDescripción del cargo (extracto):\n${jd}` : '') +
           `\n\nDame un rango de renta líquida MENSUAL estimado y realista para esta persona postulando${empresa ? ` a ${empresa}` : ''} en ${pais}${jd ? ', considerando las responsabilidades y el nivel de seniority que sugiere la descripción del cargo' : ''}.`,
       }],
+      tools: isGroqRec ? undefined : [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
     })
 
     const rawText = response.content
@@ -861,8 +874,13 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
 
     let parsed: { rango_min: number; rango_max: number; moneda: string; explicacion: string }
     try {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText)
+      // Con búsqueda web el modelo suele razonar antes del JSON final — tomamos el
+      // último bloque {...} del texto (sin llaves anidadas) en vez de un match
+      // codicioso desde la primera llave, que podría capturar texto de más.
+      const fencedMatch = rawText.match(/```json\s*([\s\S]*?)```/)
+      const braceMatches = rawText.match(/\{[^{}]*\}/g)
+      const candidate = fencedMatch?.[1] || (braceMatches ? braceMatches[braceMatches.length - 1] : rawText)
+      parsed = JSON.parse(candidate)
     } catch {
       throw new Error('No se pudo generar la recomendación — intenta nuevamente')
     }
