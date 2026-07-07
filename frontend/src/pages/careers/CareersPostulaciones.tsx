@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { api } from '../../lib/api'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, FileText, Brain, MessageSquare, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Copy, CheckCircle2, X, Star, Send,
-  Download, Eye, Rocket, Mail, AlertTriangle, Languages,
+  Download, Eye, Rocket, Mail, AlertTriangle, Languages, DollarSign,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
@@ -999,6 +999,76 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
   )
 }
 
+// ── Panel Renta a Pedir ────────────────────────────────────────────────────────
+
+export function SalaryPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [rec, setRec] = useState<{ rango_min: number; rango_max: number; moneda: string; explicacion: string; basadoEnAncla: boolean } | null>(null)
+
+  const generate = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const provider = loadLlmProvider()
+      const userApiKey = getKeyForProvider(provider)
+      const { data } = await api.post('/salary-recommendation', {
+        applicationId: app.id,
+        llmProvider: provider,
+        ...(userApiKey ? { userApiKey } : {}),
+      })
+      setRec(data)
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar la recomendación')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { generate() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <div>
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <DollarSign size={16} className="text-emerald-400" />
+              ¿Cuánto pedir? — {app.rol} en {app.empresa}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">Estimación de renta líquida para esta postulación específica</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="p-5">
+          {loading && (
+            <div className="flex items-center justify-center py-8 text-gray-400 gap-2 text-sm">
+              <Loader2 size={18} className="animate-spin" /> Calculando...
+            </div>
+          )}
+          {!loading && error && (
+            <div className="text-sm">
+              <p className="text-red-400">{error}</p>
+              <button onClick={generate} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">Reintentar</button>
+            </div>
+          )}
+          {!loading && rec && (
+            <div>
+              <p className="text-2xl font-bold text-white">
+                {rec.rango_min.toLocaleString('es-CL')} - {rec.rango_max.toLocaleString('es-CL')} {rec.moneda}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {rec.basadoEnAncla ? 'Con referencia interna curada' : 'Estimación general del mercado'} · mensual líquido
+              </p>
+              <p className="text-gray-400 text-sm mt-3 leading-relaxed">{rec.explicacion}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Application Card ──────────────────────────────────────────────────────────
 
 function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'> }) {
@@ -1008,6 +1078,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
   const [showQnA, setShowQnA] = useState(false)
   const [showApply, setShowApply] = useState(false)
   const [showCoverLetter, setShowCoverLetter] = useState(false)
+  const [showSalary, setShowSalary] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [loadingFull, setLoadingFull] = useState(false)
   const qc = useQueryClient()
@@ -1028,6 +1099,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
   const openQnA = async () => { await loadFullApp(); setShowQnA(true) }
   const openApply = async () => { await loadFullApp(); setShowApply(true) }
   const openCoverLetter = async () => { await loadFullApp(); setShowCoverLetter(true) }
+  const openSalary = async () => { await loadFullApp(); setShowSalary(true) }
 
   const statusMut = useMutation({
     mutationFn: (estado: string) => api.patch(`/applications/${appSummary.id}`, { estado }),
@@ -1121,6 +1193,12 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               <Mail size={11} /> Carta
             </button>
             <button
+              onClick={openSalary}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 text-emerald-300 rounded-lg text-xs font-medium transition-colors"
+            >
+              <DollarSign size={11} /> ¿Cuánto pedir?
+            </button>
+            <button
               onClick={() => setExpanded(e => !e)}
               className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
             >
@@ -1180,6 +1258,9 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
           onGenerated={(letter) => setFullApp(prev => prev ? { ...prev, coverLetter: letter } : prev)}
           onClose={() => setShowCoverLetter(false)}
         />
+      )}
+      {showSalary && fullApp && (
+        <SalaryPanel app={fullApp} onClose={() => setShowSalary(false)} />
       )}
     </>
   )

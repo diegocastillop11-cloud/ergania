@@ -783,7 +783,21 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
     const location = (profile?.location as Record<string, unknown>) || {}
     const archetypes = (targetRoles.archetypes as Array<{ name: string; level: string }>) || []
 
-    const carrera: string | undefined = req.body?.carrera || (targetRoles.primary as string[])?.[0] || archetypes[0]?.name
+    let empresa: string | undefined
+    let jd: string | undefined
+    let rolDeLaOferta: string | undefined
+    if (req.body?.applicationId) {
+      const app = await svc.getApplication(req.body.applicationId, userEmail)
+      if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+      empresa = app.empresa
+      rolDeLaOferta = app.rol
+      jd = (app.jd || '').slice(0, 2000)
+    }
+
+    const carrera: string | undefined = req.body?.carrera
+      || rolDeLaOferta
+      || (targetRoles.primary as string[])?.[0]
+      || archetypes[0]?.name
     const pais: string | undefined = req.body?.pais || (location.country as string)
     const nivel: string | undefined = req.body?.nivel || archetypes[0]?.level
 
@@ -822,7 +836,10 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
       system: 'Eres un experto en compensación laboral. Respondes SOLO con JSON válido, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación.',
       messages: [{
         role: 'user',
-        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}\n\nDame un rango salarial MENSUAL estimado y realista para esta persona postulando en ${pais}.`,
+        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}` +
+          (empresa ? `\nEmpresa que ofrece el cargo: ${empresa}` : '') +
+          (jd ? `\nDescripción del cargo (extracto):\n${jd}` : '') +
+          `\n\nDame un rango de renta líquida MENSUAL estimado y realista para esta persona postulando${empresa ? ` a ${empresa}` : ''} en ${pais}${jd ? ', considerando las responsabilidades y el nivel de seniority que sugiere la descripción del cargo' : ''}.`,
       }],
     })
 
