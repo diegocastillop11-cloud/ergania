@@ -177,6 +177,23 @@ function authErr(msg: string): never {
   throw Object.assign(new Error(msg), { status: 401 })
 }
 
+// Ley 21.751 — desde ene-2026. Verificar/actualizar cuando cambie el reajuste legal.
+const CHILE_MINIMUM_WAGE_CLP = 539000
+
+async function getSalaryAnchorsReference(pais: string): Promise<string> {
+  if (!supabaseAdmin) return ''
+  const { data } = await supabaseAdmin.from('salary_anchors').select('*').ilike('pais', pais)
+  if (!data || data.length === 0) return ''
+
+  const grouped: Record<string, string[]> = {}
+  for (const a of data as Array<{ carrera: string; nivel?: string; rango_min: number; rango_max: number; moneda: string }>) {
+    const rango = `${Number(a.rango_min).toLocaleString('es-CL')}-${Number(a.rango_max).toLocaleString('es-CL')} ${a.moneda}`
+    const tier = a.nivel ? `${a.nivel}: ${rango}` : rango
+    ;(grouped[a.carrera] ??= []).push(tier)
+  }
+  return Object.entries(grouped).map(([carrera, tiers]) => `- ${carrera} — ${tiers.join(' | ')}`).join('\n')
+}
+
 function validateUrl(rawUrl: string): void {
   let parsed: URL
   try { parsed = new URL(rawUrl) } catch { throw new Error('URL inválida') }
@@ -551,6 +568,8 @@ export const evaluateJob = async (req: Request, res: Response) => {
     const narrative    = (profile.narrative    as Record<string, unknown>) || {}
     const location     = (profile.location     as Record<string, string>) || {}
 
+    const salaryAnchorsRef = await getSalaryAnchorsReference('Chile')
+
     // Detectar si el contenido fue extraído exitosamente
     const hasContent = scrapedContent.length > 200
     const isShortfallUrl = url && !hasContent
@@ -572,7 +591,9 @@ export const evaluateJob = async (req: Request, res: Response) => {
 Candidato: ${candidate.full_name || 'Diego'} — ${(narrative.headline as string) || 'Analista de Datos'}
 Roles objetivo: ${Object.values(targetRoles).flat().slice(0, 4).join(', ')}
 Renta objetivo: ${compensation.target_range || '$1.800.000-$2.500.000 CLP'}
-CV (resumen): ${cv.slice(0, 800)}`
+CV (resumen): ${cv.slice(0, 800)}
+Sueldo mínimo legal Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP — ningún rango debajo de esto salvo práctica/part-time.
+${salaryAnchorsRef ? `Referencias reales de mercado (usa la más cercana al rol/seniority detectado):\n${salaryAnchorsRef}` : ''}`
 
       userMessage = `Oferta: ${empresa || ''} — ${rol || ''}${url ? ` (${url})` : ''}
 JD: ${jd.slice(0, 1800)}
@@ -611,9 +632,13 @@ DATOS DEL PERFIL:
 - Mínimo: ${compensation.minimum || '$1.500.000 CLP mensual'}
 - Modalidad: ${location.modalidad || 'Remoto o Híbrido en Santiago'}
 
+DATOS REALES DE MERCADO (Chile):
+- Sueldo mínimo legal: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual (Ley 21.751, ene-2026) — ningún salario_clp debe quedar por debajo salvo que la oferta sea explícitamente part-time o práctica profesional.
+${salaryAnchorsRef ? `- Referencias curadas por carrera y nivel de seniority:\n${salaryAnchorsRef}` : '- Sin referencias curadas todavía para este país — usa tu conocimiento general del mercado, siendo conservador y explícito en que es una estimación.'}
+
 REGLAS CRÍTICAS PARA CHILE:
 1. TODOS los salarios se expresan en CLP (Pesos Chilenos) mensual bruto
-2. Si la oferta no menciona salario, investiga rangos del mercado chileno para ese rol
+2. Si la oferta no menciona salario, usa las referencias reales de mercado de arriba (elige el nivel de seniority que corresponda según el JD) para estimar salario_clp — considera también el tamaño/rubro de la empresa y las responsabilidades específicas del cargo, no solo el título
 3. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
 4. Prioriza roles: Remoto > Híbrido > Presencial Santiago
 5. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
@@ -728,6 +753,8 @@ ${fullText}
       url: url || '',
       notas: (meta.recomendacion as string) || '',
       idioma: detectLanguage(jd),
+      salario_clp: (meta.salario_clp as string) || undefined,
+      salario_usd: (meta.salario_usd as string) || undefined,
     }, userEmail)
 
     if (url) await svc.removeFromPipeline(url, userEmail)
@@ -805,30 +832,13 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Falta carrera o país. Completa tu perfil (carrera objetivo y país) o envíalos directamente.' })
     }
 
-    let anchor: { rango_min: number; rango_max: number; moneda: string; nota?: string; pais: string } | null = null
-    if (supabaseAdmin) {
-      const exact = await supabaseAdmin
-        .from('salary_anchors')
-        .select('*')
-        .ilike('carrera', carrera)
-        .ilike('pais', pais)
-        .limit(1)
-        .maybeSingle()
-      anchor = exact.data
-      if (!anchor) {
-        const fallback = await supabaseAdmin
-          .from('salary_anchors')
-          .select('*')
-          .ilike('carrera', carrera)
-          .limit(1)
-          .maybeSingle()
-        anchor = fallback.data
-      }
-    }
-
-    const anchorContext = anchor
-      ? `Referencia interna curada para "${carrera}" en ${anchor.pais}: ${anchor.rango_min}-${anchor.rango_max} ${anchor.moneda}${anchor.nota ? ` (${anchor.nota})` : ''}. Ajusta este rango según el nivel/seniority indicado.`
-      : 'No hay una referencia interna curada para esta combinación de carrera/país — usa tu conocimiento general del mercado laboral.'
+    const salaryAnchorsRef = await getSalaryAnchorsReference(pais)
+    const anchorContext = salaryAnchorsRef
+      ? `Referencias curadas reales por carrera y nivel de seniority en ${pais}:\n${salaryAnchorsRef}\nElige la fila más cercana a "${carrera}" y ajusta según el nivel/seniority indicado.`
+      : `No hay referencias curadas todavía para ${pais} — usa tu conocimiento general del mercado laboral, siendo conservador y explícito en que es una estimación.`
+    const minWageLine = /chile/i.test(pais)
+      ? `\nSueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual — ningún rango debe quedar por debajo salvo práctica/part-time.`
+      : ''
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
@@ -836,7 +846,7 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
       system: 'Eres un experto en compensación laboral. Respondes SOLO con JSON válido, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación.',
       messages: [{
         role: 'user',
-        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}` +
+        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}${minWageLine}` +
           (empresa ? `\nEmpresa que ofrece el cargo: ${empresa}` : '') +
           (jd ? `\nDescripción del cargo (extracto):\n${jd}` : '') +
           `\n\nDame un rango de renta líquida MENSUAL estimado y realista para esta persona postulando${empresa ? ` a ${empresa}` : ''} en ${pais}${jd ? ', considerando las responsabilidades y el nivel de seniority que sugiere la descripción del cargo' : ''}.`,
@@ -857,7 +867,7 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
       throw new Error('No se pudo generar la recomendación — intenta nuevamente')
     }
 
-    res.json({ ...parsed, basadoEnAncla: !!anchor, carrera, pais })
+    res.json({ ...parsed, basadoEnAncla: !!salaryAnchorsRef, carrera, pais })
   } catch (err: unknown) {
     res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }

@@ -381,6 +381,7 @@ export default function CareersTracker() {
                   <ThCell field="empresa" label="Empresa" />
                   <ThCell field="rol" label="Rol" />
                   <ThCell field="score" label="Score" />
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Renta</th>
                   <ThCell field="estado" label="Estado" />
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Acciones</th>
                   <th className="w-8" />
@@ -415,6 +416,11 @@ export default function CareersTracker() {
                       </td>
                       <td className="px-4 py-3.5">
                         <ScoreBadge score={entry.score} />
+                      </td>
+                      <td className="px-4 py-3.5 text-sm">
+                        {entry.salario_clp
+                          ? <span className="text-emerald-400 font-medium">{entry.salario_clp}</span>
+                          : <span className="text-gray-600">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
                         {isEditing ? (

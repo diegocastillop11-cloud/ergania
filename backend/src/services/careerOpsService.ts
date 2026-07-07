@@ -47,6 +47,8 @@ export interface TrackerEntry {
   url?: string
   notas?: string
   idioma?: 'es' | 'en'
+  salario_clp?: string
+  salario_usd?: string
 }
 
 export interface PipelineJob {
@@ -683,6 +685,8 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     url: row.url || '',
     notas: row.notas || '',
     idioma: row.idioma || undefined,
+    salario_clp: row.salario_clp || undefined,
+    salario_usd: row.salario_usd || undefined,
   }))
 }
 

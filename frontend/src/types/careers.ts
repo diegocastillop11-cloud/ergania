@@ -10,6 +10,8 @@ export interface TrackerEntry {
   url?: string
   notas?: string
   idioma?: 'es' | 'en'
+  salario_clp?: string
+  salario_usd?: string
 }
 
 export type EstadoJob =
