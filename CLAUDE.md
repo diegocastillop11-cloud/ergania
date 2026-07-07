@@ -41,6 +41,39 @@ VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 ```
 
+### ⚠️ Gotcha: env vars de Preview están escopeadas por rama, no generales
+
+Las 4 vars de arriba (`SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `FRONTEND_URL`)
+solo existen en Vercel para ramas específicas ya usadas antes (`vercel env ls` lo muestra como
+`Preview (nombre-de-rama)`), **no** para "Preview" en general. Toda rama nueva sale en negro
+(`supabaseUrl is required`) hasta que se agregan a mano para esa rama:
+
+```
+vercel env add SUPABASE_URL preview <nombre-de-rama> --value "https://nbywvjvtucohhlofqlbc.supabase.co" --yes
+vercel env add VITE_SUPABASE_URL preview <nombre-de-rama> --value "..." --yes
+vercel env add VITE_SUPABASE_ANON_KEY preview <nombre-de-rama> --value "..." --yes
+vercel env add FRONTEND_URL preview <nombre-de-rama> --value "https://ergania.com" --yes
+git commit --allow-empty -m "chore: rebuild preview con env vars de la rama" && git push
+```
+
+`vercel env add NAME preview --value ... --yes` (sin rama, para "todas las Preview") falla en modo
+no interactivo/agente — el CLI devuelve `action_required: git_branch_required` en loop sin ejecutar
+nunca. Hay que escopear por rama sí o sí desde este entorno, o hacerlo a mano desde el dashboard
+(Settings → Environment Variables → editar cada var → marcar "Preview" sin restringir a una rama).
+
+**Antes de copiar el valor de otra rama/Production, verificar que no tenga basura pegada**
+(pasó con `SUPABASE_URL`, que en Production quedó como `https://...supabase.co\r\n` — el texto
+literal `\r\n`, no un salto de línea real — probablemente pegado sin querer al configurarlo la
+primera vez). El código limpia BOM (`clean()` en `backend/src/config/supabase.ts`) pero NO esto,
+y produce errores confusos tipo `"Token inválido: Unexpected end of JSON input"` en vez de un
+error claro de URL malformada. Verificar con:
+
+```
+vercel env pull .tmp_env --environment=preview --git-branch=<rama> --yes
+grep "^SUPABASE_URL=" .tmp_env | od -c   # no debe haber nada raro después de "supabase.co\""
+rm .tmp_env
+```
+
 ## Sistema de suscripciones
 
 - `trial` (3 días al registrarse) → `pending_payment` (al crear checkout) → `active` (30 días tras pago aprobado) → `expired`/`cancelled`
