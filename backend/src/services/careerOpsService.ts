@@ -649,6 +649,30 @@ export async function patchCoverLetter(id: string, coverLetter: string, userEmai
   patchCoverLetterLocal(id, coverLetter)
 }
 
+function patchCvHtmlLocal(id: string, cvHtml: string): void {
+  const apps = readRawApplications()
+  const idx = apps.findIndex(a => a.id === id)
+  if (idx >= 0) {
+    apps[idx] = { ...apps[idx], cvHtml }
+    fs.writeFileSync(APPS_PATH, JSON.stringify(apps, null, 2), 'utf-8')
+  }
+}
+
+async function dbPatchCvHtml(userEmail: string, id: string, cvHtml: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase no está configurado')
+  const { error } = await supabase
+    .from('applications')
+    .update({ cvHtml })
+    .eq('user_email', userEmail)
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function patchCvHtml(id: string, cvHtml: string, userEmail?: string): Promise<void> {
+  if (dbEnabled()) return dbPatchCvHtml(normalizeUserEmail(userEmail), id, cvHtml)
+  patchCvHtmlLocal(id, cvHtml)
+}
+
 export async function getNextApplicationId(userEmail?: string): Promise<string> {
   if (dbEnabled()) return dbGetNextApplicationId(normalizeUserEmail(userEmail))
   const data = readRawApplications()

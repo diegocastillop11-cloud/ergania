@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { api } from '../../lib/api'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -7,6 +7,7 @@ import {
   Plus, FileText, Brain, MessageSquare, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Copy, CheckCircle2, X, Star, Send,
   Download, Eye, Rocket, Mail, AlertTriangle, Languages,
+  Pencil, Save, Check,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
@@ -248,7 +249,7 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
 
 // ── Panel CV Preview ──────────────────────────────────────────────────────────
 
-function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
+export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   app: Application
   onClose: () => void
   onRegenerated?: (updatedApp: Application) => void
@@ -259,12 +260,49 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   const [regenError, setRegenError] = useState('')
   const [lang, setLang] = useState<'es' | 'en'>(initialApp.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const [editing, setEditing] = useState(false)
+  const [savingCv, setSavingCv] = useState(false)
+  const [saveCvError, setSaveCvError] = useState('')
+  const [resetKey, setResetKey] = useState(0)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const copyHtml = () => {
     if (app.cvHtml) {
       navigator.clipboard.writeText(app.cvHtml)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const startEditing = () => {
+    setSaveCvError('')
+    setEditing(true)
+    const doc = iframeRef.current?.contentDocument
+    if (doc) doc.designMode = 'on'
+  }
+
+  const cancelEditing = () => {
+    setSaveCvError('')
+    setEditing(false)
+    setResetKey(k => k + 1) // remonta el iframe con el HTML original, descartando cambios sin guardar
+  }
+
+  const saveEditedCv = async () => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    doc.designMode = 'off'
+    const editedHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML
+    setSavingCv(true)
+    setSaveCvError('')
+    try {
+      await api.patch(`/applications/${app.id}/cv`, { cvHtml: editedHtml })
+      setApp(a => ({ ...a, cvHtml: editedHtml }))
+      setEditing(false)
+    } catch (err: unknown) {
+      setSaveCvError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al guardar')
+      doc.designMode = 'on' // seguimos editando si falló el guardado
+    } finally {
+      setSavingCv(false)
     }
   }
 
@@ -318,17 +356,46 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             </div>
             <button
               onClick={() => regenerate()}
-              disabled={regenerating}
+              disabled={regenerating || editing}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
               title="Genera una nueva versión del CV en el idioma seleccionado"
             >
               {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
               {regenerating ? 'Regenerando...' : 'Regenerar CV'}
             </button>
+            {app.cvHtml && !editing && (
+              <button
+                onClick={startEditing}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-xs font-medium"
+                title="Edita el texto del CV directamente sobre la vista previa"
+              >
+                <Pencil size={13} /> Editar CV
+              </button>
+            )}
+            {editing && (
+              <>
+                <button
+                  onClick={saveEditedCv}
+                  disabled={savingCv}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                >
+                  {savingCv ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  {savingCv ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+                <button
+                  onClick={cancelEditing}
+                  disabled={savingCv}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg text-xs"
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
             {app.id && (
               <button
                 onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
+                disabled={editing}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
               >
                 <Download size={13} /> PDF
               </button>
@@ -362,12 +429,22 @@ function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
           {regenError && (
             <p className="text-red-400 text-xs mt-1">{regenError}</p>
           )}
+          {saveCvError && (
+            <p className="text-red-400 text-xs mt-1">{saveCvError}</p>
+          )}
+          {editing && (
+            <p className="text-blue-400 text-xs mt-1 flex items-center gap-1">
+              <Check size={12} /> Modo edición activo — haz click en el texto del CV para modificarlo
+            </p>
+          )}
         </div>
         <div className="flex-1 overflow-hidden rounded-b-2xl">
           {app.cvHtml ? (
             <iframe
+              key={resetKey}
+              ref={iframeRef}
               srcDoc={app.cvHtml}
-              className="w-full h-full bg-white"
+              className={`w-full h-full bg-white ${editing ? 'ring-2 ring-inset ring-blue-500' : ''}`}
               title="CV Preview"
             />
           ) : (
