@@ -104,6 +104,7 @@ export async function getSubscriptionStatus(userId: string) {
 }
 
 export async function createCheckoutLink(userId: string, userEmail: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   if (!MP_TOKEN()) throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado')
   console.log('[MP] back_url base:', BACK_URL())
 
@@ -134,6 +135,7 @@ export async function createCheckoutLink(userId: string, userEmail: string) {
 }
 
 export async function handleWebhook(topic: string, id: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   if (topic !== 'payment') return
 
   const payment = await mpFetch(`/v1/payments/${id}`, 'GET')
@@ -161,6 +163,7 @@ export async function handleWebhook(topic: string, id: string) {
 }
 
 export async function cancelSubscription(userId: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { error } = await supabaseAdmin
     .from('subscriptions')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
