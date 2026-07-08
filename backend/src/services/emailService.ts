@@ -1,5 +1,6 @@
 const RESEND_API = 'https://api.resend.com/emails'
-const FROM_EMAIL = 'Ergania <onboarding@resend.dev>'
+// EMAIL_FROM requiere dominio verificado en Resend; el fallback resend.dev solo envía al dueño de la cuenta
+const FROM_EMAIL = () => process.env.EMAIL_FROM || 'Ergania <onboarding@resend.dev>'
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
 
 async function sendEmail(to: string, subject: string, html: string) {
@@ -11,7 +12,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch(RESEND_API, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html }),
+    body: JSON.stringify({ from: FROM_EMAIL(), to: [to], reply_to: ADMIN_EMAIL, subject, html }),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -55,6 +56,32 @@ export async function sendContactEmail(name: string, email: string, category: st
     </div>
   `
   await sendEmail(ADMIN_EMAIL, `[Ergania Contacto] ${category} — ${name}`, html)
+}
+
+export async function sendRenewalReminder(to: string, daysLeft: number) {
+  const dias = daysLeft === 1 ? 'mañana' : `en ${daysLeft} días`
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
+        Tu plan de Ergania vence ${dias}
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        Para seguir usando tu perfil, tus postulaciones y el escáner de ofertas sin interrupciones,
+        renueva tu plan mensual de $9.990 CLP antes del vencimiento.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="https://ergania.com/subscription"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          Renovar mi plan
+        </a>
+      </div>
+      <p style="font-size:12px;color:#999;">
+        Si ya renovaste, ignora este correo. El pago no se cobra automáticamente — tú decides cuándo renovar.
+      </p>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Recordatorio de suscripción</p>
+    </div>
+  `
+  await sendEmail(to, `Tu plan de Ergania vence ${dias} — renuévalo aquí`, html)
 }
 
 export async function sendPaymentNotification(
