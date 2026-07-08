@@ -1394,6 +1394,24 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
   }
 }
 
+export const updateApplicationCv = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    const app = await svc.getApplication(req.params.id, userEmail)
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+
+    const cvHtml = req.body?.cvHtml
+    if (typeof cvHtml !== 'string' || !cvHtml.trim()) {
+      return res.status(400).json({ error: 'cvHtml requerido' })
+    }
+
+    await svc.patchCvHtml(req.params.id, cvHtml, userEmail)
+    res.json({ ok: true })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
 export const downloadApplicationPdf = async (req: Request, res: Response) => {
   try {
     const userEmail = await getUserEmail(req)
