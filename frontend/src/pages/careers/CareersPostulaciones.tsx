@@ -1005,6 +1005,8 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [rec, setRec] = useState<{ rango_min: number; rango_max: number; moneda: string; explicacion: string; basadoEnAncla: boolean } | null>(null)
+  // Ya evaluada la oferta en Tracker → reusar ese estimado en vez de gastar tokens de nuevo.
+  const [existingEstimate, setExistingEstimate] = useState(app.salario_clp || '')
 
   const generate = async () => {
     setLoading(true)
@@ -1018,6 +1020,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
         ...(userApiKey ? { userApiKey } : {}),
       })
       setRec(data)
+      setExistingEstimate('')
     } catch (err: unknown) {
       setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar la recomendación')
     } finally {
@@ -1025,7 +1028,10 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
     }
   }
 
-  useEffect(() => { generate() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!existingEstimate) generate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -1034,25 +1040,39 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
           <div>
             <h3 className="text-white font-bold flex items-center gap-2">
               <DollarSign size={16} className="text-emerald-400" />
-              ¿Cuánto pedir? — {app.rol} en {app.empresa}
+              Pretensión de Renta — {app.rol} en {app.empresa}
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">Estimación de renta líquida para esta postulación específica</p>
           </div>
           <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
         </div>
         <div className="p-5">
-          {loading && (
+          {existingEstimate && (
+            <div>
+              <p className="text-2xl font-bold text-white">{existingEstimate}</p>
+              <p className="text-xs text-gray-500 mt-1">Calculado al evaluar esta oferta — sin gastar una nueva consulta a la IA.</p>
+              <button
+                onClick={generate}
+                disabled={loading}
+                className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
+              >
+                {loading ? <Loader2 size={12} className="animate-spin" /> : null}
+                {loading ? 'Recalculando...' : 'Recalcular con IA'}
+              </button>
+            </div>
+          )}
+          {!existingEstimate && loading && (
             <div className="flex items-center justify-center py-8 text-gray-400 gap-2 text-sm">
               <Loader2 size={18} className="animate-spin" /> Calculando...
             </div>
           )}
-          {!loading && error && (
+          {!existingEstimate && !loading && error && (
             <div className="text-sm">
               <p className="text-red-400">{error}</p>
               <button onClick={generate} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">Reintentar</button>
             </div>
           )}
-          {!loading && rec && (
+          {!existingEstimate && !loading && rec && (
             <div>
               <p className="text-2xl font-bold text-white">
                 {rec.rango_min.toLocaleString('es-CL')} - {rec.rango_max.toLocaleString('es-CL')} {rec.moneda}
@@ -1196,7 +1216,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               onClick={openSalary}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 text-emerald-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <DollarSign size={11} /> ¿Cuánto pedir?
+              <DollarSign size={11} /> Pretensión de Renta
             </button>
             <button
               onClick={() => setExpanded(e => !e)}

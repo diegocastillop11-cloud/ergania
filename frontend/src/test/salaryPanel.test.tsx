@@ -69,4 +69,27 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
     fireEvent.click(buttons[0])
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('si la postulación ya tiene salario_clp (de Evaluar Oferta), lo muestra directo sin llamar a la IA', () => {
+    const appConEstimado: Application = { ...baseApp, salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)' }
+    render(<SalaryPanel app={appConEstimado} onClose={() => {}} />)
+
+    expect(screen.getByText('$1.600.000 - $2.300.000 CLP mensual (estimado)')).toBeInTheDocument()
+    expect(screen.getByText(/sin gastar una nueva consulta/)).toBeInTheDocument()
+    expect(postMock).not.toHaveBeenCalled()
+    expect(screen.getByText('Recalcular con IA')).toBeInTheDocument()
+  })
+
+  it('"Recalcular con IA" fuerza una nueva llamada aunque ya haya un estimado guardado', async () => {
+    postMock.mockResolvedValue({
+      data: { rango_min: 1900000, rango_max: 2500000, moneda: 'CLP', explicacion: 'Recalculado.', basadoEnAncla: false },
+    })
+    const appConEstimado: Application = { ...baseApp, salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)' }
+    render(<SalaryPanel app={appConEstimado} onClose={() => {}} />)
+
+    fireEvent.click(screen.getByText('Recalcular con IA'))
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1' })))
+    expect(await screen.findByText(/1.900.000 - 2.500.000 CLP/)).toBeInTheDocument()
+  })
 })

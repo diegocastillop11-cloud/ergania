@@ -570,6 +570,8 @@ export interface Application {
   coverLetter?: string
   score?: number | null
   notas?: string
+  salario_clp?: string
+  salario_usd?: string
 }
 
 const APPS_PATH = p('data', 'applications.json')

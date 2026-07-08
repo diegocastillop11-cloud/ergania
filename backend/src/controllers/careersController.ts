@@ -1118,6 +1118,17 @@ export const createApplication = async (req: Request, res: Response) => {
 
     const existingApp = await svc.findApplicationByUrlOrRole(url, empresa, rol, userEmail)
     const id = existingApp?.id ?? await svc.getNextApplicationId(userEmail)
+
+    // Buscar el tracker entry de la oferta ya evaluada — si existe, reusa el
+    // salario que la IA ya calculó en Evaluar Oferta en vez de recalcularlo.
+    const tracker = await svc.readTracker(userEmail)
+    const existingTrackerEntry = url
+      ? tracker.find(e => e.url === url)
+      : tracker.find(e =>
+          e.empresa.toLowerCase() === empresa.toLowerCase() &&
+          e.rol.toLowerCase() === rol.toLowerCase()
+        )
+
     const app: svc.Application = {
       id,
       fecha: existingApp?.fecha || new Date().toISOString().split('T')[0],
@@ -1134,21 +1145,16 @@ export const createApplication = async (req: Request, res: Response) => {
       interviewPrep: existingApp?.interviewPrep,
       coverLetter,
       idioma,
+      salario_clp: existingApp?.salario_clp || existingTrackerEntry?.salario_clp,
+      salario_usd: existingApp?.salario_usd || existingTrackerEntry?.salario_usd,
     }
     await svc.saveApplication(app, userEmail)
 
-    // Sync tracker: create entry or advance state to 'CV Generado'
+    // Sync tracker: create entry o avanzar estado a 'CV Generado'
     try {
-      const tracker = await svc.readTracker(userEmail)
-      const existing = url
-        ? tracker.find(e => e.url === url)
-        : tracker.find(e =>
-            e.empresa.toLowerCase() === empresa.toLowerCase() &&
-            e.rol.toLowerCase() === rol.toLowerCase()
-          )
-      if (existing) {
-        if (existing.estado === 'Evaluada') {
-          await svc.updateTrackerEntry(existing.id, { estado: 'CV Generado', pdf: !!cvPdfFilename }, userEmail)
+      if (existingTrackerEntry) {
+        if (existingTrackerEntry.estado === 'Evaluada') {
+          await svc.updateTrackerEntry(existingTrackerEntry.id, { estado: 'CV Generado', pdf: !!cvPdfFilename }, userEmail)
         }
       } else {
         await svc.addTrackerEntry({
