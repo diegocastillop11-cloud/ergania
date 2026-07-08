@@ -826,6 +826,29 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
     if (req.body?.applicationId) {
       const app = await svc.getApplication(req.body.applicationId, userEmail)
       if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+
+      // Si esta oferta ya tiene un salario calculado (directo, o de cuando se
+      // evaluó en Tracker), reusarlo — evita gastar una consulta nueva y, sobre
+      // todo, evita que Evaluar Oferta y Postulaciones muestren números distintos
+      // para la MISMA oferta. "forceRefresh" (botón "Recalcular con IA") se lo salta.
+      let cachedText = req.body?.forceRefresh ? undefined : app.salario_clp
+      if (!cachedText && !req.body?.forceRefresh) {
+        const tracker = await svc.readTracker(userEmail)
+        const matchingEntry = app.url
+          ? tracker.find(e => e.url === app.url)
+          : tracker.find(e =>
+              e.empresa.toLowerCase() === app.empresa.toLowerCase() &&
+              e.rol.toLowerCase() === app.rol.toLowerCase()
+            )
+        if (matchingEntry?.salario_clp) {
+          cachedText = matchingEntry.salario_clp
+          await svc.patchApplicationSalary(app.id, matchingEntry.salario_clp, matchingEntry.salario_usd, userEmail)
+        }
+      }
+      if (cachedText) {
+        return res.json({ salario_clp: cachedText, fromCache: true, carrera: app.rol, pais: (location.country as string) || 'Chile' })
+      }
+
       empresa = app.empresa
       rolDeLaOferta = app.rol
       jd = (app.jd || '').slice(0, 2000)
@@ -883,6 +906,11 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
       parsed = JSON.parse(candidate)
     } catch {
       throw new Error('No se pudo generar la recomendación — intenta nuevamente')
+    }
+
+    if (req.body?.applicationId) {
+      const formatted = `${parsed.rango_min.toLocaleString('es-CL')} - ${parsed.rango_max.toLocaleString('es-CL')} ${parsed.moneda} mensual (estimado)`
+      await svc.patchApplicationSalary(req.body.applicationId, formatted, undefined, userEmail).catch(() => {})
     }
 
     res.json({ ...parsed, basadoEnAncla: !!salaryAnchorsRef, carrera, pais })

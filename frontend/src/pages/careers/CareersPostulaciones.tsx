@@ -1008,7 +1008,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
   // Ya evaluada la oferta en Tracker → reusar ese estimado en vez de gastar tokens de nuevo.
   const [existingEstimate, setExistingEstimate] = useState(app.salario_clp || '')
 
-  const generate = async () => {
+  const generate = async (forceRefresh = false) => {
     setLoading(true)
     setError('')
     try {
@@ -1017,10 +1017,16 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
       const { data } = await api.post('/salary-recommendation', {
         applicationId: app.id,
         llmProvider: provider,
+        ...(forceRefresh ? { forceRefresh: true } : {}),
         ...(userApiKey ? { userApiKey } : {}),
       })
-      setRec(data)
-      setExistingEstimate('')
+      if (data.fromCache && data.salario_clp) {
+        setExistingEstimate(data.salario_clp)
+        setRec(null)
+      } else {
+        setRec(data)
+        setExistingEstimate('')
+      }
     } catch (err: unknown) {
       setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar la recomendación')
     } finally {
@@ -1052,7 +1058,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
               <p className="text-2xl font-bold text-white">{existingEstimate}</p>
               <p className="text-xs text-gray-500 mt-1">Calculado al evaluar esta oferta — sin gastar una nueva consulta a la IA.</p>
               <button
-                onClick={generate}
+                onClick={() => generate(true)}
                 disabled={loading}
                 className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
               >
@@ -1069,7 +1075,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
           {!existingEstimate && !loading && error && (
             <div className="text-sm">
               <p className="text-red-400">{error}</p>
-              <button onClick={generate} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">Reintentar</button>
+              <button onClick={() => generate()} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">Reintentar</button>
             </div>
           )}
           {!existingEstimate && !loading && rec && (

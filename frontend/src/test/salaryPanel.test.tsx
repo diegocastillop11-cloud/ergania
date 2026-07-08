@@ -80,7 +80,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
     expect(screen.getByText('Recalcular con IA')).toBeInTheDocument()
   })
 
-  it('"Recalcular con IA" fuerza una nueva llamada aunque ya haya un estimado guardado', async () => {
+  it('"Recalcular con IA" fuerza una nueva llamada (forceRefresh) aunque ya haya un estimado guardado', async () => {
     postMock.mockResolvedValue({
       data: { rango_min: 1900000, rango_max: 2500000, moneda: 'CLP', explicacion: 'Recalculado.', basadoEnAncla: false },
     })
@@ -89,7 +89,20 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
 
     fireEvent.click(screen.getByText('Recalcular con IA'))
 
-    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1' })))
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1', forceRefresh: true })))
     expect(await screen.findByText(/1.900.000 - 2.500.000 CLP/)).toBeInTheDocument()
+  })
+
+  it('si el backend encuentra el estimado en el Tracker (oferta ya evaluada), lo muestra sin generar uno nuevo distinto', async () => {
+    // app.salario_clp viene vacío (postulación creada antes del backfill), pero el
+    // backend lo encuentra en Tracker por empresa+rol y lo devuelve como fromCache.
+    postMock.mockResolvedValue({
+      data: { salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)', fromCache: true, carrera: 'Ingeniero de Datos', pais: 'Chile' },
+    })
+    render(<SalaryPanel app={baseApp} onClose={() => {}} />)
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1' })))
+    expect(await screen.findByText('$1.600.000 - $2.300.000 CLP mensual (estimado)')).toBeInTheDocument()
+    expect(screen.getByText('Recalcular con IA')).toBeInTheDocument()
   })
 })
