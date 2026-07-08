@@ -53,6 +53,125 @@ const CHILE_PORTALS: Omit<Portal, 'enabled'>[] = [
   },
 ]
 
+// Portales de trabajo remoto global preconfigurados
+const GLOBAL_PORTALS: Omit<Portal, 'enabled'>[] = [
+  {
+    name: 'LinkedIn Jobs (Remoto)',
+    careers_url: 'https://www.linkedin.com/jobs/search/?keywords=remote',
+    country: 'Remoto',
+  },
+  {
+    name: 'Indeed (Remoto)',
+    careers_url: 'https://www.indeed.com/q-Remote-jobs.html',
+    country: 'Remoto',
+  },
+  {
+    name: 'Wellfound',
+    careers_url: 'https://wellfound.com/jobs',
+    country: 'Remoto',
+  },
+  {
+    name: 'RemoteOK',
+    careers_url: 'https://remoteok.com',
+    country: 'Remoto',
+  },
+  {
+    name: 'We Work Remotely',
+    careers_url: 'https://weworkremotely.com',
+    country: 'Remoto',
+  },
+  {
+    name: 'Himalayas',
+    careers_url: 'https://himalayas.app/jobs',
+    country: 'Remoto',
+  },
+]
+
+// Portales preconfigurados para Estados Unidos
+const US_PORTALS: Omit<Portal, 'enabled'>[] = [
+  {
+    name: 'Indeed US',
+    careers_url: 'https://www.indeed.com',
+    country: 'Estados Unidos',
+  },
+  {
+    name: 'LinkedIn Jobs US',
+    careers_url: 'https://www.linkedin.com/jobs/search/?location=United%20States',
+    country: 'Estados Unidos',
+  },
+  {
+    name: 'Built In',
+    careers_url: 'https://builtin.com/jobs',
+    country: 'Estados Unidos',
+  },
+  {
+    name: 'Dice',
+    careers_url: 'https://www.dice.com',
+    country: 'Estados Unidos',
+  },
+  {
+    name: 'Glassdoor Jobs',
+    careers_url: 'https://www.glassdoor.com/Job/index.htm',
+    country: 'Estados Unidos',
+  },
+]
+
+// Portales preconfigurados para España
+const SPAIN_PORTALS: Omit<Portal, 'enabled'>[] = [
+  {
+    name: 'InfoJobs',
+    careers_url: 'https://www.infojobs.net',
+    country: 'España',
+  },
+  {
+    name: 'Tecnoempleo',
+    careers_url: 'https://www.tecnoempleo.com',
+    country: 'España',
+  },
+  {
+    name: 'LinkedIn Jobs España',
+    careers_url: 'https://www.linkedin.com/jobs/search/?location=Espa%C3%B1a',
+    country: 'España',
+  },
+  {
+    name: 'Indeed España',
+    careers_url: 'https://es.indeed.com',
+    country: 'España',
+  },
+]
+
+// Portales LATAM bilingües/regionales (México y Colombia como referencia — ajustable según el país objetivo)
+const LATAM_PORTALS: Omit<Portal, 'enabled'>[] = [
+  {
+    name: 'OCC Mundial (México)',
+    careers_url: 'https://www.occ.com.mx',
+    country: 'México',
+  },
+  {
+    name: 'LinkedIn Jobs México',
+    careers_url: 'https://www.linkedin.com/jobs/search/?location=M%C3%A9xico',
+    country: 'México',
+  },
+  {
+    name: 'Elempleo (Colombia)',
+    careers_url: 'https://www.elempleo.com',
+    country: 'Colombia',
+  },
+  {
+    name: 'Computrabajo LATAM',
+    careers_url: 'https://www.computrabajo.com',
+    country: 'LATAM',
+  },
+]
+
+const PORTAL_REGIONS: { id: string; label: string; emoji: string; portals: Omit<Portal, 'enabled'>[] }[] = [
+  { id: 'chile', label: 'Chile', emoji: '🇨🇱', portals: CHILE_PORTALS },
+  { id: 'global', label: 'Remoto Global', emoji: '🌎', portals: GLOBAL_PORTALS },
+  { id: 'us', label: 'Estados Unidos', emoji: '🇺🇸', portals: US_PORTALS },
+  { id: 'spain', label: 'España', emoji: '🇪🇸', portals: SPAIN_PORTALS },
+  { id: 'latam', label: 'LATAM', emoji: '🌎', portals: LATAM_PORTALS },
+]
+
 function PortalCard({
   portal,
   onToggle,
@@ -79,9 +198,13 @@ function PortalCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-white text-sm font-medium truncate">{portal.name}</p>
-          {isChile && (
-            <span className="text-xs bg-red-900/30 text-red-400 border border-red-800/50 px-1.5 py-0.5 rounded">
-              Chile
+          {portal.country && (
+            <span className={`text-xs px-1.5 py-0.5 rounded border ${
+              isChile
+                ? 'bg-red-900/30 text-red-400 border-red-800/50'
+                : 'bg-blue-900/30 text-blue-400 border-blue-800/50'
+            }`}>
+              {portal.country}
             </span>
           )}
           {portal.api && (
@@ -127,7 +250,8 @@ export default function CareersPortals() {
   const [newPortal, setNewPortal] = useState({ name: '', careers_url: '', country: '' })
   const [showAdd, setShowAdd] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [filterCountry, setFilterCountry] = useState<'all' | 'Chile' | 'other'>('all')
+  const [filterCountry, setFilterCountry] = useState<string>('all')
+  const [activeRegion, setActiveRegion] = useState(PORTAL_REGIONS[0].id)
 
   const { data: config, isLoading } = useQuery<PortalsConfig>({
     queryKey: ['careers-portals'],
@@ -164,7 +288,7 @@ export default function CareersPortals() {
     saveMut.mutate({ ...config, tracked_companies: updated })
   }
 
-  const addChilePortal = (portal: Omit<Portal, 'enabled'>) => {
+  const addSuggestedPortal = (portal: Omit<Portal, 'enabled'>) => {
     if (companies.some(c => c.careers_url === portal.careers_url)) return
     const updated = [...companies, { ...portal, enabled: true }]
     saveMut.mutate({ ...config, tracked_companies: updated })
@@ -178,12 +302,13 @@ export default function CareersPortals() {
     setShowAdd(false)
   }
 
-  const filtered = companies.filter(c => {
-    if (filterCountry === 'Chile') return c.country === 'Chile'
-    if (filterCountry === 'other') return c.country !== 'Chile'
-    return true
-  })
+  const filtered = filterCountry === 'all'
+    ? companies
+    : companies.filter(c => c.country === filterCountry)
 
+  const distinctCountries = Array.from(
+    new Set(companies.map(c => c.country).filter((c): c is string => Boolean(c)))
+  ).sort()
   const chileCount   = companies.filter(c => c.country === 'Chile').length
   const enabledCount = companies.filter(c => c.enabled).length
 
@@ -205,7 +330,7 @@ export default function CareersPortals() {
         <div>
           <h2 className="text-2xl font-bold text-white">Portales de Empleo</h2>
           <p className="text-gray-400 mt-1">
-            {enabledCount} activos de {companies.length} · {chileCount} portales chilenos
+            {enabledCount} activos de {companies.length} · {distinctCountries.length} países/regiones ({chileCount} chilenos)
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -256,22 +381,34 @@ export default function CareersPortals() {
         </div>
       </div>
 
-      {/* Portales chilenos sugeridos */}
-      <div className="bg-gradient-to-r from-red-950/30 to-gray-900 border border-red-900/30 rounded-xl p-5">
+      {/* Portales sugeridos por región */}
+      <div className="bg-gradient-to-r from-gray-800/40 to-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Flag size={16} className="text-red-400" />
-          <h3 className="text-white font-semibold">Portales Chilenos Recomendados</h3>
+          <Globe size={16} className="text-blue-400" />
+          <h3 className="text-white font-semibold">Portales Recomendados</h3>
         </div>
-        <p className="text-gray-400 text-sm mb-4">
-          Haz click para agregar los principales portales de empleo en Chile. Se priorizarán roles híbridos y remotos.
-        </p>
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {PORTAL_REGIONS.map(region => (
+            <button
+              key={region.id}
+              onClick={() => setActiveRegion(region.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                activeRegion === region.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 border border-gray-700 text-gray-400 hover:text-white'
+              }`}
+            >
+              {region.emoji} {region.label}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {CHILE_PORTALS.map(portal => {
+          {PORTAL_REGIONS.find(r => r.id === activeRegion)!.portals.map(portal => {
             const alreadyAdded = companies.some(c => c.careers_url === portal.careers_url)
             return (
               <button
                 key={portal.careers_url}
-                onClick={() => !alreadyAdded && addChilePortal(portal)}
+                onClick={() => !alreadyAdded && addSuggestedPortal(portal)}
                 disabled={alreadyAdded}
                 className={`flex items-center justify-between gap-2 p-2.5 rounded-lg text-sm font-medium transition-all border ${
                   alreadyAdded
@@ -279,7 +416,7 @@ export default function CareersPortals() {
                     : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`}
               >
-                <span className="truncate">{portal.name.replace(' Chile', '')}</span>
+                <span className="truncate">{portal.name}</span>
                 {alreadyAdded
                   ? <Check size={13} className="shrink-0" />
                   : <Plus size={13} className="shrink-0" />
@@ -332,18 +469,28 @@ export default function CareersPortals() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2">
-        {(['all', 'Chile', 'other'] as const).map(f => (
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setFilterCountry('all')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            filterCountry === 'all'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white'
+          }`}
+        >
+          Todos
+        </button>
+        {distinctCountries.map(country => (
           <button
-            key={f}
-            onClick={() => setFilterCountry(f)}
+            key={country}
+            onClick={() => setFilterCountry(country)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterCountry === f
+              filterCountry === country
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white'
             }`}
           >
-            {f === 'all' ? 'Todos' : f === 'Chile' ? '🇨🇱 Chile' : 'Internacional'}
+            {country}
           </button>
         ))}
       </div>
@@ -354,7 +501,7 @@ export default function CareersPortals() {
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center text-gray-500">
             <Globe size={32} className="mx-auto mb-3 text-gray-700" />
             <p>No hay portales en esta categoría.</p>
-            <p className="text-sm mt-1">Agrega portales chilenos usando los botones de arriba.</p>
+            <p className="text-sm mt-1">Agrega portales sugeridos usando los botones de arriba.</p>
           </div>
         ) : (
           filtered.map((portal) => {
