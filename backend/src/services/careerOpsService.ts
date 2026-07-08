@@ -662,6 +662,15 @@ function patchApplicationSalaryLocal(id: string, salario_clp: string, salario_us
   }
 }
 
+function patchCvHtmlLocal(id: string, cvHtml: string): void {
+  const apps = readRawApplications()
+  const idx = apps.findIndex(a => a.id === id)
+  if (idx >= 0) {
+    apps[idx] = { ...apps[idx], cvHtml }
+    fs.writeFileSync(APPS_PATH, JSON.stringify(apps, null, 2), 'utf-8')
+  }
+}
+
 async function dbPatchApplicationSalary(userEmail: string, id: string, salario_clp: string, salario_usd?: string): Promise<void> {
   if (!supabase) throw new Error('Supabase no está configurado')
   const { error } = await supabase
@@ -672,9 +681,24 @@ async function dbPatchApplicationSalary(userEmail: string, id: string, salario_c
   if (error) throw new Error(error.message)
 }
 
+async function dbPatchCvHtml(userEmail: string, id: string, cvHtml: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase no está configurado')
+  const { error } = await supabase
+    .from('applications')
+    .update({ cvHtml })
+    .eq('user_email', userEmail)
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function patchApplicationSalary(id: string, salario_clp: string, salario_usd: string | undefined, userEmail?: string): Promise<void> {
   if (dbEnabled()) return dbPatchApplicationSalary(normalizeUserEmail(userEmail), id, salario_clp, salario_usd)
   patchApplicationSalaryLocal(id, salario_clp, salario_usd)
+}
+
+export async function patchCvHtml(id: string, cvHtml: string, userEmail?: string): Promise<void> {
+  if (dbEnabled()) return dbPatchCvHtml(normalizeUserEmail(userEmail), id, cvHtml)
+  patchCvHtmlLocal(id, cvHtml)
 }
 
 export async function getNextApplicationId(userEmail?: string): Promise<string> {
