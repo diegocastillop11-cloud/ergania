@@ -1056,7 +1056,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
           {existingEstimate && (
             <div>
               <p className="text-2xl font-bold text-white">{existingEstimate}</p>
-              <p className="text-xs text-gray-500 mt-1">Calculado al evaluar esta oferta — sin gastar una nueva consulta a la IA.</p>
+              <p className="text-xs text-gray-500 mt-1">Calculado al evaluar esta oferta.</p>
               <button
                 onClick={() => generate(true)}
                 disabled={loading}

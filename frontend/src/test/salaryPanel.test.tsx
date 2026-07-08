@@ -75,7 +75,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
     render(<SalaryPanel app={appConEstimado} onClose={() => {}} />)
 
     expect(screen.getByText('$1.600.000 - $2.300.000 CLP mensual (estimado)')).toBeInTheDocument()
-    expect(screen.getByText(/sin gastar una nueva consulta/)).toBeInTheDocument()
+    expect(screen.getByText('Calculado al evaluar esta oferta.')).toBeInTheDocument()
     expect(postMock).not.toHaveBeenCalled()
     expect(screen.getByText('Recalcular con IA')).toBeInTheDocument()
   })
