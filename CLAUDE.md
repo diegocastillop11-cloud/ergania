@@ -26,6 +26,20 @@ URL producción: https://ergania.com
 Frontend envía `Authorization: Bearer <supabase_access_token>` en todas las peticiones.
 Backend llama `supabaseAdmin.auth.getUser(token)` para verificar.
 
+Login con Google: `signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } })`
+en `frontend/src/lib/AuthContext.tsx`. Requiere Google configurado como provider en Supabase
+(Client ID/Secret de Google Cloud Console) y, sobre todo, la config de **Authentication → URL
+Configuration** en Supabase:
+- **Site URL**: debe ser `https://ergania.com` (viene por defecto en `http://localhost:3000` al
+  crear el proyecto — si no se cambia, cualquier redirect que Supabase no reconozca cae ahí).
+- **Redirect URLs**: debe incluir `https://ergania.com/**`, `https://www.ergania.com/**` (el
+  dominio real redirige a `www`, así que `window.location.origin` calcula `www.ergania.com` en
+  producción) y `https://*.vercel.app/**` (para poder probarlo en previews).
+
+Si falta cualquiera de estas entradas, Supabase completa el login OAuth correctamente pero
+redirige de vuelta a `localhost:3000` con el `access_token` en el hash — no es un bug de código,
+es el fallback silencioso de Supabase cuando el `redirectTo` no matchea el allow-list.
+
 ## Variables de entorno requeridas en Vercel
 
 ```
