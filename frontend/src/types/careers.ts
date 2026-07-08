@@ -10,6 +10,8 @@ export interface TrackerEntry {
   url?: string
   notas?: string
   idioma?: 'es' | 'en'
+  salario_clp?: string
+  salario_usd?: string
 }
 
 export type EstadoJob =
@@ -111,6 +113,8 @@ export interface Application {
   idioma?: 'es' | 'en'
   score?: number | null
   notas?: string
+  salario_clp?: string
+  salario_usd?: string
 }
 
 export const APLICACION_ESTADOS = [

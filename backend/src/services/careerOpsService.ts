@@ -47,6 +47,8 @@ export interface TrackerEntry {
   url?: string
   notas?: string
   idioma?: 'es' | 'en'
+  salario_clp?: string
+  salario_usd?: string
 }
 
 export interface PipelineJob {
@@ -568,6 +570,8 @@ export interface Application {
   coverLetter?: string
   score?: number | null
   notas?: string
+  salario_clp?: string
+  salario_usd?: string
 }
 
 const APPS_PATH = p('data', 'applications.json')
@@ -649,6 +653,15 @@ export async function patchCoverLetter(id: string, coverLetter: string, userEmai
   patchCoverLetterLocal(id, coverLetter)
 }
 
+function patchApplicationSalaryLocal(id: string, salario_clp: string, salario_usd?: string): void {
+  const apps = readRawApplications()
+  const idx = apps.findIndex(a => a.id === id)
+  if (idx >= 0) {
+    apps[idx] = { ...apps[idx], salario_clp, salario_usd }
+    fs.writeFileSync(APPS_PATH, JSON.stringify(apps, null, 2), 'utf-8')
+  }
+}
+
 function patchCvHtmlLocal(id: string, cvHtml: string): void {
   const apps = readRawApplications()
   const idx = apps.findIndex(a => a.id === id)
@@ -656,6 +669,16 @@ function patchCvHtmlLocal(id: string, cvHtml: string): void {
     apps[idx] = { ...apps[idx], cvHtml }
     fs.writeFileSync(APPS_PATH, JSON.stringify(apps, null, 2), 'utf-8')
   }
+}
+
+async function dbPatchApplicationSalary(userEmail: string, id: string, salario_clp: string, salario_usd?: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase no está configurado')
+  const { error } = await supabase
+    .from('applications')
+    .update({ salario_clp, salario_usd })
+    .eq('user_email', userEmail)
+    .eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 async function dbPatchCvHtml(userEmail: string, id: string, cvHtml: string): Promise<void> {
@@ -666,6 +689,11 @@ async function dbPatchCvHtml(userEmail: string, id: string, cvHtml: string): Pro
     .eq('user_email', userEmail)
     .eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+export async function patchApplicationSalary(id: string, salario_clp: string, salario_usd: string | undefined, userEmail?: string): Promise<void> {
+  if (dbEnabled()) return dbPatchApplicationSalary(normalizeUserEmail(userEmail), id, salario_clp, salario_usd)
+  patchApplicationSalaryLocal(id, salario_clp, salario_usd)
 }
 
 export async function patchCvHtml(id: string, cvHtml: string, userEmail?: string): Promise<void> {
@@ -707,6 +735,8 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     url: row.url || '',
     notas: row.notas || '',
     idioma: row.idioma || undefined,
+    salario_clp: row.salario_clp || undefined,
+    salario_usd: row.salario_usd || undefined,
   }))
 }
 

@@ -177,6 +177,23 @@ function authErr(msg: string): never {
   throw Object.assign(new Error(msg), { status: 401 })
 }
 
+// Ley 21.751 — desde ene-2026. Verificar/actualizar cuando cambie el reajuste legal.
+const CHILE_MINIMUM_WAGE_CLP = 539000
+
+async function getSalaryAnchorsReference(pais: string): Promise<string> {
+  if (!supabaseAdmin) return ''
+  const { data } = await supabaseAdmin.from('salary_anchors').select('*').ilike('pais', pais)
+  if (!data || data.length === 0) return ''
+
+  const grouped: Record<string, string[]> = {}
+  for (const a of data as Array<{ carrera: string; nivel?: string; rango_min: number; rango_max: number; moneda: string }>) {
+    const rango = `${Number(a.rango_min).toLocaleString('es-CL')}-${Number(a.rango_max).toLocaleString('es-CL')} ${a.moneda}`
+    const tier = a.nivel ? `${a.nivel}: ${rango}` : rango
+    ;(grouped[a.carrera] ??= []).push(tier)
+  }
+  return Object.entries(grouped).map(([carrera, tiers]) => `- ${carrera} — ${tiers.join(' | ')}`).join('\n')
+}
+
 function validateUrl(rawUrl: string): void {
   let parsed: URL
   try { parsed = new URL(rawUrl) } catch { throw new Error('URL inválida') }
@@ -551,6 +568,8 @@ export const evaluateJob = async (req: Request, res: Response) => {
     const narrative    = (profile.narrative    as Record<string, unknown>) || {}
     const location     = (profile.location     as Record<string, string>) || {}
 
+    const salaryAnchorsRef = await getSalaryAnchorsReference('Chile')
+
     // Detectar si el contenido fue extraído exitosamente
     const hasContent = scrapedContent.length > 200
     const isShortfallUrl = url && !hasContent
@@ -572,7 +591,9 @@ export const evaluateJob = async (req: Request, res: Response) => {
 Candidato: ${candidate.full_name || 'Diego'} — ${(narrative.headline as string) || 'Analista de Datos'}
 Roles objetivo: ${Object.values(targetRoles).flat().slice(0, 4).join(', ')}
 Renta objetivo: ${compensation.target_range || '$1.800.000-$2.500.000 CLP'}
-CV (resumen): ${cv.slice(0, 800)}`
+CV (resumen): ${cv.slice(0, 800)}
+Sueldo mínimo legal Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP — ningún rango debajo de esto salvo práctica/part-time.
+${salaryAnchorsRef ? `Referencias reales de mercado (usa la más cercana al rol/seniority detectado):\n${salaryAnchorsRef}` : ''}`
 
       userMessage = `Oferta: ${empresa || ''} — ${rol || ''}${url ? ` (${url})` : ''}
 JD: ${jd.slice(0, 1800)}
@@ -588,7 +609,7 @@ Responde con análisis breve Y este JSON al final:
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
-      maxTokens = 2000
+      maxTokens = 2600 // margen extra: con búsqueda web el modelo puede razonar antes del JSON
       systemPrompt = `Eres un experto en búsqueda de trabajo en Chile y evaluación de ofertas laborales.
 
 CONTEXTO DEL CANDIDATO:
@@ -611,13 +632,22 @@ DATOS DEL PERFIL:
 - Mínimo: ${compensation.minimum || '$1.500.000 CLP mensual'}
 - Modalidad: ${location.modalidad || 'Remoto o Híbrido en Santiago'}
 
+DATOS REALES DE MERCADO:
+- Sueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual (Ley 21.751, ene-2026) — ningún salario_clp debe quedar por debajo salvo que la oferta sea explícitamente part-time o práctica profesional.
+${salaryAnchorsRef ? `- Referencias curadas como respaldo (pueden estar desactualizadas, prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}` : ''}
+
+CÓMO ESTIMAR EL SALARIO (salario_clp):
+1. Si tienes la herramienta de búsqueda web disponible, ÚSALA para investigar el sueldo real de este rol específico (considera cargo, empresa si es conocida, seniority y país) — no te quedes solo con tu conocimiento general.
+2. CUIDADO CON LAS UNIDADES: muchas fuentes (Glassdoor, levels.fyi, etc.) muestran cifras ANUALES por defecto. Antes de reportar salario_clp, verifica explícitamente si el número que encontraste es mensual o anual, y conviértelo a MENSUAL dividiendo por 12 si corresponde. Nunca reportes una cifra anual como si fuera mensual.
+3. Si no hay resultados de búsqueda útiles, usa las referencias curadas de arriba (si existen) o tu conocimiento general, siendo conservador y explícito en tu razonamiento sobre que es una estimación.
+4. Considera también el tamaño/rubro de la empresa y las responsabilidades específicas del cargo, no solo el título del rol.
+
 REGLAS CRÍTICAS PARA CHILE:
 1. TODOS los salarios se expresan en CLP (Pesos Chilenos) mensual bruto
-2. Si la oferta no menciona salario, investiga rangos del mercado chileno para ese rol
-3. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
-4. Prioriza roles: Remoto > Híbrido > Presencial Santiago
-5. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
-6. Si la oferta es en inglés, evalúa igual pero responde EN ESPAÑOL
+2. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
+3. Prioriza roles: Remoto > Híbrido > Presencial Santiago
+4. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
+5. Si la oferta es en inglés, evalúa igual pero responde EN ESPAÑOL
 
 RESPONDE SIEMPRE EN ESPAÑOL. Sé directo, concreto y útil. Sin frases genéricas.${isShortfallUrl ? `
 
@@ -635,7 +665,9 @@ ${rol ? `Rol: ${rol}` : ''}
 ${jd}
 ---
 
-PRIMERO incluye EXACTAMENTE este JSON con los datos clave, LUEGO entrega el análisis completo (bloques A-G):
+Si usas la herramienta de búsqueda web, hazlo primero y no narres el proceso de búsqueda en tu respuesta — ve directo al resultado.
+
+PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar), LUEGO entrega el análisis completo (bloques A-G):
 
 \`\`\`json
 {
@@ -660,6 +692,9 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave, LUEGO entrega el aná
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
+      // Solo tiene efecto con el proveedor Anthropic (los demás lo ignoran) — permite
+      // investigar en vivo el sueldo real del rol/empresa/país en vez de solo adivinar.
+      tools: isGroq ? undefined : [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
     })
 
     const fullText = message.content
@@ -728,6 +763,8 @@ ${fullText}
       url: url || '',
       notas: (meta.recomendacion as string) || '',
       idioma: detectLanguage(jd),
+      salario_clp: (meta.salario_clp as string) || undefined,
+      salario_usd: (meta.salario_usd as string) || undefined,
     }, userEmail)
 
     if (url) await svc.removeFromPipeline(url, userEmail)
@@ -768,6 +805,115 @@ export const generateCV = async (req: Request, res: Response) => {
 
     if (entryId) await svc.updateTrackerEntry(entryId, { pdf: false, estado: 'CV Generado' }, userEmail)
     res.json({ ok: true, cvHtml })
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+export const getSalaryRecommendation = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+
+    const profile = await svc.readProfile(userEmail)
+    const targetRoles = (profile?.target_roles as Record<string, unknown>) || {}
+    const location = (profile?.location as Record<string, unknown>) || {}
+    const archetypes = (targetRoles.archetypes as Array<{ name: string; level: string }>) || []
+
+    let empresa: string | undefined
+    let jd: string | undefined
+    let rolDeLaOferta: string | undefined
+    if (req.body?.applicationId) {
+      const app = await svc.getApplication(req.body.applicationId, userEmail)
+      if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+
+      // Si esta oferta ya tiene un salario calculado (directo, o de cuando se
+      // evaluó en Tracker), reusarlo — evita gastar una consulta nueva y, sobre
+      // todo, evita que Evaluar Oferta y Postulaciones muestren números distintos
+      // para la MISMA oferta. "forceRefresh" (botón "Recalcular con IA") se lo salta.
+      let cachedText = req.body?.forceRefresh ? undefined : app.salario_clp
+      if (!cachedText && !req.body?.forceRefresh) {
+        const tracker = await svc.readTracker(userEmail)
+        const matchingEntry = app.url
+          ? tracker.find(e => e.url === app.url)
+          : tracker.find(e =>
+              e.empresa.toLowerCase() === app.empresa.toLowerCase() &&
+              e.rol.toLowerCase() === app.rol.toLowerCase()
+            )
+        if (matchingEntry?.salario_clp) {
+          cachedText = matchingEntry.salario_clp
+          await svc.patchApplicationSalary(app.id, matchingEntry.salario_clp, matchingEntry.salario_usd, userEmail)
+        }
+      }
+      if (cachedText) {
+        return res.json({ salario_clp: cachedText, fromCache: true, carrera: app.rol, pais: (location.country as string) || 'Chile' })
+      }
+
+      empresa = app.empresa
+      rolDeLaOferta = app.rol
+      jd = (app.jd || '').slice(0, 2000)
+    }
+
+    const carrera: string | undefined = req.body?.carrera
+      || rolDeLaOferta
+      || (targetRoles.primary as string[])?.[0]
+      || archetypes[0]?.name
+    const pais: string | undefined = req.body?.pais || (location.country as string)
+    const nivel: string | undefined = req.body?.nivel || archetypes[0]?.level
+
+    if (!carrera || !pais) {
+      return res.status(400).json({ error: 'Falta carrera o país. Completa tu perfil (carrera objetivo y país) o envíalos directamente.' })
+    }
+
+    const salaryAnchorsRef = await getSalaryAnchorsReference(pais)
+    const anchorContext = salaryAnchorsRef
+      ? `Referencias curadas como respaldo (pueden estar desactualizadas — prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}`
+      : ''
+    const minWageLine = /chile/i.test(pais)
+      ? `\nSueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual — ningún rango debe quedar por debajo salvo práctica/part-time.`
+      : ''
+    const provider = getProviderFromRequest(req)
+    const isGroqRec = provider === 'groq'
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1500,
+      system: 'Eres un experto en compensación laboral. Si tienes la herramienta de búsqueda web disponible, ÚSALA para investigar el rango real del rol/empresa/país en vez de solo tu conocimiento general. CUIDADO: muchas fuentes muestran cifras ANUALES por defecto — verifica la unidad antes de reportar y convierte a MENSUAL (÷12) si corresponde. Razona brevemente (máximo 3-4 líneas) y luego SIEMPRE termina tu respuesta con el bloque JSON, sin markdown: {"rango_min": number, "rango_max": number, "moneda": string, "explicacion": string}. La explicación va en español neutro (1-2 frases), debe indicar explícitamente que es una estimación. El bloque JSON es obligatorio y debe quedar completo — no lo omitas ni lo cortes.',
+      messages: [{
+        role: 'user',
+        content: `Carrera/rol: ${carrera}\nPaís: ${pais}\nNivel/seniority: ${nivel || 'no especificado'}\n${anchorContext}${minWageLine}` +
+          (empresa ? `\nEmpresa que ofrece el cargo: ${empresa}` : '') +
+          (jd ? `\nDescripción del cargo (extracto):\n${jd}` : '') +
+          `\n\nDame un rango de renta líquida MENSUAL estimado y realista para esta persona postulando${empresa ? ` a ${empresa}` : ''} en ${pais}${jd ? ', considerando las responsabilidades y el nivel de seniority que sugiere la descripción del cargo' : ''}.`,
+      }],
+      tools: isGroqRec ? undefined : [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+    })
+
+    const rawText = response.content
+      .filter((b: { type: string }) => b.type === 'text')
+      .map((b: { type: string; text: string }) => b.text)
+      .join('')
+      .trim()
+
+    let parsed: { rango_min: number; rango_max: number; moneda: string; explicacion: string }
+    try {
+      // Con búsqueda web el modelo suele razonar antes del JSON final — tomamos el
+      // último bloque {...} del texto (sin llaves anidadas) en vez de un match
+      // codicioso desde la primera llave, que podría capturar texto de más.
+      const fencedMatch = rawText.match(/```json\s*([\s\S]*?)```/)
+      const braceMatches = rawText.match(/\{[^{}]*\}/g)
+      const candidate = fencedMatch?.[1] || (braceMatches ? braceMatches[braceMatches.length - 1] : rawText)
+      parsed = JSON.parse(candidate)
+    } catch {
+      throw new Error('No se pudo generar la recomendación — intenta nuevamente')
+    }
+
+    if (req.body?.applicationId) {
+      const formatted = `${parsed.rango_min.toLocaleString('es-CL')} - ${parsed.rango_max.toLocaleString('es-CL')} ${parsed.moneda} mensual (estimado)`
+      await svc.patchApplicationSalary(req.body.applicationId, formatted, undefined, userEmail).catch(() => {})
+    }
+
+    res.json({ ...parsed, basadoEnAncla: !!salaryAnchorsRef, carrera, pais })
   } catch (err: unknown) {
     res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
@@ -1000,6 +1146,17 @@ export const createApplication = async (req: Request, res: Response) => {
 
     const existingApp = await svc.findApplicationByUrlOrRole(url, empresa, rol, userEmail)
     const id = existingApp?.id ?? await svc.getNextApplicationId(userEmail)
+
+    // Buscar el tracker entry de la oferta ya evaluada — si existe, reusa el
+    // salario que la IA ya calculó en Evaluar Oferta en vez de recalcularlo.
+    const tracker = await svc.readTracker(userEmail)
+    const existingTrackerEntry = url
+      ? tracker.find(e => e.url === url)
+      : tracker.find(e =>
+          e.empresa.toLowerCase() === empresa.toLowerCase() &&
+          e.rol.toLowerCase() === rol.toLowerCase()
+        )
+
     const app: svc.Application = {
       id,
       fecha: existingApp?.fecha || new Date().toISOString().split('T')[0],
@@ -1016,21 +1173,16 @@ export const createApplication = async (req: Request, res: Response) => {
       interviewPrep: existingApp?.interviewPrep,
       coverLetter,
       idioma,
+      salario_clp: existingApp?.salario_clp || existingTrackerEntry?.salario_clp,
+      salario_usd: existingApp?.salario_usd || existingTrackerEntry?.salario_usd,
     }
     await svc.saveApplication(app, userEmail)
 
-    // Sync tracker: create entry or advance state to 'CV Generado'
+    // Sync tracker: create entry o avanzar estado a 'CV Generado'
     try {
-      const tracker = await svc.readTracker(userEmail)
-      const existing = url
-        ? tracker.find(e => e.url === url)
-        : tracker.find(e =>
-            e.empresa.toLowerCase() === empresa.toLowerCase() &&
-            e.rol.toLowerCase() === rol.toLowerCase()
-          )
-      if (existing) {
-        if (existing.estado === 'Evaluada') {
-          await svc.updateTrackerEntry(existing.id, { estado: 'CV Generado', pdf: !!cvPdfFilename }, userEmail)
+      if (existingTrackerEntry) {
+        if (existingTrackerEntry.estado === 'Evaluada') {
+          await svc.updateTrackerEntry(existingTrackerEntry.id, { estado: 'CV Generado', pdf: !!cvPdfFilename }, userEmail)
         }
       } else {
         await svc.addTrackerEntry({
