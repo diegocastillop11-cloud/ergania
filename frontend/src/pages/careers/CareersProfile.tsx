@@ -9,6 +9,7 @@ import {
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import PerfilTabs from '../../components/careers/PerfilTabs'
+import { COUNTRIES } from '../../lib/countries'
 
 
 interface ProfileData {
@@ -84,6 +85,27 @@ function Field({
         placeholder={placeholder}
         className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
+    </div>
+  )
+}
+
+function SelectField({
+  label, value, onChange, options
+}: {
+  label: string; value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div>
+      <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+      >
+        <option value="">Sin especificar</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
     </div>
   )
 }
@@ -399,6 +421,12 @@ export default function CareersProfile() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField
+            label="País"
+            value={loc.country || ''}
+            onChange={v => set(['location', 'country'], v)}
+            options={COUNTRIES.map(c => ({ value: c.nombre, label: c.nombre }))}
+          />
           <Field
             label="Ciudad"
             value={loc.city || ''}

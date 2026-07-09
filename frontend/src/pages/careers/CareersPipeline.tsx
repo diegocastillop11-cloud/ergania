@@ -9,6 +9,7 @@ import {
   CheckCircle2, AlertCircle, AlertTriangle, XCircle, Loader2, Copy, FileText
 } from 'lucide-react'
 import { PipelineJob, EvaluationResult, RECOMENDACION_CONFIG, SCORE_COLOR } from '../../types/careers'
+import { COUNTRIES } from '../../lib/countries'
 
 
 interface OfferClickData {
@@ -169,6 +170,7 @@ export default function CareersPipeline() {
   const [jdText, setJdText] = useState('')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [jdMode, setJdMode] = useState<'url' | 'text'>('url')
+  const [paisEval, setPaisEval] = useState('')
   const [evalStates, setEvalStates] = useState<Record<string, EvalState>>({})
   const [directEval, setDirectEval] = useState<EvalState>({ loading: false, result: null, error: null })
   const [confirmation, setConfirmation] = useState<{ titulo: string; score: number; recomendacion: string; url: string } | null>(null)
@@ -211,6 +213,7 @@ export default function CareersPipeline() {
       const payload: Record<string, string> = { llmProvider, ...(userApiKey ? { userApiKey } : {}) }
       if (url) payload.url = url
       if (jd) payload.jd = jd
+      if (paisEval) payload.pais = paisEval
 
       const { data } = await api.post<EvaluationResult>('/evaluate', payload)
       setState({ loading: false, result: data })
@@ -279,6 +282,15 @@ export default function CareersPipeline() {
             </button>
           ))}
         </div>
+          <select
+            value={paisEval}
+            onChange={e => setPaisEval(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+            title="País de la oferta — determina moneda e idioma del análisis"
+          >
+            <option value="">País: según mi perfil (Chile por defecto)</option>
+            {COUNTRIES.map(c => <option key={c.nombre} value={c.nombre}>{c.nombre}</option>)}
+          </select>
         <div className="mb-4" />
       </div>
 

@@ -5,6 +5,7 @@ import axios from 'axios'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
 import { getSubscriptionStatus } from '../services/subscriptionService'
+import { getCountryConfig, DEFAULT_COUNTRY_NAME } from '../config/countries'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const multer = require('multer') as typeof import('multer')
@@ -176,9 +177,6 @@ export async function testAi(req: Request, res: Response) {
 function authErr(msg: string): never {
   throw Object.assign(new Error(msg), { status: 401 })
 }
-
-// Ley 21.751 — desde ene-2026. Verificar/actualizar cuando cambie el reajuste legal.
-const CHILE_MINIMUM_WAGE_CLP = 539000
 
 async function getSalaryAnchorsReference(pais: string): Promise<string> {
   if (!supabaseAdmin) return ''
@@ -568,7 +566,14 @@ export const evaluateJob = async (req: Request, res: Response) => {
     const narrative    = (profile.narrative    as Record<string, unknown>) || {}
     const location     = (profile.location     as Record<string, string>) || {}
 
-    const salaryAnchorsRef = await getSalaryAnchorsReference('Chile')
+    const paisSeleccionado = (req.body?.pais as string) || location.country || DEFAULT_COUNTRY_NAME
+    const country = getCountryConfig(paisSeleccionado)
+    const idiomaSalida = country.idioma === 'en' ? 'inglés' : 'español'
+    const pisoLegalLine = country.pisoLegalMensual
+      ? `Sueldo mínimo legal en ${country.nombre}: $${country.pisoLegalMensual.toLocaleString('es-CL')} ${country.moneda} mensual${country.pisoLegalNota ? ` (${country.pisoLegalNota})` : ''} — ningún rango debe quedar por debajo salvo práctica/part-time.`
+      : ''
+
+    const salaryAnchorsRef = await getSalaryAnchorsReference(country.nombre)
 
     // Detectar si el contenido fue extraído exitosamente
     const hasContent = scrapedContent.length > 200
@@ -587,12 +592,12 @@ export const evaluateJob = async (req: Request, res: Response) => {
       // ── Modo compacto para Groq (límite 6000 TPM en tier gratuito) ──────────
       // Input: ~1500 tokens | Output: ~1200 tokens | Total: ~2700 < 6000 ✓
       maxTokens = 1200
-      systemPrompt = `Eres experto en ofertas laborales de Chile. Evalúa brevemente. Responde SOLO en español.
+      systemPrompt = `Eres experto en ofertas laborales de ${country.nombre}. Evalúa brevemente. Responde SOLO en ${idiomaSalida}.
 Candidato: ${candidate.full_name || 'Diego'} — ${(narrative.headline as string) || 'Analista de Datos'}
 Roles objetivo: ${Object.values(targetRoles).flat().slice(0, 4).join(', ')}
-Renta objetivo: ${compensation.target_range || '$1.800.000-$2.500.000 CLP'}
+Renta objetivo: ${compensation.target_range || `sin dato — estima acorde al mercado de ${country.nombre} en ${country.moneda}`}
 CV (resumen): ${cv.slice(0, 800)}
-Sueldo mínimo legal Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP — ningún rango debajo de esto salvo práctica/part-time.
+${pisoLegalLine}
 ${salaryAnchorsRef ? `Referencias reales de mercado (usa la más cercana al rol/seniority detectado):\n${salaryAnchorsRef}` : ''}`
 
       userMessage = `Oferta: ${empresa || ''} — ${rol || ''}${url ? ` (${url})` : ''}
@@ -605,17 +610,17 @@ Extrae empresa y rol del URL o contexto. Haz tu mejor evaluación con lo disponi
 
 Responde con análisis breve Y este JSON al final:
 \`\`\`json
-{"empresa":"...","rol":"...","score":0.0,"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango CLP","contrata_chile":true,"keywords":["kw1"]}
+{"empresa":"...","rol":"...","score":0.0,"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango en ${country.moneda}","contrata_chile":true,"keywords":["kw1"]}
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
       maxTokens = 2600 // margen extra: con búsqueda web el modelo puede razonar antes del JSON
-      systemPrompt = `Eres un experto en búsqueda de trabajo en Chile y evaluación de ofertas laborales.
+      systemPrompt = `Eres un experto en búsqueda de trabajo en ${country.nombre} y evaluación de ofertas laborales.
 
 CONTEXTO DEL CANDIDATO:
-- País: Chile (Santiago, Región Metropolitana)
-- Moneda: Pesos Chilenos (CLP) — SIEMPRE usa CLP para salarios
-- Idioma: Español — responde SIEMPRE en español
+- País de la oferta: ${country.nombre}
+- Moneda: ${country.moneda} — SIEMPRE usa ${country.moneda} para salarios
+- Idioma: responde SIEMPRE en ${idiomaSalida}
 
 ${sharedMode}
 ${profileMode}
@@ -628,12 +633,12 @@ DATOS DEL PERFIL:
 - Ubicación: ${candidate.location || 'La Florida, Santiago, Chile'}
 - Roles objetivo: ${JSON.stringify(targetRoles)}
 - Headline: ${(narrative.headline as string) || ''}
-- Compensación objetivo: ${compensation.target_range || '$1.800.000 - $2.500.000 CLP mensual'}
-- Mínimo: ${compensation.minimum || '$1.500.000 CLP mensual'}
-- Modalidad: ${location.modalidad || 'Remoto o Híbrido en Santiago'}
+- Compensación objetivo: ${compensation.target_range || `sin dato — estima acorde al mercado de ${country.nombre} en ${country.moneda}`}
+- Mínimo: ${compensation.minimum || 'sin dato'}
+- Modalidad: ${location.modalidad || 'Remoto o Híbrido'}
 
 DATOS REALES DE MERCADO:
-- Sueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual (Ley 21.751, ene-2026) — ningún salario_clp debe quedar por debajo salvo que la oferta sea explícitamente part-time o práctica profesional.
+${pisoLegalLine ? `- ${pisoLegalLine}` : ''}
 ${salaryAnchorsRef ? `- Referencias curadas como respaldo (pueden estar desactualizadas, prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}` : ''}
 
 CÓMO ESTIMAR EL SALARIO (salario_clp):
@@ -642,20 +647,20 @@ CÓMO ESTIMAR EL SALARIO (salario_clp):
 3. Si no hay resultados de búsqueda útiles, usa las referencias curadas de arriba (si existen) o tu conocimiento general, siendo conservador y explícito en tu razonamiento sobre que es una estimación.
 4. Considera también el tamaño/rubro de la empresa y las responsabilidades específicas del cargo, no solo el título del rol.
 
-REGLAS CRÍTICAS PARA CHILE:
-1. TODOS los salarios se expresan en CLP (Pesos Chilenos) mensual bruto
-2. Para ofertas en USD: convierte al cambio actual (~$950 CLP por USD) Y también muestra el USD
-3. Prioriza roles: Remoto > Híbrido > Presencial Santiago
-4. Evalúa si la empresa contrata en Chile (entity propia, contractor, EOR)
-5. Si la oferta es en inglés, evalúa igual pero responde EN ESPAÑOL
+REGLAS CRÍTICAS PARA ${country.nombre.toUpperCase()}:
+1. TODOS los salarios se expresan en ${country.moneda} mensual bruto
+2. Si la oferta menciona un sueldo en otra moneda, conviértelo al cambio actual a ${country.moneda} Y también muestra la cifra original
+3. Prioriza roles: Remoto > Híbrido > Presencial
+4. Evalúa si la empresa contrata en ${country.nombre} (entity propia, contractor, EOR)
+5. Si la oferta es en un idioma distinto, evalúa igual pero responde EN ${idiomaSalida.toUpperCase()}
 
-RESPONDE SIEMPRE EN ESPAÑOL. Sé directo, concreto y útil. Sin frases genéricas.${isShortfallUrl ? `
+RESPONDE SIEMPRE EN ${idiomaSalida.toUpperCase()}. Sé directo, concreto y útil. Sin frases genéricas.${isShortfallUrl ? `
 
 ⚠️ LIMITACIÓN: El contenido de esta oferta fue limitado (acceso de la URL bloqueado).
 CRITICAL: Extrae empresa y rol del URL, headers, meta tags, o contexto disponible.
 Haz tu mejor evaluación profesional con lo que tengas.` : ''}`
 
-      userMessage = `Evalúa esta oferta de trabajo para el mercado chileno:
+      userMessage = `Evalúa esta oferta de trabajo para el mercado de ${country.nombre}:
 
 ${url ? `URL: ${url}` : ''}
 ${empresa ? `Empresa: ${empresa}` : ''}
@@ -679,7 +684,7 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
   "seniority": "Junior/Mid/Senior",
   "legitimidad": "Alta confianza/Proceder con cautela/Sospechosa",
   "recomendacion": "POSTULAR/CONSIDERAR/DESCARTAR",
-  "salario_clp": "rango en CLP mensual",
+  "salario_clp": "rango en ${country.moneda} mensual",
   "salario_usd": "si aplica para trabajo remoto internacional",
   "contrata_chile": true,
   "keywords": ["kw1", "kw2"]
@@ -742,8 +747,9 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
 **Arquetipo:** ${meta.arquetipo || '—'}
 **Score:** ${meta.score || '—'}/5
 **Legitimidad:** ${meta.legitimidad || '—'}
-**Salario CLP:** ${meta.salario_clp || '—'}
-**Contrata en Chile:** ${meta.contrata_chile ? 'Sí' : 'No confirmado'}
+**País:** ${country.nombre}
+**Salario (${country.moneda}):** ${meta.salario_clp || '—'}
+**Contrata en ${country.nombre}:** ${meta.contrata_chile ? 'Sí' : 'No confirmado'}
 **PDF:** pendiente
 
 ---
@@ -765,6 +771,8 @@ ${fullText}
       idioma: detectLanguage(jd),
       salario_clp: (meta.salario_clp as string) || undefined,
       salario_usd: (meta.salario_usd as string) || undefined,
+      pais: country.nombre,
+      moneda: country.moneda,
     }, userEmail)
 
     if (url) await svc.removeFromPipeline(url, userEmail)
@@ -791,7 +799,7 @@ export const generateCV = async (req: Request, res: Response) => {
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 6000,
-      system: 'Eres experto en CVs para el mercado chileno. Genera HTML profesional con CSS embebido, sin dependencias externas, listo para imprimir en PDF.',
+      system: 'Eres experto en CVs para búsquedas de empleo internacionales. Genera HTML profesional con CSS embebido, sin dependencias externas, listo para imprimir en PDF.',
       messages: [{
         role: 'user',
         content: `Genera un CV en HTML para ${rol} en ${empresa}.\nCV actual:\n${cv}\nPerfil:\n${JSON.stringify(profile)}`,
@@ -846,7 +854,7 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
         }
       }
       if (cachedText) {
-        return res.json({ salario_clp: cachedText, fromCache: true, carrera: app.rol, pais: (location.country as string) || 'Chile' })
+        return res.json({ salario_clp: cachedText, fromCache: true, carrera: app.rol, pais: (location.country as string) || DEFAULT_COUNTRY_NAME })
       }
 
       empresa = app.empresa
@@ -869,8 +877,9 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
     const anchorContext = salaryAnchorsRef
       ? `Referencias curadas como respaldo (pueden estar desactualizadas — prioriza la búsqueda web si está disponible):\n${salaryAnchorsRef}`
       : ''
-    const minWageLine = /chile/i.test(pais)
-      ? `\nSueldo mínimo legal en Chile: $${CHILE_MINIMUM_WAGE_CLP.toLocaleString('es-CL')} CLP mensual — ningún rango debe quedar por debajo salvo práctica/part-time.`
+    const paisConfig = getCountryConfig(pais)
+    const minWageLine = paisConfig.pisoLegalMensual
+      ? `\nSueldo mínimo legal en ${paisConfig.nombre}: $${paisConfig.pisoLegalMensual.toLocaleString('es-CL')} ${paisConfig.moneda} mensual — ningún rango debe quedar por debajo salvo práctica/part-time.`
       : ''
     const provider = getProviderFromRequest(req)
     const isGroqRec = provider === 'groq'
@@ -1035,7 +1044,7 @@ RULES:
 
 Reply ONLY with the letter text.`
   }
-  return `Actúa como experto en comunicación ejecutiva para el mercado laboral chileno.
+  return `Actúa como experto en comunicación ejecutiva para búsquedas de empleo en español.
 Redacta una carta de presentación personalizada para esta postulación específica.
 
 EMPRESA: ${empresa}
@@ -1075,6 +1084,7 @@ export const createApplication = async (req: Request, res: Response) => {
     const cv = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail)
     const cand = (profile?.candidate as Record<string, string>) || {}
+    const location = (profile?.location as Record<string, string>) || {}
     const cvInstructions = (profile as Record<string, unknown>)?.cv_instructions as string | undefined
     const contactInfo = {
       city: cand.location || '',
@@ -1084,15 +1094,28 @@ export const createApplication = async (req: Request, res: Response) => {
       github: cand.github || '',
     }
 
+    // Buscar el tracker entry de la oferta ya evaluada primero — si existe, reusa
+    // el país que la IA ya detectó en Evaluar Oferta en vez de volver a preguntarlo.
+    const tracker = await svc.readTracker(userEmail)
+    const existingTrackerEntry = url
+      ? tracker.find(e => e.url === url)
+      : tracker.find(e =>
+          e.empresa.toLowerCase() === empresa.toLowerCase() &&
+          e.rol.toLowerCase() === rol.toLowerCase()
+        )
+
+    const paisSeleccionado = (req.body?.pais as string) || existingTrackerEntry?.pais || location.country || DEFAULT_COUNTRY_NAME
+    const country = getCountryConfig(paisSeleccionado)
+
     const idioma: 'es' | 'en' = req.body.idioma === 'en' || req.body.idioma === 'es'
       ? req.body.idioma
-      : detectLanguage(jd)
+      : country.idioma === 'en' ? 'en' : detectLanguage(jd)
     const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd, cv, cand, contactInfo, cvInstructions, idioma)
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 4000,
-      system: 'Eres un redactor experto en CVs Harvard ATS-optimizados para Chile. Retornas SOLO JSON válido, sin markdown, sin explicaciones.',
+      system: `Eres un redactor experto en CVs Harvard ATS-optimizados para ${country.nombre}. Retornas SOLO JSON válido, sin markdown, sin explicaciones.`,
       messages: [{ role: 'user', content: cvJsonPrompt }],
     })
 
@@ -1130,7 +1153,7 @@ export const createApplication = async (req: Request, res: Response) => {
       const clResult = await getLlmClient(req).messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 600,
-        system: 'Eres experto en redacción de cartas de presentación para el mercado laboral chileno. Responde SOLO con el texto de la carta, sin encabezados extra ni explicaciones.',
+        system: `Eres experto en redacción de cartas de presentación para el mercado laboral de ${country.nombre}. Responde SOLO con el texto de la carta, sin encabezados extra ni explicaciones.`,
         messages: [{ role: 'user', content: coverLetterPrompt }],
       })
       coverLetter = clResult.content
@@ -1146,16 +1169,6 @@ export const createApplication = async (req: Request, res: Response) => {
 
     const existingApp = await svc.findApplicationByUrlOrRole(url, empresa, rol, userEmail)
     const id = existingApp?.id ?? await svc.getNextApplicationId(userEmail)
-
-    // Buscar el tracker entry de la oferta ya evaluada — si existe, reusa el
-    // salario que la IA ya calculó en Evaluar Oferta en vez de recalcularlo.
-    const tracker = await svc.readTracker(userEmail)
-    const existingTrackerEntry = url
-      ? tracker.find(e => e.url === url)
-      : tracker.find(e =>
-          e.empresa.toLowerCase() === empresa.toLowerCase() &&
-          e.rol.toLowerCase() === rol.toLowerCase()
-        )
 
     const app: svc.Application = {
       id,
@@ -1175,6 +1188,8 @@ export const createApplication = async (req: Request, res: Response) => {
       idioma,
       salario_clp: existingApp?.salario_clp || existingTrackerEntry?.salario_clp,
       salario_usd: existingApp?.salario_usd || existingTrackerEntry?.salario_usd,
+      pais: existingApp?.pais || country.nombre,
+      moneda: existingApp?.moneda || country.moneda,
     }
     await svc.saveApplication(app, userEmail)
 
@@ -1196,6 +1211,8 @@ export const createApplication = async (req: Request, res: Response) => {
           url: url || '',
           notas: '',
           idioma,
+          pais: country.nombre,
+          moneda: country.moneda,
         }, userEmail)
       }
     } catch (trackerErr) {
@@ -1229,6 +1246,7 @@ export const regenerateCV = async (req: Request, res: Response) => {
       github: cand.github || '',
     }
     const { empresa, rol, jd } = app
+    const country = getCountryConfig(app.pais)
 
     // Prioridad: idioma pedido en el body (botón "cambiar idioma") > guardado > detectado del JD
     const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
@@ -1240,7 +1258,7 @@ export const regenerateCV = async (req: Request, res: Response) => {
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 4000,
-      system: 'Eres un redactor experto en CVs Harvard ATS-optimizados para Chile. Retornas SOLO JSON válido, sin markdown, sin explicaciones.',
+      system: `Eres un redactor experto en CVs Harvard ATS-optimizados para ${country.nombre}. Retornas SOLO JSON válido, sin markdown, sin explicaciones.`,
       messages: [{ role: 'user', content: cvJsonPrompt }],
     })
 
@@ -1291,9 +1309,10 @@ export const generateInterviewPrep = async (req: Request, res: Response) => {
     const cv = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail)
 
+    const country = getCountryConfig(app.pais)
     const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
       ? req.body.idioma
-      : app.idioma || 'es'
+      : app.idioma || country.idioma
     const idiomaRule = idioma === 'en'
       ? '\nIMPORTANTE: la entrevista será en INGLÉS. Escribe TODA la guía en inglés profesional (títulos de sección incluidos), con las respuestas sugeridas listas para decirse en inglés.'
       : ''
@@ -1301,7 +1320,7 @@ export const generateInterviewPrep = async (req: Request, res: Response) => {
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
-      system: `Eres un coach de carrera experto en el mercado laboral chileno.
+      system: `Eres un coach de carrera experto en el mercado laboral de ${country.nombre}.
 Preparas candidatos para entrevistas de forma práctica.
 Actúa como reclutador senior: evalúa el CV con ojo crítico y señala qué está débil, qué falta y qué te haría rechazarlo.
 Si el candidato no tiene experiencia directa, ofrece estrategias para manejar esas preguntas con confianza y honestidad positiva.${idiomaRule}`,
@@ -1370,10 +1389,10 @@ export const answerQuestion = async (req: Request, res: Response) => {
 
     const idiomaAnswer: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
       ? req.body.idioma
-      : app.idioma || 'es'
+      : app.idioma || getCountryConfig(app.pais).idioma
     const answerLangRule = idiomaAnswer === 'en'
       ? 'Responde SIEMPRE en inglés profesional nativo (el formulario de postulación está en inglés).'
-      : 'Español chileno profesional.'
+      : 'Español profesional neutro.'
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
@@ -1457,7 +1476,9 @@ export const generateApplyKit = async (req: Request, res: Response) => {
     if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
 
     const cv = await svc.readCV(userEmail)
-    const profile = await svc.readProfile(userEmail)
+    const country = getCountryConfig(app.pais)
+    const idioma = app.idioma || country.idioma
+    const idiomaRule = idioma === 'en' ? 'Responde SIEMPRE en inglés profesional nativo.' : 'Responde SIEMPRE en español profesional.'
 
     let pageContent = app.jd || ''
     if (app.url) {
@@ -1486,7 +1507,7 @@ export const generateApplyKit = async (req: Request, res: Response) => {
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 3000,
-      system: `Eres experto en postulaciones laborales para Chile. Detectas preguntas reales de formularios web y redactas respuestas cortas, precisas y convincentes. El reclutador lee en 10 segundos.`,
+      system: `Eres experto en postulaciones laborales para ${country.nombre}. Detectas preguntas reales de formularios web y redactas respuestas cortas, precisas y convincentes. El reclutador lee en 10 segundos. ${idiomaRule}`,
       messages: [{
         role: 'user',
         content: `Analiza esta página de postulación para ${app.rol} en ${app.empresa} y genera respuestas.
@@ -1499,7 +1520,7 @@ ${cv.slice(0, 1200)}
 
 TAREA:
 1. Si detectas preguntas REALES del formulario (labels, placeholders, campos de texto), úsalas.
-2. Si no hay formulario visible, usa las preguntas más probables para este cargo en Chile.
+2. Si no hay formulario visible, usa las preguntas más probables para este cargo en ${country.nombre}.
 3. Genera respuesta concreta para cada pregunta.
 
 Retorna SOLO JSON (sin markdown):
@@ -1509,7 +1530,7 @@ REGLAS:
 - 50-80 palabras por respuesta (2-3 oraciones). Directo al punto.
 - Primera persona. Verbo de acción. Número real del CV cuando aplica.
 - PROHIBIDO: "soy una persona...", "me considero...", "me apasiona...".
-- Incluye SIEMPRE: motivación por ${app.empresa}, fortaleza clave para el cargo, disponibilidad de inicio, expectativa de renta (rango CLP).
+- Incluye SIEMPRE: motivación por ${app.empresa}, fortaleza clave para el cargo, disponibilidad de inicio, expectativa de renta (rango ${country.moneda}).
 - Si la JD menciona preguntas específicas, agrégalas.`,
       }],
     })
@@ -1615,16 +1636,18 @@ export const linkedinOptimize = async (req: Request, res: Response) => {
     const cand    = (profile.candidate as Record<string, string>) || {}
     const targetRoles = (profile.target_roles as Record<string, unknown>) || {}
     const narrative   = (profile.narrative   as Record<string, unknown>) || {}
+    const location    = (profile.location    as Record<string, string>) || {}
+    const country = getCountryConfig(location.country)
 
     const rolesStr = [
       ...((targetRoles.primary as string[]) || []),
       ...((targetRoles.archetypes as Array<{ name: string }>) || []).map(a => a.name),
     ].filter(Boolean).slice(0, 8).join(', ')
 
-    const prompt = `Eres un experto en LinkedIn y búsqueda de empleo en Chile. Optimiza el perfil de LinkedIn del candidato para que aparezca en búsquedas de reclutadores y pase filtros ATS de LinkedIn.
+    const prompt = `Eres un experto en LinkedIn y búsqueda de empleo en ${country.nombre}. Optimiza el perfil de LinkedIn del candidato para que aparezca en búsquedas de reclutadores y pase filtros ATS de LinkedIn. Escribe el contenido en ${country.idioma === 'en' ? 'inglés' : 'español'}.
 
 CANDIDATO: ${cand.full_name || 'Diego Castillo'}
-UBICACIÓN: ${cand.location || 'Santiago, Chile'}
+UBICACIÓN: ${cand.location || country.nombre}
 ROLES OBJETIVO (varios simultáneos): ${rolesStr || 'Data Analyst, Product Owner, Desarrollador'}
 HEADLINE ACTUAL: ${(narrative.headline as string) || ''}
 
@@ -1644,13 +1667,13 @@ Genera las siguientes secciones del perfil LinkedIn optimizadas. Devuelve JSON e
   ],
   "featured_ideas": ["idea de contenido destacado 1", "idea 2", "idea 3"],
   "open_to_work": "texto recomendado para la sección Open to Work (qué roles, modalidad, disponibilidad)",
-  "keywords_to_include": ["keyword1", "keyword2", ...15 keywords que reclutadores chilenos buscan actualmente para estos roles"]
+  "keywords_to_include": ["keyword1", "keyword2", ...15 keywords que reclutadores de ${country.nombre} buscan actualmente para estos roles"]
 }`
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 3000,
-      system: 'Eres un experto en LinkedIn y personal branding para el mercado laboral chileno. Retornas SOLO JSON válido, sin markdown.',
+      system: `Eres un experto en LinkedIn y personal branding para el mercado laboral de ${country.nombre}. Retornas SOLO JSON válido, sin markdown.`,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -1688,16 +1711,18 @@ export const suggestTargets = async (req: Request, res: Response) => {
     const cv      = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail) as Record<string, unknown>
     const portals = await svc.readPortals(userEmail)
+    const location = (profile.location as Record<string, string>) || {}
+    const country = getCountryConfig(location.country)
     const currentRoles    = ((profile.target_roles as Record<string, string[]>)?.primary || []).join(', ')
     const currentKeywords = (portals.title_filter?.positive || []).join(', ')
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 1500,
-      system: 'Eres un experto en búsqueda de empleo en Chile. Analizas CVs y sugieres los mejores cargos y keywords para encontrar más oportunidades.',
+      system: `Eres un experto en búsqueda de empleo en ${country.nombre}. Analizas CVs y sugieres los mejores cargos y keywords para encontrar más oportunidades.`,
       messages: [{
         role: 'user',
-        content: `Analiza este CV y sugiere cargos objetivo y keywords de búsqueda para el mercado chileno.
+        content: `Analiza este CV y sugiere cargos objetivo y keywords de búsqueda para el mercado de ${country.nombre}.
 
 CV:
 ${cv.slice(0, 2000)}
@@ -1720,8 +1745,8 @@ REGLAS:
 - 8-12 roles variados: algunos exactos (Analista SQL), otros amplios (Data Analyst), algunos en inglés para empresas internacionales
 - 10-15 keywords tecnológicas del CV + variaciones (SQL Server → SQL, MSSQL, T-SQL)
 - 5-8 keywords negativas para evitar roles no deseados (call center, ventas, soporte L1 básico)
-- 5-6 queries: mezcla de rol + tecnología + "Chile" o "remoto"
-- Todo en español chileno profesional`,
+- 5-6 queries: mezcla de rol + tecnología + "${country.nombre}" o "remoto"
+- Todo en ${country.idioma === 'en' ? 'inglés' : 'español'} profesional`,
       }],
     })
 
@@ -2429,7 +2454,7 @@ export const parseCv = async (req: Request, res: Response) => {
 
     const client = getLlmClient(req)
 
-    const prompt = `Eres un extractor de datos de CVs para un buscador de empleo en Chile. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
+    const prompt = `Eres un extractor de datos de CVs para un buscador de empleo internacional. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
 
 {
   "candidate": {

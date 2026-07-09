@@ -49,6 +49,8 @@ export interface TrackerEntry {
   idioma?: 'es' | 'en'
   salario_clp?: string
   salario_usd?: string
+  pais?: string
+  moneda?: string
 }
 
 export interface PipelineJob {
@@ -572,6 +574,8 @@ export interface Application {
   notas?: string
   salario_clp?: string
   salario_usd?: string
+  pais?: string
+  moneda?: string
 }
 
 const APPS_PATH = p('data', 'applications.json')
@@ -737,6 +741,8 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     idioma: row.idioma || undefined,
     salario_clp: row.salario_clp || undefined,
     salario_usd: row.salario_usd || undefined,
+    pais: row.pais || undefined,
+    moneda: row.moneda || undefined,
   }))
 }
 
@@ -1030,7 +1036,7 @@ async function dbReadApplications(userEmail: string): Promise<Omit<Application, 
   if (!supabase) return []
   const { data, error } = await supabase
     .from('applications')
-    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep", idioma')
+    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep", idioma, pais, moneda')
     .eq('user_email', userEmail)
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
