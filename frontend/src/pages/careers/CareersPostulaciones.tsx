@@ -765,12 +765,16 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
 interface ApplyKitItem { pregunta: string; respuesta: string; tip?: string }
 
 function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void }) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [kit, setKit] = useState<ApplyKitItem[]>([])
   const [formularioDetectado, setFormularioDetectado] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const [carta, setCarta] = useState(app.coverLetter || '')
+  const [cartaLoading, setCartaLoading] = useState(false)
+  const [cartaError, setCartaError] = useState('')
+  const [cartaCopied, setCartaCopied] = useState(false)
 
   const generate = async () => {
     setLoading(true)
@@ -789,6 +793,32 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
     } finally {
       setLoading(false)
     }
+  }
+
+  // 1 clic: las respuestas se generan solas al abrir el kit
+  useEffect(() => { generate() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const generateCarta = async () => {
+    setCartaLoading(true)
+    setCartaError('')
+    try {
+      const userApiKey = getKeyForProvider(llmProvider)
+      const { data } = await api.post(`/applications/${app.id}/cover-letter`, {
+        llmProvider,
+        ...(userApiKey ? { userApiKey } : {}),
+      })
+      setCarta(data.coverLetter)
+    } catch (err: unknown) {
+      setCartaError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error generando la carta')
+    } finally {
+      setCartaLoading(false)
+    }
+  }
+
+  const copyCarta = () => {
+    navigator.clipboard.writeText(carta)
+    setCartaCopied(true)
+    setTimeout(() => setCartaCopied(false), 2000)
   }
 
   const copyItem = (idx: number, text: string) => {
@@ -948,6 +978,44 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
                 ))}
               </div>
             </>
+          )}
+
+          {/* Carta de presentación integrada al kit */}
+          {!loading && (
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="text-sm font-medium text-orange-300 flex items-center gap-2">
+                  <Mail size={13} /> Carta de Presentación
+                </p>
+                {carta ? (
+                  <button
+                    onClick={copyCarta}
+                    className="shrink-0 flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                  >
+                    {cartaCopied
+                      ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</>
+                      : <><Copy size={12} /> Copiar</>
+                    }
+                  </button>
+                ) : (
+                  <button
+                    onClick={generateCarta}
+                    disabled={cartaLoading}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white rounded-lg text-xs font-medium"
+                  >
+                    {cartaLoading
+                      ? <><Loader2 size={12} className="animate-spin" /> Generando...</>
+                      : <><Mail size={12} /> Generar carta</>
+                    }
+                  </button>
+                )}
+              </div>
+              {carta
+                ? <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{carta}</p>
+                : !cartaLoading && <p className="text-gray-500 text-xs">Genera una carta adaptada a esta oferta, lista para copiar al formulario o al correo.</p>
+              }
+              {cartaError && <p className="text-xs text-red-400 mt-2">{cartaError}</p>}
+            </div>
           )}
         </div>
       </div>
@@ -1287,7 +1355,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               onClick={openApply}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-800/50 text-orange-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <Rocket size={11} /> Postular
+              <Rocket size={11} /> Kit de Postulación
             </button>
             <button
               onClick={openCoverLetter}

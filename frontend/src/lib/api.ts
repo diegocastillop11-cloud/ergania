@@ -19,3 +19,24 @@ api.interceptors.request.use(async config => {
   }
   return config
 })
+
+// 401 del backend: si el refresh también falla, la sesión fue revocada
+// (login en otro dispositivo) — cerrar solo este cliente y explicar en /login
+export async function handleUnauthorized(): Promise<boolean> {
+  const { error } = await supabase.auth.refreshSession()
+  if (!error) return false
+  sessionStorage.setItem('ergania:sessionClosed', '1')
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+  window.location.replace('/login')
+  return true
+}
+
+api.interceptors.response.use(
+  res => res,
+  async err => {
+    if (err.response?.status === 401 && await handleUnauthorized()) {
+      return new Promise(() => {}) // redirigiendo a /login — no propagar el error
+    }
+    return Promise.reject(err)
+  }
+)

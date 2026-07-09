@@ -162,6 +162,52 @@ export async function handleWebhook(topic: string, id: string) {
   ).catch(err => console.error('[webhook] Error enviando notificación de pago:', err))
 }
 
+// Llamado por Vercel Cron una vez al día: avisa a subs activas que vencen en ≤3 días,
+// una sola vez por período (reminder_for_period_end guarda para qué vencimiento ya se avisó)
+export async function sendExpiryReminders() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const now = new Date()
+  const cutoff = new Date(now.getTime() + 3 * 86_400_000)
+
+  const { data, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, current_period_end, reminder_for_period_end, is_exempt')
+    .eq('status', 'active')
+    .not('current_period_end', 'is', null)
+    .gt('current_period_end', now.toISOString())
+    .lte('current_period_end', cutoff.toISOString())
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  let sent = 0
+  const { sendRenewalReminder } = await import('./emailService')
+
+  for (const sub of data ?? []) {
+    if (sub.is_exempt) continue
+    if (sub.reminder_for_period_end === sub.current_period_end) continue
+
+    try {
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(sub.user_id)
+      const email = userData?.user?.email
+      if (!email) continue
+
+      const daysLeft = Math.ceil((new Date(sub.current_period_end).getTime() - now.getTime()) / 86_400_000)
+      await sendRenewalReminder(email, daysLeft)
+
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ reminder_for_period_end: sub.current_period_end })
+        .eq('user_id', sub.user_id)
+      sent++
+    } catch (err) {
+      // No marcar como enviado: el cron de mañana reintenta
+      console.error(`[reminders] fallo para user ${sub.user_id}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  return { checked: data?.length ?? 0, sent }
+}
+
 export async function cancelSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { error } = await supabaseAdmin

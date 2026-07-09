@@ -31,7 +31,13 @@ export default function Login() {
   const [loading,   setLoading]   = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error,     setError]     = useState('')
-  const [info,      setInfo]      = useState('')
+  const [info,      setInfo]      = useState(() => {
+    if (sessionStorage.getItem('ergania:sessionClosed')) {
+      sessionStorage.removeItem('ergania:sessionClosed')
+      return 'Tu cuenta se abrió en otro dispositivo. Ciérrala allá e inicia sesión nuevamente aquí para continuar — solo puede haber una sesión activa a la vez.'
+    }
+    return ''
+  })
 
   const [showContact, setShowContact] = useState(false)
 

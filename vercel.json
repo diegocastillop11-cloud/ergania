@@ -10,5 +10,8 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.ts" }
+  ],
+  "crons": [
+    { "path": "/api/subscription/reminders", "schedule": "0 12 * * *" }
   ]
 }
