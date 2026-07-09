@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { translateAuthError } from './authErrors'
@@ -19,6 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser]    = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const userSignOut = useRef(false)
+  const revokedFor  = useRef<string | null>(null)
 
   useEffect(() => {
     // Carga sesión inicial
@@ -29,9 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Escucha cambios de sesión (login, logout, refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+
+      // Sesión única: el login más reciente revoca todas las demás sesiones del
+      // usuario (el backend rechaza tokens de sesiones revocadas via getUser)
+      if (event === 'SIGNED_IN' && session && revokedFor.current !== session.user.id) {
+        revokedFor.current = session.user.id
+        supabase.auth.signOut({ scope: 'others' }).catch(() => {})
+      }
+
+      // Cierre NO iniciado por el usuario (revocada desde otro dispositivo o expirada):
+      // dejar marca para que Login explique por qué se cerró
+      if (event === 'SIGNED_OUT') {
+        if (!userSignOut.current) sessionStorage.setItem('ergania:sessionClosed', '1')
+        userSignOut.current = false
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -62,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    userSignOut.current = true
     await supabase.auth.signOut()
   }
 
