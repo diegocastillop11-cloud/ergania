@@ -33,7 +33,7 @@ export default function SubscriptionBanner({ sub }: Props) {
         <div className="flex items-center gap-3 bg-amber-950/60 border border-amber-700/40 rounded-xl px-4 py-2.5">
           <AlertTriangle size={15} className="text-amber-400 shrink-0" />
           <p className="text-sm text-amber-200 flex-1">
-            Tu plan vence {sub.daysLeft === 1 ? 'mañana' : `en ${sub.daysLeft} días`} — renuévalo para no perder acceso
+            Tu plan vence {sub.daysLeft === 0 ? 'hoy' : sub.daysLeft === 1 ? 'mañana' : `en ${sub.daysLeft} días`} — renuévalo para no perder acceso
           </p>
           <button
             onClick={handleSubscribe}
@@ -59,7 +59,7 @@ export default function SubscriptionBanner({ sub }: Props) {
         <div className="flex items-center gap-3 bg-blue-950/60 border border-blue-700/40 rounded-xl px-4 py-2.5">
           <Crown size={15} className="text-blue-400 shrink-0" />
           <p className="text-sm text-blue-300 flex-1">
-            Prueba gratuita — {sub.daysLeft} {sub.daysLeft === 1 ? 'día' : 'días'} restante{sub.daysLeft === 1 ? '' : 's'}
+            Prueba gratuita — {sub.daysLeft === 0 ? 'termina hoy' : `${sub.daysLeft} ${sub.daysLeft === 1 ? 'día restante' : 'días restantes'}`}
           </p>
           <button
             onClick={handleSubscribe}
@@ -85,7 +85,7 @@ export default function SubscriptionBanner({ sub }: Props) {
         <AlertTriangle size={16} className="text-orange-400 shrink-0" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-orange-200">
-            {sub.status === 'cancelled' ? 'Suscripción cancelada' : 'Período de prueba finalizado'}
+            {sub.status === 'cancelled' ? 'Suscripción cancelada' : 'Tu plan venció'}
           </p>
           <p className="text-xs text-orange-400 mt-0.5">
             Suscríbete para seguir usando Ergania. Puedes cancelar cuando quieras.

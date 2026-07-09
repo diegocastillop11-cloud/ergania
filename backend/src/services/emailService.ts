@@ -59,7 +59,7 @@ export async function sendContactEmail(name: string, email: string, category: st
 }
 
 export async function sendRenewalReminder(to: string, daysLeft: number) {
-  const dias = daysLeft === 1 ? 'mañana' : `en ${daysLeft} días`
+  const dias = daysLeft <= 0 ? 'hoy' : daysLeft === 1 ? 'mañana' : `en ${daysLeft} días`
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">

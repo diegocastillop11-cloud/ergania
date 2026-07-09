@@ -5,7 +5,7 @@ import { useSubscription } from '../hooks/useSubscription'
 const STATUS_CFG = {
   trial:           { icon: Clock,         color: 'text-blue-400',   bg: 'bg-blue-950/50 border-blue-700/40',     label: 'Período de prueba' },
   active:          { icon: CheckCircle,   color: 'text-green-400',  bg: 'bg-green-950/50 border-green-700/40',   label: 'Suscripción activa' },
-  expired:         { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-950/50 border-orange-700/40', label: 'Prueba expirada' },
+  expired:         { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-950/50 border-orange-700/40', label: 'Plan vencido' },
   cancelled:       { icon: XCircle,       color: 'text-red-400',    bg: 'bg-red-950/50 border-red-700/40',       label: 'Suscripción cancelada' },
   pending_payment: { icon: Clock,         color: 'text-yellow-400', bg: 'bg-yellow-950/50 border-yellow-700/40', label: 'Pago pendiente' },
   none:            { icon: AlertTriangle, color: 'text-gray-400',   bg: 'bg-gray-900 border-gray-700',           label: 'Sin plan activo' },
@@ -75,9 +75,9 @@ export default function Subscription() {
           )}
         </div>
         <p className="text-gray-400 text-sm">
-          {sub.status === 'trial'    && `${sub.daysLeft} día${sub.daysLeft === 1 ? '' : 's'} restante${sub.daysLeft === 1 ? '' : 's'} de prueba gratuita`}
+          {sub.status === 'trial'    && (sub.daysLeft === 0 ? 'Tu prueba gratuita termina hoy.' : `${sub.daysLeft} día${sub.daysLeft === 1 ? '' : 's'} restante${sub.daysLeft === 1 ? '' : 's'} de prueba gratuita`)}
           {sub.status === 'active'   && 'Tienes acceso completo a todas las funciones.'}
-          {sub.status === 'expired'  && 'Tu período de prueba terminó. Suscríbete para continuar.'}
+          {sub.status === 'expired'  && 'Tu plan venció. Suscríbete para continuar.'}
           {sub.status === 'cancelled'&& 'Tu suscripción está cancelada. Puedes volver cuando quieras.'}
           {sub.status === 'pending_payment' && 'Hay un pago pendiente. Si ya pagaste, espera unos minutos.'}
           {sub.status === 'none'     && 'Suscríbete para acceder a todas las funciones.'}

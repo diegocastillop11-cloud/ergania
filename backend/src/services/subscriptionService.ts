@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config/supabase'
+import { calendarDaysUntil } from '../utils/days'
 
 const stripBOM = (s: string) => s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s
 const MP_TOKEN = () => stripBOM(process.env.MERCADOPAGO_ACCESS_TOKEN || '')
@@ -82,7 +83,7 @@ export async function getSubscriptionStatus(userId: string) {
       await supabaseAdmin.from('subscriptions').update({ status: 'expired' }).eq('user_id', userId)
       return { status: 'expired' as const, daysLeft: 0 }
     }
-    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86_400_000)
+    const daysLeft = calendarDaysUntil(end, now)
     return { status: 'trial' as const, daysLeft, trialEndsAt: data.trial_ends_at }
   }
 
@@ -94,7 +95,7 @@ export async function getSubscriptionStatus(userId: string) {
         await supabaseAdmin!.from('subscriptions').update({ status: 'expired' }).eq('user_id', userId)
         return { status: 'expired' as const, daysLeft: 0 }
       }
-      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86_400_000)
+      const daysLeft = calendarDaysUntil(end, now)
       return { status: 'active' as const, daysLeft, currentPeriodEnd: data.current_period_end }
     }
     return { status: 'active' as const, daysLeft: null, currentPeriodEnd: null }
@@ -191,7 +192,7 @@ export async function sendExpiryReminders() {
       const email = userData?.user?.email
       if (!email) continue
 
-      const daysLeft = Math.ceil((new Date(sub.current_period_end).getTime() - now.getTime()) / 86_400_000)
+      const daysLeft = calendarDaysUntil(new Date(sub.current_period_end), now)
       await sendRenewalReminder(email, daysLeft)
 
       await supabaseAdmin
