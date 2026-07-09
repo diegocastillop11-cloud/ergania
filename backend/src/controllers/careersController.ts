@@ -5,7 +5,15 @@ import axios from 'axios'
 import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
 import { getSubscriptionStatus } from '../services/subscriptionService'
-import { getCountryConfig, DEFAULT_COUNTRY_NAME } from '../config/countries'
+import { getCountryConfig, DEFAULT_COUNTRY_NAME, COUNTRIES } from '../config/countries'
+
+/** Solo devuelve un país si coincide EXACTO con uno conocido — evita que un
+ * pais_detectado vacío/inventado por el LLM caiga silenciosamente en el
+ * default (Chile) de getCountryConfig. */
+function findKnownCountry(nombre?: string | null) {
+  if (!nombre) return null
+  return COUNTRIES.find(c => c.nombre.toLowerCase() === nombre.trim().toLowerCase()) || null
+}
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const multer = require('multer') as typeof import('multer')
@@ -598,7 +606,8 @@ Roles objetivo: ${Object.values(targetRoles).flat().slice(0, 4).join(', ')}
 Renta objetivo: ${compensation.target_range || `sin dato — estima acorde al mercado de ${country.nombre} en ${country.moneda}`}
 CV (resumen): ${cv.slice(0, 800)}
 ${pisoLegalLine}
-${salaryAnchorsRef ? `Referencias reales de mercado (usa la más cercana al rol/seniority detectado):\n${salaryAnchorsRef}` : ''}`
+${salaryAnchorsRef ? `Referencias reales de mercado (usa la más cercana al rol/seniority detectado):\n${salaryAnchorsRef}` : ''}
+⚠️ "${country.nombre}" es solo lo preseleccionado por el usuario, puede estar mal. Si el JD indica CLARAMENTE otro país, usa el país/moneda REALES de la oferta y repórtalo en pais_detectado.`
 
       userMessage = `Oferta: ${empresa || ''} — ${rol || ''}${url ? ` (${url})` : ''}
 JD: ${jd.slice(0, 1800)}
@@ -610,7 +619,7 @@ Extrae empresa y rol del URL o contexto. Haz tu mejor evaluación con lo disponi
 
 Responde con análisis breve Y este JSON al final:
 \`\`\`json
-{"empresa":"...","rol":"...","score":0.0,"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango en ${country.moneda}","contrata_chile":true,"keywords":["kw1"]}
+{"empresa":"...","rol":"...","score":0.0,"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango en la moneda real","contrata_chile":true,"pais_detectado":"país real de la oferta","keywords":["kw1"]}
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
@@ -654,6 +663,8 @@ REGLAS CRÍTICAS PARA ${country.nombre.toUpperCase()}:
 4. Evalúa si la empresa contrata en ${country.nombre} (entity propia, contractor, EOR)
 5. Si la oferta es en un idioma distinto, evalúa igual pero responde EN ${idiomaSalida.toUpperCase()}
 
+⚠️ VERIFICACIÓN DE PAÍS (prioridad sobre las reglas anteriores): el país de arriba (${country.nombre}) es solo lo que el usuario preseleccionó ANTES de ver esta oferta — puede estar equivocado. Si el JD, la empresa o la ubicación indican CLARAMENTE que el trabajo es en otro país (ej. dice "California, USA" pero arriba dice Chile), usa el país e idioma REALES de la oferta para salario_clp y para el análisis, e infórmalo en "pais_detectado". No fuerces ${country.moneda} si la evidencia de la oferta contradice ese país.
+
 RESPONDE SIEMPRE EN ${idiomaSalida.toUpperCase()}. Sé directo, concreto y útil. Sin frases genéricas.${isShortfallUrl ? `
 
 ⚠️ LIMITACIÓN: El contenido de esta oferta fue limitado (acceso de la URL bloqueado).
@@ -684,9 +695,10 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
   "seniority": "Junior/Mid/Senior",
   "legitimidad": "Alta confianza/Proceder con cautela/Sospechosa",
   "recomendacion": "POSTULAR/CONSIDERAR/DESCARTAR",
-  "salario_clp": "rango en ${country.moneda} mensual",
+  "salario_clp": "rango en ${country.moneda} mensual (o en la moneda real si detectaste otro país)",
   "salario_usd": "si aplica para trabajo remoto internacional",
   "contrata_chile": true,
+  "pais_detectado": "país real de la oferta si es distinto a ${country.nombre}, o '${country.nombre}' si coincide",
   "keywords": ["kw1", "kw2"]
 }
 \`\`\``
@@ -734,6 +746,12 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
     const finalEmpresa = (meta.empresa as string)?.trim() || empresa || ''
     const finalRol = (meta.rol as string)?.trim() || rol || ''
 
+    // El modelo puede detectar que el país real de la oferta es distinto al
+    // preseleccionado por el usuario (ver "VERIFICACIÓN DE PAÍS" en el prompt)
+    // — si lo detectó y es un país conocido, ese gana sobre el default.
+    const detectedCountry = findKnownCountry(meta.pais_detectado as string)
+    const finalCountry = detectedCountry || country
+
     const today     = new Date().toISOString().split('T')[0]
     const compSlug  = (finalEmpresa || 'empresa')
       .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -747,9 +765,9 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
 **Arquetipo:** ${meta.arquetipo || '—'}
 **Score:** ${meta.score || '—'}/5
 **Legitimidad:** ${meta.legitimidad || '—'}
-**País:** ${country.nombre}
-**Salario (${country.moneda}):** ${meta.salario_clp || '—'}
-**Contrata en ${country.nombre}:** ${meta.contrata_chile ? 'Sí' : 'No confirmado'}
+**País:** ${finalCountry.nombre}${detectedCountry ? ` (detectado automáticamente — preseleccionado: ${country.nombre})` : ''}
+**Salario (${finalCountry.moneda}):** ${meta.salario_clp || '—'}
+**Contrata en ${finalCountry.nombre}:** ${meta.contrata_chile ? 'Sí' : 'No confirmado'}
 **PDF:** pendiente
 
 ---
@@ -771,8 +789,8 @@ ${fullText}
       idioma: detectLanguage(jd),
       salario_clp: (meta.salario_clp as string) || undefined,
       salario_usd: (meta.salario_usd as string) || undefined,
-      pais: country.nombre,
-      moneda: country.moneda,
+      pais: finalCountry.nombre,
+      moneda: finalCountry.moneda,
     }, userEmail)
 
     if (url) await svc.removeFromPipeline(url, userEmail)

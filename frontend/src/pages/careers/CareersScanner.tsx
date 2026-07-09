@@ -104,7 +104,7 @@ function UbicacionBadge({ ubicacion }: { ubicacion: string }) {
   return <span className="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">No especificado</span>
 }
 
-function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent; onEvaluar: (url: string, titulo: string, empresa: string, razon: string) => void; onExternalClick: (url: string) => void }) {
+function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent; onEvaluar: (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => void; onExternalClick: (url: string) => void }) {
   const [open, setOpen] = useState(true)
   const isError = !!event.error
   const isDone = event.encontradas !== undefined
@@ -203,7 +203,7 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      onEvaluar(oferta.url, oferta.titulo, oferta.empresa || '', oferta.razon || '')
+                      onEvaluar(oferta.url, oferta.titulo, oferta.empresa || '', oferta.razon || '', oferta.ubicacion || '')
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all"
                   >
@@ -344,16 +344,17 @@ export default function CareersScanner() {
     addLog('error', { error: 'Escaneo detenido por el usuario' })
   }, [addLog])
 
-  const evaluarOferta = useCallback(async (url: string, titulo: string, empresa: string, razon: string) => {
+  const evaluarOferta = useCallback(async (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => {
     setEvaluatingUrl(url)
     try {
       const { data } = await api.post('/evaluate', {
         url,
         empresa: empresa || undefined,
         rol: titulo || undefined,
-        // Incluir razon del scanner como contexto para cuando el scraping falle (ej. LinkedIn)
-        jd: razon
-          ? `Oferta: "${titulo}"${empresa ? ` en ${empresa}` : ''}\nURL: ${url}\n\nContexto del análisis previo:\n${razon}`
+        // Incluir razon + ubicación del scanner como contexto para cuando el scraping
+        // falle (ej. LinkedIn) y para que la IA detecte el país real de la oferta.
+        jd: (razon || ubicacion)
+          ? `Oferta: "${titulo}"${empresa ? ` en ${empresa}` : ''}\nURL: ${url}\nUbicación detectada por el scanner: ${ubicacion || 'no especificada'}\n\nContexto del análisis previo:\n${razon || ''}`
           : undefined,
       })
       const result = {
@@ -551,7 +552,7 @@ export default function CareersScanner() {
             <PortalCard
               key={event.nombre}
               event={event}
-              onEvaluar={(url, titulo, empresa, razon) => evaluarOferta(url, titulo, empresa, razon)}
+              onEvaluar={(url, titulo, empresa, razon, ubicacion) => evaluarOferta(url, titulo, empresa, razon, ubicacion)}
               onExternalClick={incrementOfferClick}
             />
           ))}
