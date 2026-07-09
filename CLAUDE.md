@@ -5,6 +5,61 @@
 Career ops UI — frontend React/Vite + backend Express/TypeScript con Supabase.
 URL producción: https://ergania.com
 
+## Roadmap y estado actual
+
+### Fase 1 — completa y en producción (2026-07-08)
+
+1. **Job boards internacionales** — `frontend/src/pages/careers/CareersPortals.tsx`. 5 regiones
+   seleccionables por tabs: Chile, Remoto Global, Estados Unidos, España, LATAM (arrays
+   `CHILE_PORTALS` / `GLOBAL_PORTALS` / `US_PORTALS` / `SPAIN_PORTALS` / `LATAM_PORTALS`). El
+   filtro por país es dinámico según los portales que el usuario tenga agregados.
+2. **CV editable** — botón "Editar CV" en el modal de CV de Postulaciones
+   (`CvPreviewPanel` en `frontend/src/pages/careers/CareersPostulaciones.tsx`). Edición
+   WYSIWYG in-place vía `designMode` sobre el iframe, no un formulario por campos. Guarda con
+   `PATCH /applications/:id/cv` (`ctrl.updateApplicationCv` → `svc.patchCvHtml`). El PDF sigue
+   usando el mismo pipeline (`parseCvDataFromHtml` → `buildPdfFromCvData`) sin cambios.
+3. **Pretensión de renta** — estimación de renta líquida por oferta específica, NO un formulario
+   genérico de "cuánto debería cobrar" en el perfil (se descartó ese diseño original).
+   - `evaluateJob` (Evaluar Oferta, `backend/src/controllers/careersController.ts`) usa la
+     herramienta `web_search` de Anthropic en vivo para investigar el sueldo real del rol —
+     reemplaza la idea original de mantener una tabla de anclas manual (no escalaba a otros
+     países). El resultado (`salario_clp`) se persiste en `tracker_entries`.
+   - Botón "Pretensión de Renta" en cada Postulación (`SalaryPanel`) reusa ese mismo valor si la
+     oferta ya fue evaluada (busca en Tracker por empresa+rol/url y lo copia a
+     `applications.salario_clp`) en vez de volver a gastar una consulta — evita que Evaluar
+     Oferta y Postulaciones muestren números distintos para la misma oferta. Botón
+     "Recalcular con IA" fuerza una consulta nueva si hace falta.
+   - Piso legal: `CHILE_MINIMUM_WAGE_CLP` (Ley 21.751, revisar cuando cambie el reajuste).
+   - Tabla `salary_anchors` (migraciones 006-008) queda como respaldo de baja prioridad, no como
+     fuente principal — no hace falta mantenerla poblada.
+4. **Login con Google** — ver sección "Arquitectura de auth" más abajo. No estaba en el roadmap
+   original, se agregó ad-hoc antes de este release.
+
+### Fase 2 — pendiente
+
+- **Internacionalización completa** (no solo traducir la UI): hoy TODO el motor de IA del
+  backend asume Chile/CLP hardcodeado — `evaluateJob`, generación de CV, cartas de presentación,
+  optimización de LinkedIn, respuestas de formularios, sugerencia de keywords, TODO tiene
+  "Chile"/"CLP" en el prompt o en el código. Diego decidió (2026-07-07) NO parchear esto función
+  por función — cuando se aborde, debe ser un trabajo completo y planificado (detectar país real
+  de la oferta, moneda dinámica, adaptar cada prompt), no ir de a poco.
+- Pagos con PayPal / otras plataformas LATAM.
+- Reviews de empresas desde Glassdoor / Trustpilot (ver nota legal: ninguna de las dos tiene API
+  pública gratuita para esto — evaluar Trustpilot Business API o partners de datos).
+
+### Fase 3 — pendiente
+
+- Job board para que empresas publiquen ofertas directamente (nuevo tipo de cuenta B2B).
+- Job board de proyectos cortos / freelance (reusa la infraestructura del anterior).
+- Postulaciones con video (grabación/carga + Supabase Storage).
+
+### Fase 4 — pendiente (exploratorio, sin fecha)
+
+- Voz + traducción en vivo (speech-to-text, costo alto por uso).
+- Integración con LinkedIn para ver conexiones en la empresa a la que se postula — riesgo alto:
+  la API oficial de LinkedIn no expone esto a nivel de búsqueda; investigar antes de comprometer
+  la feature.
+
 ## Reglas generales
 
 1. Leer archivos antes de escribir código.
