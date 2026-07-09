@@ -34,7 +34,7 @@ export default function Login() {
   const [info,      setInfo]      = useState(() => {
     if (sessionStorage.getItem('ergania:sessionClosed')) {
       sessionStorage.removeItem('ergania:sessionClosed')
-      return 'Tu sesión se cerró. Solo puede haber una sesión activa por cuenta: si inicias sesión en otro dispositivo, la anterior se cierra automáticamente.'
+      return 'Tu cuenta se abrió en otro dispositivo. Ciérrala allá e inicia sesión nuevamente aquí para continuar — solo puede haber una sesión activa a la vez.'
     }
     return ''
   })

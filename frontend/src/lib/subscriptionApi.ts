@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { supabase } from './supabase'
+import { handleUnauthorized } from './api'
 
 const api = axios.create({ baseURL: '/api/subscription' })
 
@@ -13,7 +14,10 @@ api.interceptors.request.use(async config => {
 // Extrae el campo "error" del body JSON del backend y lo lanza como mensaje
 api.interceptors.response.use(
   res => res,
-  err => {
+  async err => {
+    if (err.response?.status === 401 && await handleUnauthorized()) {
+      return new Promise(() => {}) // redirigiendo a /login — no propagar el error
+    }
     const msg = err.response?.data?.error || err.message
     return Promise.reject(new Error(msg))
   }

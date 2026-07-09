@@ -1355,7 +1355,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               onClick={openApply}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-800/50 text-orange-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <Rocket size={11} /> Postular
+              <Rocket size={11} /> Kit de Postulación
             </button>
             <button
               onClick={openCoverLetter}
