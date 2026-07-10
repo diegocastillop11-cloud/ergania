@@ -45,6 +45,17 @@ interface ProfileData {
     visa_status?: string
   }
   cv_instructions?: string
+  linkedin_optimization?: LinkedinOptimization
+}
+
+interface LinkedinOptimization {
+  headline?: string
+  about?: string
+  skills?: string[]
+  experience_tips?: Array<{ empresa: string; sugerencia: string }>
+  featured_ideas?: string[]
+  open_to_work?: string
+  keywords_to_include?: string[]
 }
 
 function Section({
@@ -140,9 +151,11 @@ export default function CareersProfile() {
   }, [cvData])
 
   useEffect(() => {
-    // Mismo problema que el CV: sin este reset, la optimización de LinkedIn generada
-    // para un perfil sigue mostrándose (y siendo editable) tras cambiar a otro perfil.
-    setLiResult(null)
+    // Cada perfil guarda su propia optimización de LinkedIn (persistida en el perfil,
+    // ver linkedin_optimization). Al cambiar de perfil se carga la suya, no se pierde
+    // ni se arrastra la del perfil anterior — antes esto se reseteaba a null siempre,
+    // obligando a regenerar (y gastar tokens) cada vez que volvías a un perfil.
+    setLiResult(profileData?.linkedin_optimization || null)
     setLiError('')
   }, [profileData])
 
@@ -365,15 +378,7 @@ export default function CareersProfile() {
   // ── LinkedIn Optimizer state ──────────────────────────────────────────────
   const [liLoading, setLiLoading] = useState(false)
   const [liError, setLiError] = useState('')
-  const [liResult, setLiResult] = useState<{
-    headline?: string
-    about?: string
-    skills?: string[]
-    experience_tips?: Array<{ empresa: string; sugerencia: string }>
-    featured_ideas?: string[]
-    open_to_work?: string
-    keywords_to_include?: string[]
-  } | null>(null)
+  const [liResult, setLiResult] = useState<LinkedinOptimization | null>(null)
   const [liCopied, setLiCopied] = useState<string | null>(null)
 
   const copyLi = (key: string, text: string) => {
@@ -394,6 +399,7 @@ export default function CareersProfile() {
         ...(userApiKey ? { userApiKey } : {}),
       })
       setLiResult(data.result)
+      qc.invalidateQueries({ queryKey: ['careers-profile'] }) // el backend ya lo persistió en el perfil activo
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; message?: string } }; message?: string }
       const msg = e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Error al generar optimización'
@@ -698,7 +704,9 @@ export default function CareersProfile() {
           >
             {liLoading
               ? <><Loader2 size={14} className="animate-spin" /> Generando...</>
-              : <><Sparkles size={14} /> Generar optimización</>
+              : liResult
+                ? <><Sparkles size={14} /> Regenerar optimización</>
+                : <><Sparkles size={14} /> Generar optimización</>
             }
           </button>
         </div>

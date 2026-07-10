@@ -1832,6 +1832,13 @@ Genera las siguientes secciones del perfil LinkedIn optimizadas. Devuelve JSON e
       if (match) { try { result = JSON.parse(match[0]) } catch { /* empty */ } }
     }
 
+    // Persiste en el perfil ACTIVO (readProfile/writeProfile ya resuelven el perfil
+    // activo internamente) para no perder el resultado ni tener que regenerarlo —
+    // y para que cada perfil guarde el suyo sin pisar el de otro.
+    if (Object.keys(result).length) {
+      await svc.writeProfile({ ...profile, linkedin_optimization: result }, userEmail)
+    }
+
     res.json({ ok: true, result })
   } catch (err: unknown) {
     const provider = getProviderFromRequest(req)
