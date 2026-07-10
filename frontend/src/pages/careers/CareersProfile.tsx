@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, FileText, Save, Loader2, Check, Edit3,
   EyeOff, ChevronDown, ChevronUp, AlertCircle, MessageSquare,
-  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket,
+  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket, Download, X,
 } from 'lucide-react'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -267,6 +267,99 @@ export default function CareersProfile() {
     } finally {
       setCvImporting(false)
     }
+  }
+
+  // ── CV Optimizer (aplica cv_instructions al CV base, sin oferta específica) ─
+  interface CvData {
+    name: string
+    contact: { city: string; phone: string; email: string; linkedin?: string; github?: string }
+    summary: string
+    experience: Array<{ company: string; location: string; role: string; dates: string; bullets: string[] }>
+    projects: Array<{ name: string; year?: string; bullets: string[] }>
+    skills: Record<string, string>
+    education: Array<{ title: string; institution: string; year: string }>
+  }
+  const [cvOptimizing, setCvOptimizing] = useState(false)
+  const [cvOptimizeError, setCvOptimizeError] = useState('')
+  const [cvOptimizeResult, setCvOptimizeResult] = useState<{ cvData: CvData; cvHtml: string } | null>(null)
+  const [cvOptimizeOpen, setCvOptimizeOpen] = useState(false)
+  const [cvOptimizeDownloading, setCvOptimizeDownloading] = useState(false)
+
+  const handleOptimizeCv = async () => {
+    setCvOptimizing(true)
+    setCvOptimizeError('')
+    try {
+      await saveMut.mutateAsync(profile) // asegura que las instrucciones actuales queden guardadas antes de generar
+      const { data } = await api.post('/cv/optimize', {})
+      setCvOptimizeResult({ cvData: data.cvData, cvHtml: data.cvHtml })
+      setCvOptimizeOpen(true)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      setCvOptimizeError(e?.response?.data?.error || e?.message || 'Error al generar el CV')
+    } finally {
+      setCvOptimizing(false)
+    }
+  }
+
+  const handleDownloadOptimizedCv = async () => {
+    if (!cvOptimizeResult) return
+    setCvOptimizeDownloading(true)
+    try {
+      const { data } = await api.post('/cv/optimize/pdf', { cvData: cvOptimizeResult.cvData }, { responseType: 'blob' })
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'CV_Optimizado.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setCvOptimizeError('Error al descargar el PDF')
+    } finally {
+      setCvOptimizeDownloading(false)
+    }
+  }
+
+  const cvDataToMarkdown = (d: CvData): string => {
+    const lines: string[] = [`# ${d.name}`]
+    const contactParts = [d.contact?.city, d.contact?.phone, d.contact?.email, d.contact?.linkedin, d.contact?.github].filter(Boolean)
+    if (contactParts.length) lines.push(contactParts.join(' | '))
+    lines.push('')
+    if (d.summary) { lines.push('## Resumen', d.summary, '') }
+    if (d.experience?.length) {
+      lines.push('## Experiencia')
+      for (const exp of d.experience) {
+        lines.push(`### ${exp.role} — ${exp.company} (${exp.dates})`)
+        if (exp.location) lines.push(`_${exp.location}_`)
+        exp.bullets.forEach(b => lines.push(`- ${b}`))
+        lines.push('')
+      }
+    }
+    if (d.projects?.length) {
+      lines.push('## Proyectos')
+      for (const proj of d.projects) {
+        lines.push(`### ${proj.name}${proj.year ? ` (${proj.year})` : ''}`)
+        proj.bullets.forEach(b => lines.push(`- ${b}`))
+        lines.push('')
+      }
+    }
+    if (d.skills && Object.keys(d.skills).length) {
+      lines.push('## Habilidades')
+      Object.entries(d.skills).forEach(([cat, val]) => lines.push(`**${cat}:** ${val}`))
+      lines.push('')
+    }
+    if (d.education?.length) {
+      lines.push('## Educación')
+      d.education.forEach(edu => lines.push(`- ${edu.title} — ${edu.institution} (${edu.year})`))
+    }
+    return lines.join('\n')
+  }
+
+  const handleSaveOptimizedAsBase = () => {
+    if (!cvOptimizeResult) return
+    const md = cvDataToMarkdown(cvOptimizeResult.cvData)
+    setCvContent(md)
+    cvMut.mutate(md)
+    setCvOptimizeOpen(false)
   }
 
   // ── LinkedIn Optimizer state ──────────────────────────────────────────────
@@ -756,19 +849,72 @@ export default function CareersProfile() {
           </div>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs text-gray-600">
-              Estas instrucciones NO generan nada aquí — se aplican recién cuando generas o regeneras el
-              CV de una postulación específica (botón "Regenerar CV" en Postulaciones), donde puedes ver
-              el resultado al momento.
+              "Generar" aplica estas instrucciones a tu CV base (el de la sección de arriba) y te deja
+              previsualizarlo y descargarlo en PDF — útil si lo quieres usar fuera de una postulación
+              puntual. También se aplican cada vez que generas o regeneras el CV de{' '}
+              <button onClick={() => navigate('/postulaciones')} className="text-purple-400 hover:underline">
+                una postulación específica en Postulaciones
+              </button>.
             </p>
             <button
-              onClick={() => { saveMut.mutate(profile); navigate('/postulaciones') }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+              onClick={handleOptimizeCv}
+              disabled={cvOptimizing || !profile.cv_instructions?.trim()}
+              title={!profile.cv_instructions?.trim() ? 'Escribe tus instrucciones primero' : undefined}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-colors shrink-0"
             >
-              <Rocket size={13} /> Generar CV con estas instrucciones
+              {cvOptimizing ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
+              {cvOptimizing ? 'Generando...' : 'Generar CV con estas instrucciones'}
             </button>
           </div>
+          {cvOptimizeError && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {cvOptimizeError}
+            </p>
+          )}
         </div>
       </Section>
+
+      {cvOptimizeOpen && cvOptimizeResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+              <div>
+                <h3 className="text-white font-bold flex items-center gap-2">
+                  <FileText size={16} className="text-purple-400" />
+                  CV optimizado con tus instrucciones
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">Vista previa — no se guarda hasta que elijas una acción abajo.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadOptimizedCv}
+                  disabled={cvOptimizeDownloading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                >
+                  {cvOptimizeDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  Descargar PDF
+                </button>
+                <button
+                  onClick={handleSaveOptimizedAsBase}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
+                  title="Reemplaza el CV Completo (Markdown) de tu perfil con esta versión"
+                >
+                  <Save size={13} /> Guardar como mi CV base
+                </button>
+                <button
+                  onClick={() => setCvOptimizeOpen(false)}
+                  className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden bg-white">
+              <iframe title="CV optimizado" srcDoc={cvOptimizeResult.cvHtml} className="w-full h-full border-0" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

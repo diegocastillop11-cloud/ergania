@@ -30,6 +30,8 @@ careersRoutes.delete('/perfiles/:id', ctrl.deletePerfil)
 
 careersRoutes.get('/cv', ctrl.getCV)
 careersRoutes.put('/cv', ctrl.updateCV)
+careersRoutes.post('/cv/optimize', ctrl.optimizeCv)
+careersRoutes.post('/cv/optimize/pdf', ctrl.downloadOptimizedCvPdf)
 
 careersRoutes.get('/reports', ctrl.listReports)
 careersRoutes.get('/reports/:slug', ctrl.getReport)

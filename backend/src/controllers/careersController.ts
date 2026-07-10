@@ -1042,6 +1042,42 @@ Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructu
 {"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}]}`
 }
 
+// CV base del perfil (sin oferta/JD específica) — aplica cv_instructions al CV
+// tal cual está guardado, para descargar/usar fuera del flujo de Postulaciones.
+function buildCvBaseOptimizePrompt(
+  cv: string,
+  cand: Record<string, string>,
+  contactInfo: Record<string, string>,
+  cvInstructions: string,
+  idioma: 'es' | 'en' = 'es',
+): string {
+  return `Actúa como un panel de élite reescribiendo este CV: recruiter senior con 20 años en Fortune 500, hiring manager, especialista ATS, y career coach de perfiles tech. El estándar es el nivel de Google, Stripe, Mercado Libre o Nubank — no una corrección cosmética, una reconstrucción completa. Este CV NO está atado a una oferta específica — es el CV general del candidato.
+
+REGLA ABSOLUTA DE VERACIDAD (por sobre cualquier otra instrucción):
+- Nunca inventes empresas, cargos, fechas, certificaciones, proyectos, tecnologías o logros que no estén en el CV del candidato.
+- Nunca exageres una métrica que no exista. Si no hay una cifra real disponible, describe el impacto con precisión cualitativa en vez de inventar un número.
+- Maximiza el IMPACTO de la experiencia real; no la experiencia misma.
+
+CV DEL CANDIDATO (incluye TODA la experiencia real; no omitas ninguna empresa ni la inventes):
+${cv}
+
+REGLAS DE REDACCIÓN:
+- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
+- Resumen (máx. 4 frases): quién es el candidato, su especialidad, sus habilidades clave, y el valor/impacto que entrega.
+- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo concreto.
+- Skills: agrupa por categoría y ordena por relevancia.
+- Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
+
+INSTRUCCIONES DEL CANDIDATO (máxima prioridad — es la razón principal por la que se está regenerando este CV):
+${cvInstructions}
+
+${LANGUAGE_RULE[idioma]}
+Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
+
+Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
+{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C"},"education":[{"title":"...","institution":"...","year":"..."}]}`
+}
+
 function buildCoverLetterPrompt(
   candidateName: string,
   empresa: string,
@@ -1633,6 +1669,84 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
     res.send(buffer)
   } catch (err: unknown) {
     console.error('downloadApplicationPdf error:', err)
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+// Aplica las Instrucciones de Redacción del perfil al CV base (sin oferta específica)
+// y devuelve el resultado para previsualizar — no persiste nada todavía.
+export const optimizeCv = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+
+    const cv = await svc.readCV(userEmail)
+    if (!cv.trim()) return res.status(400).json({ error: 'No tienes un CV base guardado todavía.' })
+
+    const profile = await svc.readProfile(userEmail) as Record<string, unknown>
+    const cvInstructions = ((profile?.cv_instructions as string) || '').trim()
+    if (!cvInstructions) return res.status(400).json({ error: 'Escribe tus instrucciones de redacción antes de generar.' })
+
+    const cand = (profile?.candidate as Record<string, string>) || {}
+    const contactInfo = {
+      city: cand.location || '',
+      phone: cand.phone || '',
+      email: cand.email || userEmail,
+      linkedin: cand.linkedin || '',
+      github: cand.github || '',
+    }
+    const idioma = detectLanguage(cv)
+    const prompt = buildCvBaseOptimizePrompt(cv, cand, contactInfo, cvInstructions, idioma)
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4000,
+      system: 'Eres un redactor experto en CVs Harvard ATS-optimizados. Retornas SOLO JSON válido, sin markdown, sin explicaciones.',
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const rawText = response.content
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text)
+      .join('')
+      .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
+
+    let cvData: svc.CvData
+    try {
+      cvData = JSON.parse(rawText)
+    } catch {
+      throw new Error('La IA no devolvió un CV en formato válido. Intenta de nuevo.')
+    }
+
+    cvData.summary = stripYearExperiencePhrases(cvData.summary)
+    cvData.experience = cvData.experience.map(exp => ({ ...exp, bullets: exp.bullets.map(stripYearExperiencePhrases) }))
+    cvData.projects = cvData.projects.map(proj => ({ ...proj, bullets: proj.bullets.map(stripYearExperiencePhrases) }))
+
+    const cvHtml = svc.buildCvHtml(cvData)
+    res.json({ ok: true, cvData, cvHtml })
+  } catch (err: unknown) {
+    const provider = getProviderFromRequest(req)
+    res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, normalizeProvider(provider)) })
+  }
+}
+
+// Recibe el cvData ya generado por /cv/optimize (sin volver a llamar a la IA) y
+// arma el PDF — separado de optimizeCv para no regenerar el CV cada vez que se descarga.
+export const downloadOptimizedCvPdf = async (req: Request, res: Response) => {
+  try {
+    const userEmail = await getUserEmail(req)
+    const cvData = req.body?.cvData as svc.CvData
+    if (!cvData?.name) return res.status(400).json({ error: 'Falta el CV a descargar.' })
+
+    const profile = await svc.readProfile(userEmail)
+    const candidateName = ((profile?.candidate as Record<string, string>)?.full_name || cvData.name || '').replace(/\s+/g, '_')
+    const filename = `CV_${candidateName || 'General'}_Optimizado.pdf`
+
+    const buffer = await svc.buildPdfFromCvData(cvData)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(buffer)
+  } catch (err: unknown) {
     res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
   }
 }
