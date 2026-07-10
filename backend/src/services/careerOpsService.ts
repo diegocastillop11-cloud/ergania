@@ -51,6 +51,8 @@ export interface TrackerEntry {
   salario_usd?: string
   pais?: string
   moneda?: string
+  perfil_id?: string
+  perfil_nombre?: string
 }
 
 export interface PipelineJob {
@@ -727,6 +729,13 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
+
+  // Tracker no está filtrado por perfil (muestra el historial completo del usuario),
+  // así que se adjunta el nombre de perfil de cada fila para trazabilidad —
+  // sin esto no había forma de saber con qué perfil se evaluó/postuló cada oferta.
+  const perfiles = await listPerfiles(userEmail).catch(() => [] as Perfil[])
+  const perfilNombreById = new Map(perfiles.map(p => [p.id, p.nombre]))
+
   return (data || []).map((row: any) => ({
     id: row.id,
     fecha: row.fecha,
@@ -743,6 +752,8 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     salario_usd: row.salario_usd || undefined,
     pais: row.pais || undefined,
     moneda: row.moneda || undefined,
+    perfil_id: row.perfil_id || undefined,
+    perfil_nombre: row.perfil_id ? perfilNombreById.get(row.perfil_id) : undefined,
   }))
 }
 
@@ -760,13 +771,14 @@ async function dbAddTrackerEntry(userEmail: string, entry: Omit<TrackerEntry, 'i
     return isNaN(n) ? 0 : n
   }))
   const id = String(maxNum + 1).padStart(3, '0')
+  const perfilId = await dbGetActivePerfilId(userEmail)
 
   // Renombrar reportSlug → report_slug para que coincida con la columna de Supabase
   const { reportSlug, ...rest } = entry
-  const row = { user_email: userEmail, id, ...rest, report_slug: reportSlug ?? null }
+  const row = { user_email: userEmail, id, ...rest, report_slug: reportSlug ?? null, perfil_id: perfilId }
   const { error } = await supabase.from('tracker_entries').insert([row])
   if (error) throw new Error(error.message)
-  return { id, ...entry }
+  return { id, ...entry, perfil_id: perfilId }
 }
 
 async function dbUpdateTrackerEntry(userEmail: string, id: string, updates: Partial<TrackerEntry>): Promise<void> {

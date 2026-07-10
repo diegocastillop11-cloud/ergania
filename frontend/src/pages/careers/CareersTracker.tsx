@@ -410,6 +410,11 @@ export default function CareersTracker() {
                             </a>
                           )}
                         </div>
+                        {entry.perfil_nombre && (
+                          <span className="inline-block mt-1 text-[10px] text-gray-500 bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded" title="Perfil con el que se evaluó/postuló">
+                            {entry.perfil_nombre}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-gray-300 text-sm max-w-[200px]">
                         <span className="truncate block">{entry.rol}</span>
