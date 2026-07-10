@@ -35,14 +35,36 @@ URL producción: https://ergania.com
 4. **Login con Google** — ver sección "Arquitectura de auth" más abajo. No estaba en el roadmap
    original, se agregó ad-hoc antes de este release.
 
-### Fase 2 — pendiente
+### Fase 2 — internacionalización: completa (2026-07-09)
 
-- **Internacionalización completa** (no solo traducir la UI): hoy TODO el motor de IA del
-  backend asume Chile/CLP hardcodeado — `evaluateJob`, generación de CV, cartas de presentación,
-  optimización de LinkedIn, respuestas de formularios, sugerencia de keywords, TODO tiene
-  "Chile"/"CLP" en el prompt o en el código. Diego decidió (2026-07-07) NO parchear esto función
-  por función — cuando se aborde, debe ser un trabajo completo y planificado (detectar país real
-  de la oferta, moneda dinámica, adaptar cada prompt), no ir de a poco.
+Motor de IA del backend ya no asume Chile/CLP hardcodeado. Se hizo como trabajo completo y
+planificado (no función por función, según lo decidido 2026-07-07): país/moneda dinámicos
+(`backend/src/config/countries.ts`, `getCountryConfig`), detección del país real de la oferta
+con prioridad sobre el default preseleccionado, y CV/cartas/optimización LinkedIn/sugerencia de
+cargos adaptados al idioma detectado.
+
+De paso, en la misma ronda se resolvió una tanda de bugs/gaps reportados por la socia de Diego
+(triage completo con `/abogado-del-diablo` — ver histórico de conversación si hace falta el
+razonamiento de qué se descartó y por qué):
+- `parseCv` (`backend/src/controllers/careersController.ts`) ya no traduce a español un CV
+  subido en otro idioma — detecta el idioma original y lo preserva.
+- Optimización de LinkedIn (`linkedin_optimization` dentro del perfil, `careersController.ts` /
+  `CareersProfile.tsx`) ahora se persiste por perfil — antes vivía solo en estado de React y un
+  perfil pisaba el resultado del otro.
+- Score de `evaluateJob` normalizado a escala 1.0–5.0 con clamp defensivo (antes el modelo podía
+  devolver escala 1-10 y se veía "6.2/5").
+- `evaluateJob` reutiliza la evaluación previa de una misma URL en el perfil activo en vez de
+  gastar un `web_search` nuevo cada vez (evitaba que la misma oferta mostrara rentas distintas en
+  cada re-evaluación) — botón "Recalcular ahora" para forzar una consulta fresca.
+- Tracker: cada entrada guarda `perfil_id` (migración `011_tracker_perfil.sql`) y muestra un
+  badge de qué perfil evaluó/postuló cada oferta.
+- Generador de CV base con instrucciones (`POST /cv/optimize`, `CareersProfile.tsx`): aplica las
+  "Instrucciones de Redacción de CV" al CV base (no solo al de una postulación puntual), con
+  preview y descarga en PDF sin pasar por `Application`.
+- Escáner: filtro Chile/Remoto sobre resultados ya encontrados (no es scraping nuevo — ver nota
+  abajo sobre por qué "resto del mundo" no se construyó).
+
+**Pendiente real de Fase 2:**
 - Pagos con PayPal / otras plataformas LATAM.
 - Reviews de empresas desde Glassdoor / Trustpilot (ver nota legal: ninguna de las dos tiene API
   pública gratuita para esto — evaluar Trustpilot Business API o partners de datos).
@@ -59,6 +81,24 @@ URL producción: https://ergania.com
 - Integración con LinkedIn para ver conexiones en la empresa a la que se postula — riesgo alto:
   la API oficial de LinkedIn no expone esto a nivel de búsqueda; investigar antes de comprometer
   la feature.
+
+### Backlog — features premium fuera del trial (decisión de Diego, 2026-07-09)
+
+Estos 3 items fueron evaluados con `/abogado-del-diablo` y descartados para construir ahora (no
+ayudan a convertir un pagante en el trial de 3 días, y algunos traen mantenimiento recurrente).
+Diego decidió que, cuando se construyan, NO deben estar incluidos en el trial gratuito de 3 días
+— son funciones de pago — pero SÍ deben promocionarse/mostrarse en la app (ej. landing o
+dashboard) como disponibles solo con suscripción activa, para generar el gancho de upgrade. No
+implementar el paywall ni la promoción todavía — es una nota de producto para cuando se aborden:
+
+- **Escaneo real de portales de otros países** ("resto del mundo" del Escáner) — requiere
+  construir parsers nuevos por portal/región desde cero (hoy los 7 portales del Escáner —
+  GetOnBoard, LinkedIn, Indeed, Computrabajo, Bumeran, Laborum, Trabajando.cl — están todos
+  cableados a Chile). Proyecto grande, no un fix.
+- **Portal First Job** — nuevo scraper, mismo riesgo que Indeed (puede romperse por anti-bot sin
+  aviso, sin monitoreo en prod para detectarlo).
+- **Speedtest / video / audio de presentación** (para requisitos de proficiencia de idioma de
+  empresas extranjeras) — feature nueva completa con subida a Supabase Storage y UI de captura.
 
 ## Reglas generales
 
