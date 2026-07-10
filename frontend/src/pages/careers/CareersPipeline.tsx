@@ -87,12 +87,26 @@ function LegitimidadBadge({ leg }: { leg: string }) {
   )
 }
 
-function EvalResult({ result }: { result: EvaluationResult }) {
+function EvalResult({ result, onRecalcular, recalculating }: { result: EvaluationResult; onRecalcular?: () => void; recalculating?: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const { meta, report } = result
 
   return (
     <div className="mt-4 border border-gray-700 rounded-xl overflow-hidden">
+      {result.reused && (
+        <div className="flex items-center justify-between gap-3 bg-amber-900/20 border-b border-amber-800/40 px-4 py-2.5 text-xs text-amber-300">
+          <span>Ya evaluaste esta oferta el {result.reusedFecha} — este es ese resultado, no se gastó una consulta nueva.</span>
+          {onRecalcular && (
+            <button
+              onClick={onRecalcular}
+              disabled={recalculating}
+              className="flex items-center gap-1 text-amber-200 hover:text-white underline disabled:opacity-50 shrink-0"
+            >
+              {recalculating ? 'Recalculando...' : 'Recalcular ahora'}
+            </button>
+          )}
+        </div>
+      )}
       {/* Header de resultado */}
       <div className="bg-gray-800 p-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -161,6 +175,8 @@ interface EvalState {
   loading: boolean
   result: EvaluationResult | null
   error: string | null
+  url?: string
+  jd?: string
 }
 
 export default function CareersPipeline() {
@@ -197,7 +213,7 @@ export default function CareersPipeline() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['careers-pipeline'] }),
   })
 
-  const evaluate = async (url?: string, jd?: string, key?: string) => {
+  const evaluate = async (url?: string, jd?: string, key?: string, force?: boolean) => {
     const stateKey = key || 'direct'
     const setState = (s: Partial<EvalState>) => {
       if (stateKey === 'direct') {
@@ -207,13 +223,14 @@ export default function CareersPipeline() {
       }
     }
 
-    setState({ loading: true, result: null, error: null })
+    setState({ loading: true, result: null, error: null, url, jd })
     try {
       const userApiKey = getKeyForProvider(llmProvider)
       const payload: Record<string, string> = { llmProvider, ...(userApiKey ? { userApiKey } : {}) }
       if (url) payload.url = url
       if (jd) payload.jd = jd
       if (paisEval) payload.pais = paisEval
+      if (force) payload.force = 'true'
 
       const { data } = await api.post<EvaluationResult>('/evaluate', payload)
       setState({ loading: false, result: data })
@@ -378,7 +395,13 @@ export default function CareersPipeline() {
             </div>
           </div>
         )}
-        {directEval.result && <EvalResult result={directEval.result} />}
+        {directEval.result && (
+          <EvalResult
+            result={directEval.result}
+            onRecalcular={() => evaluate(directEval.url, directEval.jd, 'direct', true)}
+            recalculating={directEval.loading}
+          />
+        )}
       </div>
 
       {/* Lista del pipeline */}
@@ -461,7 +484,13 @@ export default function CareersPipeline() {
                       <p className="text-red-400 text-xs">{state.error}</p>
                     </div>
                   )}
-                  {state.result && <EvalResult result={state.result} />}
+                  {state.result && (
+                    <EvalResult
+                      result={state.result}
+                      onRecalcular={() => evaluate(job.url, undefined, job.url, true)}
+                      recalculating={state.loading}
+                    />
+                  )}
                 </div>
               )
             })}

@@ -64,6 +64,8 @@ export interface EvaluationResult {
   ok: boolean
   entry: TrackerEntry
   reportSlug: string
+  reused?: boolean
+  reusedFecha?: string
   meta: {
     empresa: string
     rol: string

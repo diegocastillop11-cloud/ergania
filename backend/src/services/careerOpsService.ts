@@ -904,6 +904,11 @@ async function dbGetActivePerfilId(userEmail: string): Promise<string> {
   return created.id
 }
 
+export async function getActivePerfilId(userEmail?: string): Promise<string> {
+  if (!dbEnabled()) return LOCAL_PERFIL.id
+  return dbGetActivePerfilId(normalizeUserEmail(userEmail))
+}
+
 export async function listPerfiles(userEmail?: string): Promise<Perfil[]> {
   if (!dbEnabled()) return [LOCAL_PERFIL]
   const email = normalizeUserEmail(userEmail)

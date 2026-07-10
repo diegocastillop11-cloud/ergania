@@ -475,8 +475,36 @@ export const evaluateJob = async (req: Request, res: Response) => {
   try {
     const { email: userEmail, userId } = await getUser(req)
     await requireActiveSubscription(userId)
-    const { jd: jdRaw, url, empresa, rol } = req.body
+    const { jd: jdRaw, url, empresa, rol, force } = req.body
     if (!jdRaw && !url) return res.status(400).json({ error: 'Se requiere el texto de la oferta (jd) o una URL' })
+
+    // Reutilizar una evaluación previa de la misma URL en el perfil activo en vez de
+    // gastar un web_search nuevo — reevaluar la misma oferta podía dar un score o
+    // renta distintos cada vez, lo que confundía más de lo que ayudaba. El usuario
+    // puede forzar una evaluación nueva explícitamente (force=true, botón Recalcular).
+    if (url && !force) {
+      const activePerfilId = await svc.getActivePerfilId(userEmail)
+      const tracker = await svc.readTracker(userEmail)
+      const existing = tracker.find(e => e.url === url && (!e.perfil_id || e.perfil_id === activePerfilId))
+      if (existing?.reportSlug) {
+        const slug = existing.reportSlug.replace(/^reports\//, '')
+        const reportContent = await svc.readReport(slug, userEmail)
+        if (reportContent) {
+          let meta: Record<string, unknown> = {}
+          const jsonMatch = reportContent.match(/```json\s*([\s\S]*?)```/)
+          if (jsonMatch?.[1]) { try { meta = JSON.parse(jsonMatch[1]) } catch { /* ignore */ } }
+          return res.json({
+            ok: true,
+            entry: existing,
+            reportSlug: slug,
+            meta,
+            report: reportContent,
+            reused: true,
+            reusedFecha: existing.fecha,
+          })
+        }
+      }
+    }
 
     // Intentar scrapear la URL si el JD está vacío o es solo una referencia corta
     let scrapedContent = ''
