@@ -174,6 +174,7 @@ export default function CareersTracker() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [reportModal, setReportModal] = useState<string | null>(null)
+  const [justClickedApply, setJustClickedApply] = useState<Record<string, boolean>>({})
   const [applyStates, setApplyStates] = useState<Record<string, ApplyState>>({})
   const [postularStepIdx, setPostularStepIdx] = useState<Record<string, number>>({})
   const [cvModal, setCvModal] = useState<Application | null>(null)
@@ -506,11 +507,26 @@ export default function CareersTracker() {
                                     href={entry.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={() => setJustClickedApply(p => ({ ...p, [entry.id]: true }))}
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold transition-all"
                                   >
                                     <ArrowUpRight size={11} />
                                     Ir a postular
                                   </a>
+                                )}
+
+                                {/* La app no puede confirmar que la postulación se envió en el sitio
+                                    externo — esto cierra el loop pidiéndole al usuario que lo marque
+                                    él mismo apenas vuelve, en vez de que tenga que acordarse después. */}
+                                {justClickedApply[entry.id] && entry.estado !== 'Postulada' && (
+                                  <button
+                                    onClick={() => { updateMut.mutate({ id: entry.id, estado: 'Postulada' }); setJustClickedApply(p => ({ ...p, [entry.id]: false })) }}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-xs font-medium transition-all animate-pulse"
+                                    title="Confirma que ya completaste la postulación en el sitio externo"
+                                  >
+                                    <CheckCircle2 size={11} />
+                                    Ya postulé
+                                  </button>
                                 )}
 
                                 <button

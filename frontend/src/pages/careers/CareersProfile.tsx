@@ -241,11 +241,20 @@ export default function CareersProfile() {
       }
       setProfile(newProfile)
 
-      if (d.cv_markdown) setCvContent(d.cv_markdown)
+      // Si ya había un CV Markdown guardado (posiblemente con ediciones manuales que
+      // no vienen en este PDF/DOCX), confirmar antes de reemplazarlo — antes se
+      // sobreescribía en silencio y se perdía lo editado a mano.
+      const overwritesExistingCv = d.cv_markdown && cvContent.trim() && cvContent.trim() !== d.cv_markdown.trim()
+      const shouldUpdateCv = d.cv_markdown && (
+        !overwritesExistingCv ||
+        window.confirm('Ya tienes un CV guardado en "CV Completo (Markdown)". Importar este archivo lo va a reemplazar por completo — cualquier edición manual que no esté en este PDF/DOCX se perderá. ¿Continuar?')
+      )
+
+      if (shouldUpdateCv) setCvContent(d.cv_markdown)
 
       // Guardar perfil y CV automáticamente
       await api.put('/profile', newProfile)
-      if (d.cv_markdown) await api.put('/cv', { content: d.cv_markdown })
+      if (shouldUpdateCv) await api.put('/cv', { content: d.cv_markdown })
 
       // Guardar config de búsqueda si el CV la trae
       const sc = d.search_config
