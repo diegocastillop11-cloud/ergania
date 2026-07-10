@@ -1,10 +1,11 @@
 import { api } from '../../lib/api'
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, FileText, Save, Loader2, Check, Edit3,
   EyeOff, ChevronDown, ChevronUp, AlertCircle, MessageSquare,
-  Linkedin, Copy, CheckCircle2, Sparkles, Upload,
+  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket,
 } from 'lucide-react'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -112,6 +113,7 @@ function SelectField({
 
 export default function CareersProfile() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
   const [cvSaved, setCvSaved] = useState(false)
   const [cvEdit, setCvEdit] = useState(false)
@@ -136,6 +138,13 @@ export default function CareersProfile() {
     // Sin el fallback a '' un perfil nuevo (CV vacío) mostraría el CV del perfil anterior
     if (cvData) setCvContent(cvData.content || '')
   }, [cvData])
+
+  useEffect(() => {
+    // Mismo problema que el CV: sin este reset, la optimización de LinkedIn generada
+    // para un perfil sigue mostrándose (y siendo editable) tras cambiar a otro perfil.
+    setLiResult(null)
+    setLiError('')
+  }, [profileData])
 
   const saveMut = useMutation({
     mutationFn: (data: ProfileData) => api.put('/profile', data),
@@ -515,6 +524,20 @@ export default function CareersProfile() {
                 <Check size={14} /> Guardado
               </span>
             )}
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`}>
+              {cvImporting ? (
+                <><Loader2 size={13} className="animate-spin" /> Analizando...</>
+              ) : (
+                <><Upload size={13} /> Importar CV con IA</>
+              )}
+              <input
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                className="hidden"
+                disabled={cvImporting}
+                onChange={handleImportCv}
+              />
+            </label>
             <button
               onClick={() => setCvEdit(!cvEdit)}
               className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition-colors"
@@ -731,9 +754,19 @@ export default function CareersProfile() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
           </div>
-          <p className="text-xs text-gray-600">
-            Estas instrucciones se aplican en cada CV generado desde "Postulaciones" o al regenerar un CV.
-          </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-gray-600">
+              Estas instrucciones NO generan nada aquí — se aplican recién cuando generas o regeneras el
+              CV de una postulación específica (botón "Regenerar CV" en Postulaciones), donde puedes ver
+              el resultado al momento.
+            </p>
+            <button
+              onClick={() => { saveMut.mutate(profile); navigate('/postulaciones') }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+            >
+              <Rocket size={13} /> Generar CV con estas instrucciones
+            </button>
+          </div>
         </div>
       </Section>
     </div>

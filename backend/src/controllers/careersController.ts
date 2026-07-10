@@ -600,7 +600,7 @@ export const evaluateJob = async (req: Request, res: Response) => {
       // ── Modo compacto para Groq (límite 6000 TPM en tier gratuito) ──────────
       // Input: ~1500 tokens | Output: ~1200 tokens | Total: ~2700 < 6000 ✓
       maxTokens = 1200
-      systemPrompt = `Eres experto en ofertas laborales de ${country.nombre}. Evalúa brevemente. Responde SOLO en ${idiomaSalida}.
+      systemPrompt = `Eres experto en ofertas laborales de ${country.nombre}. Evalúa brevemente usando SIEMPRE escala de score 1.0 a 5.0 (nunca 1-10). Responde SOLO en ${idiomaSalida}.
 Candidato: ${candidate.full_name || 'Diego'} — ${(narrative.headline as string) || 'Analista de Datos'}
 Roles objetivo: ${Object.values(targetRoles).flat().slice(0, 4).join(', ')}
 Renta objetivo: ${compensation.target_range || `sin dato — estima acorde al mercado de ${country.nombre} en ${country.moneda}`}
@@ -619,7 +619,7 @@ Extrae empresa y rol del URL o contexto. Haz tu mejor evaluación con lo disponi
 
 Responde con análisis breve Y este JSON al final:
 \`\`\`json
-{"empresa":"...","rol":"...","score":0.0,"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango en la moneda real","contrata_chile":true,"pais_detectado":"país real de la oferta","keywords":["kw1"]}
+{"empresa":"...","rol":"...","score":0.0 (entre 1.0 y 5.0, nunca 1-10),"remoto":"remoto/híbrido/presencial","seniority":"Junior/Mid/Senior","legitimidad":"Alta confianza/Proceder con cautela/Sospechosa","recomendacion":"POSTULAR/CONSIDERAR/DESCARTAR","salario_clp":"rango en la moneda real","contrata_chile":true,"pais_detectado":"país real de la oferta","keywords":["kw1"]}
 \`\`\``
     } else {
       // ── Modo completo para Gemini / Claude / OpenAI ────────────────────────
@@ -689,7 +689,7 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
 {
   "empresa": "nombre empresa",
   "rol": "título del rol",
-  "score": 0.0,
+  "score": 0.0 (usa SIEMPRE escala 1.0 a 5.0, nunca 1-10),
   "arquetipo": "tipo detectado",
   "remoto": "remoto/híbrido/presencial",
   "seniority": "Junior/Mid/Senior",
@@ -740,6 +740,16 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
       try {
         meta = JSON.parse(jsonMatch[1])
       } catch { /* ignore */ }
+    }
+
+    // Defensa adicional: el modelo a veces devuelve escala 1-10 pese a la instrucción.
+    // Si viene sobre 5, se asume esa escala y se reescala a 1-5; siempre se clampea al final.
+    if (meta.score !== undefined && meta.score !== null) {
+      let s = Number(meta.score)
+      if (!Number.isNaN(s)) {
+        if (s > 5) s = s / 2
+        meta.score = Math.max(1, Math.min(5, Math.round(s * 10) / 10))
+      }
     }
 
     // Asegura que empresa y rol nunca sean completamente '—'
@@ -1760,11 +1770,12 @@ Retorna SOLO JSON (sin markdown):
 }
 
 REGLAS:
-- 8-12 roles variados: algunos exactos (Analista SQL), otros amplios (Data Analyst), algunos en inglés para empresas internacionales
+- 8-12 roles variados: algunos exactos (Analista SQL), otros amplios (Data Analyst)
+- De esos roles, incluye SIEMPRE al menos 3-4 en INGLÉS (ej. junto a "Analista de Datos" agrega también "Data Analyst"), sin importar el idioma del país — sirven para buscar en portales y empresas internacionales/remotas
 - 10-15 keywords tecnológicas del CV + variaciones (SQL Server → SQL, MSSQL, T-SQL)
 - 5-8 keywords negativas para evitar roles no deseados (call center, ventas, soporte L1 básico)
 - 5-6 queries: mezcla de rol + tecnología + "${country.nombre}" o "remoto"
-- Todo en ${country.idioma === 'en' ? 'inglés' : 'español'} profesional`,
+- Cada rol se escribe en su propio idioma (los en español, en español; los en inglés del punto anterior, en inglés). El resto (keywords, razón) va en ${country.idioma === 'en' ? 'inglés' : 'español'} profesional`,
       }],
     })
 
@@ -2471,6 +2482,7 @@ export const parseCv = async (req: Request, res: Response) => {
     if (!rawText.trim()) return res.status(400).json({ error: 'No se pudo extraer texto del archivo.' })
 
     const client = getLlmClient(req)
+    const sourceLang = detectLanguage(rawText)
 
     const prompt = `Eres un extractor de datos de CVs para un buscador de empleo internacional. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
 
@@ -2523,6 +2535,7 @@ Instrucciones:
 - "cv_markdown": el CV COMPLETO formateado en Markdown con toda la experiencia, educación, habilidades y logros
 - Si un campo no está disponible, deja string vacío o array vacío
 - No inventes información que no esté en el CV
+- IDIOMA (obligatorio): el CV original está en ${sourceLang === 'en' ? 'INGLÉS' : 'ESPAÑOL'}. Escribe "headline", "exit_story" y "cv_markdown" en ESE MISMO IDIOMA — NO traduzcas el contenido, solo extráelo y ordénalo.
 
 CV A ANALIZAR:
 ${rawText.substring(0, 8000)}`
