@@ -358,7 +358,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
               onClick={() => regenerate()}
               disabled={regenerating || editing}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-              title="Genera una nueva versión del CV en el idioma seleccionado"
+              title="Genera una nueva versión del CV en el idioma seleccionado, aplicando tus Instrucciones de Redacción del Perfil"
             >
               {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
               {regenerating ? 'Regenerando...' : 'Regenerar CV'}

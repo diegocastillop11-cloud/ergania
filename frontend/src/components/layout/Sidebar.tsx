@@ -12,12 +12,12 @@ import PerfilSwitcher from '../careers/PerfilSwitcher'
 const nav = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/profile',       icon: UserCircle,      label: 'Perfil & CV' },
+  { to: '/portals',       icon: Globe,           label: 'Portales' },
   { to: '/busqueda',      icon: Target,          label: 'Mi Búsqueda' },
   { to: '/scanner',       icon: Radio,           label: 'Escáner' },
   { to: '/pipeline',      icon: Inbox,           label: 'Evaluar Oferta' },
   { to: '/postulaciones', icon: Send,            label: 'Postulaciones' },
   { to: '/tracker',       icon: List,            label: 'Tracker' },
-  { to: '/portals',       icon: Globe,           label: 'Portales' },
   { to: '/subscription',  icon: Crown,           label: 'Suscripción' },
 ]
 

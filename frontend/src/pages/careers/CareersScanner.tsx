@@ -224,6 +224,7 @@ export default function CareersScanner() {
   const navigate = useNavigate()
   const [scanning, setScanning] = useState(false)
   const [portalEvents, setPortalEvents] = useState<Record<string, PortalEvent>>({})
+  const [regionFilter, setRegionFilter] = useState<'todos' | 'chile' | 'remoto'>('todos')
   const [log, setLog] = useState<LogEntry[]>([])
   const [summary, setSummary] = useState<{ total: number; encontradas: number; agregadas: number } | null>(null)
   const [searchInfo, setSearchInfo] = useState<{ queries: string[]; keywords_positivas: string[] } | null>(null)
@@ -374,6 +375,21 @@ export default function CareersScanner() {
   const doneCount = portalList.filter(p => p.encontradas !== undefined || p.error).length
   const totalPortals = portalList.length
 
+  // Filtro de región sobre los resultados ya encontrados (no re-escanea).
+  // "Resto del mundo" no existe todavía como scraping real — todos los portales
+  // hoy son de Chile — así que el filtro por ahora separa Chile vs Remoto.
+  const filteredPortalList = regionFilter === 'todos'
+    ? portalList
+    : portalList.map(event => {
+        if (!event.ofertas) return event
+        const ofertas = event.ofertas.filter(o => {
+          const u = (o.ubicacion || '').toLowerCase()
+          const esRemoto = u.includes('remoto') || u.includes('remote')
+          return regionFilter === 'remoto' ? esRemoto : !esRemoto
+        })
+        return { ...event, ofertas, encontradas: ofertas.length }
+      })
+
   return (
     <div className="space-y-5">
       <PerfilTabs />
@@ -386,7 +402,7 @@ export default function CareersScanner() {
             Escáner de Portales
           </h2>
           <p className="text-gray-400 mt-1">
-            Busca trabajos automáticamente en portales chilenos y los filtra por tu perfil
+            Busca trabajos automáticamente en portales chilenos (incluye ofertas remotas) y los filtra por tu perfil
           </p>
         </div>
         <div className="flex gap-2">
@@ -544,11 +560,28 @@ export default function CareersScanner() {
       {/* Feed de portales en tiempo real */}
       {portalList.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <Globe size={16} className="text-blue-400" />
-            Portales ({portalList.length})
-          </h3>
-          {portalList.map(event => (
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-white font-semibold flex items-center gap-2">
+              <Globe size={16} className="text-blue-400" />
+              Portales ({portalList.length})
+            </h3>
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+              {([
+                { id: 'todos', label: 'Todos' },
+                { id: 'chile', label: 'Chile' },
+                { id: 'remoto', label: 'Remoto' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setRegionFilter(opt.id)}
+                  className={`px-3 py-1.5 ${regionFilter === opt.id ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {filteredPortalList.map(event => (
             <PortalCard
               key={event.nombre}
               event={event}
@@ -621,7 +654,7 @@ export default function CareersScanner() {
           <div>
             <h3 className="text-white font-semibold mb-1">Escáner listo</h3>
             <p className="text-gray-400 text-sm max-w-md mx-auto">
-              Busca en portales chilenos usando tus cargos y keywords. Para mejores resultados configura primero tus cargos objetivo.
+              Busca en portales chilenos (incluye ofertas remotas) usando tus cargos y keywords. Para mejores resultados configura primero tus cargos objetivo.
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-md mx-auto text-xs">
