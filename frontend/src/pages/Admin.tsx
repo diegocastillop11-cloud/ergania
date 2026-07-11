@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
-  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download,
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
@@ -182,8 +182,28 @@ function ReportCard({ report, token, onChanged }: { report: Report; token: strin
   const [observaciones, setObservaciones] = useState(report.observaciones)
   const [newItem, setNewItem] = useState('')
   const [saving, setSaving] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   const tipoCfg = TIPO_LABEL[report.tipo]
+
+  const downloadPdf = async () => {
+    setDownloading(true)
+    try {
+      const res = await fetch(`/api/admin/reports/${report.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error('Error al generar el PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Reporte_${report.titulo.replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      window.alert('No se pudo descargar el PDF')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const dirty = JSON.stringify(checklist) !== JSON.stringify(report.checklist) || observaciones !== report.observaciones
 
@@ -289,6 +309,13 @@ function ReportCard({ report, token, onChanged }: { report: Report; token: strin
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
             >
               <Save size={13} /> {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+            <button
+              onClick={downloadPdf}
+              disabled={downloading}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+            >
+              <Download size={13} /> {downloading ? 'Generando...' : 'Descargar PDF'}
             </button>
             <button onClick={remove} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-400 rounded-lg text-xs">
               <Trash2 size={13} /> Eliminar reporte

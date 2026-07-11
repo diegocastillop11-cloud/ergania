@@ -2,7 +2,7 @@ import { Router } from 'express'
 import {
   getStats, notifySignup,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
-  listReports, createReport, updateReport, deleteReport,
+  listReports, createReport, updateReport, deleteReport, downloadReportPdf,
 } from '../controllers/adminController'
 
 const router = Router()
@@ -19,5 +19,6 @@ router.get('/reports', listReports)
 router.post('/reports', createReport)
 router.put('/reports/:id', updateReport)
 router.delete('/reports/:id', deleteReport)
+router.get('/reports/:id/pdf', downloadReportPdf)
 
 export { router as adminRoutes }

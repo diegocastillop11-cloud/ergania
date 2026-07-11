@@ -1,7 +1,51 @@
 import { Request, Response } from 'express'
 import { supabaseAdmin } from '../config/supabase'
+import * as svc from '../services/careerOpsService'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
+
+const TIPO_LABEL: Record<string, string> = {
+  correccion: 'Corrección',
+  implementacion: 'Implementación',
+  plan: 'Plan futuro',
+}
+
+function buildReportHtml(report: {
+  tipo: string; titulo: string; fecha: string; contenido: string
+  checklist: Array<{ texto: string; marcado: boolean; nota: string }>; observaciones: string
+}): string {
+  const esc = (s: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const checklistHtml = (report.checklist || []).map(item => `
+    <div style="display:flex;gap:8px;margin:6px 0;align-items:flex-start;">
+      <span style="font-size:14px;">${item.marcado ? '☑' : '☐'}</span>
+      <div>
+        <div style="${item.marcado ? 'text-decoration:line-through;color:#888;' : ''}">${esc(item.texto)}</div>
+        ${item.nota ? `<div style="font-size:11px;color:#666;margin-top:2px;">${esc(item.nota)}</div>` : ''}
+      </div>
+    </div>`).join('')
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(report.titulo)}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:32px;line-height:1.6;}
+  .header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1d4ed8;padding-bottom:16px;margin-bottom:20px;}
+  .header img{width:40px;height:40px;object-fit:contain;}
+  .header h1{font-size:14px;color:#1d4ed8;margin:0;letter-spacing:1px;}
+  .badge{display:inline-block;font-size:11px;font-weight:bold;padding:3px 10px;border-radius:12px;background:#eef2ff;color:#1d4ed8;margin-bottom:8px;}
+  h2{font-size:20px;margin:4px 0 4px;}
+  .fecha{color:#666;font-size:12px;margin-bottom:16px;}
+  .contenido{margin-bottom:20px;white-space:pre-wrap;}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px;margin:20px 0 10px;}
+  .observaciones{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:13px;}
+</style></head><body>
+  <div class="header"><img src="https://ergania.com/logo.png" /><h1>ERGANIA</h1></div>
+  <span class="badge">${esc(TIPO_LABEL[report.tipo] || report.tipo)}</span>
+  <h2>${esc(report.titulo)}</h2>
+  <div class="fecha">${esc(report.fecha)}</div>
+  ${report.contenido ? `<div class="contenido">${esc(report.contenido)}</div>` : ''}
+  ${checklistHtml ? `<div class="section-title">Checklist</div>${checklistHtml}` : ''}
+  ${report.observaciones ? `<div class="section-title">Observaciones</div><div class="observaciones">${esc(report.observaciones)}</div>` : ''}
+</body></html>`
+}
 
 async function getAdminUser(req: Request) {
   const auth = req.headers['authorization']
@@ -177,6 +221,30 @@ export async function deleteReport(req: Request, res: Response) {
   const { error } = await supabaseAdmin.from('internal_reports').delete().eq('id', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
+}
+
+export async function downloadReportPdf(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data: report, error } = await supabaseAdmin
+    .from('internal_reports')
+    .select('*')
+    .eq('id', req.params.id)
+    .single()
+  if (error || !report) return res.status(404).json({ error: 'Reporte no encontrado' })
+
+  try {
+    const html = buildReportHtml(report)
+    const { buffer } = await svc.generatePDFFromHtml(html, 'Ergania', report.titulo, '', 'Reporte')
+    const filename = `Reporte_${String(report.titulo).replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(buffer)
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message || 'Error al generar el PDF' })
+  }
 }
 
 export async function notifySignup(req: Request, res: Response) {
