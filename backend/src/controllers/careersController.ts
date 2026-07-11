@@ -1518,6 +1518,76 @@ Escribe SOLO la respuesta (3 frases máx, 60-70 palabras):`,
   }
 }
 
+// ── Simulador de entrevista (chat pregunta → respuesta del candidato → feedback) ─
+// Sin historial server-side: el frontend guarda las preguntas en memoria y manda
+// cada respuesta suelta — mismo patrón stateless que el resto del controller.
+
+export const interviewSimulateQuestions = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+    const app = await svc.getApplication(req.params.id, userEmail)
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+
+    const cv = await svc.readCV(userEmail)
+    const country = getCountryConfig(app.pais)
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || country.idioma
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 800,
+      system: `Eres un reclutador senior de ${country.nombre} preparando preguntas de entrevista real para ${app.rol} en ${app.empresa}. Responde SOLO JSON.`,
+      messages: [{
+        role: 'user',
+        content: `JD:\n${(app.jd || '').slice(0, 1500)}\n\nCV del candidato:\n${cv.slice(0, 2000)}\n\nGenera 6 preguntas de entrevista realistas: mezcla 2 comportamentales, 3 técnicas específicas del rol, 1 sobre motivación o brechas de experiencia del candidato. ${idioma === 'en' ? 'Escribe las preguntas en inglés.' : 'Escribe las preguntas en español.'}\n\nJSON: {"preguntas": ["...", "..."]}`,
+      }],
+    })
+
+    const text = response.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
+    const match = text.match(/\{[\s\S]*\}/)
+    let preguntas: string[] = []
+    if (match) { try { preguntas = JSON.parse(match[0]).preguntas || [] } catch { /* empty */ } }
+    if (!preguntas.length) return res.status(500).json({ error: 'No se pudieron generar preguntas. Intenta de nuevo.' })
+
+    res.json({ ok: true, preguntas })
+  } catch (err: unknown) {
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+  }
+}
+
+export const interviewSimulateFeedback = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+    const { pregunta, respuesta } = req.body
+    const app = await svc.getApplication(req.params.id, userEmail)
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+    if (!pregunta?.trim() || !respuesta?.trim()) return res.status(400).json({ error: 'pregunta y respuesta son requeridas' })
+
+    const cv = await svc.readCV(userEmail)
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || getCountryConfig(app.pais).idioma
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 350,
+      system: `Eres un coach de entrevistas y reclutador senior evaluando la respuesta de un candidato para ${app.rol} en ${app.empresa}. Da feedback breve y directo (máx 120 palabras): qué estuvo bien (si algo), qué mejorar concretamente, y un tip rápido. Nunca digas solo "buen trabajo" — sé específico. Responde en ${idioma === 'en' ? 'inglés' : 'español'}, texto plano sin markdown.`,
+      messages: [{
+        role: 'user',
+        content: `EXTRACTO CV (para verificar consistencia):\n${(cv || '').slice(0, 1000)}\n\nPREGUNTA: "${pregunta}"\n\nRESPUESTA DEL CANDIDATO: "${respuesta}"\n\nDa tu feedback:`,
+      }],
+    })
+
+    const feedback = response.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
+    res.json({ ok: true, feedback })
+  } catch (err: unknown) {
+    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+  }
+}
+
 export const generateCoverLetter = async (req: Request, res: Response) => {
   try {
     const { email: userEmail, userId } = await getUser(req)
@@ -1749,6 +1819,65 @@ export const optimizeCv = async (req: Request, res: Response) => {
     cvData.summary = stripYearExperiencePhrases(cvData.summary)
     cvData.experience = cvData.experience.map(exp => ({ ...exp, bullets: exp.bullets.map(stripYearExperiencePhrases) }))
     cvData.projects = cvData.projects.map(proj => ({ ...proj, bullets: proj.bullets.map(stripYearExperiencePhrases) }))
+
+    const cvHtml = svc.buildCvHtml(cvData)
+    res.json({ ok: true, cvData, cvHtml })
+  } catch (err: unknown) {
+    const provider = getProviderFromRequest(req)
+    res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, normalizeProvider(provider)) })
+  }
+}
+
+// Traduce el CV base a cualquier idioma a pedido — reusa buildCvHtml/downloadOptimizedCvPdf,
+// solo cambia el prompt (traducción literal, no reescritura de instrucciones).
+export const translateCv = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+
+    const cv = await svc.readCV(userEmail)
+    if (!cv.trim()) return res.status(400).json({ error: 'No tienes un CV base guardado todavía.' })
+
+    const targetLang = ((req.body?.idioma as string) || '').trim()
+    if (!targetLang) return res.status(400).json({ error: 'Falta el idioma de destino.' })
+
+    const profile = await svc.readProfile(userEmail) as Record<string, unknown>
+    const cand = (profile?.candidate as Record<string, string>) || {}
+    const contactInfo = {
+      city: cand.location || '',
+      phone: cand.phone || '',
+      email: cand.email || userEmail,
+      linkedin: cand.linkedin || '',
+      github: cand.github || '',
+    }
+
+    const prompt = `Traduce este CV COMPLETO a ${targetLang}, preservando el sentido, los logros y las cifras exactamente — es una traducción profesional, no una reescritura ni una optimización. Mantén nombres propios (empresas, instituciones) tal cual, salvo tecnologías/cargos con traducción estándar de la industria en ${targetLang}. No omitas ninguna experiencia ni la resumas.
+
+CV ORIGINAL:
+${cv}
+
+Devuelve SOLO JSON válido, sin markdown ni explicaciones, con esta estructura (usa las empresas, cargos y fechas REALES del CV original, ya traducidos):
+{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"...","location":"...","role":"...","dates":"...","bullets":["..."]}],"projects":[{"name":"...","year":"...","bullets":["..."]}],"skills":{"Categoría":"..."},"education":[{"title":"...","institution":"...","year":"..."}]}`
+
+    const response = await getLlmClient(req).messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4000,
+      system: 'Eres un traductor profesional de CVs. Retornas SOLO JSON válido, sin markdown, sin explicaciones.',
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const rawText = response.content
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text)
+      .join('')
+      .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
+
+    let cvData: svc.CvData
+    try {
+      cvData = JSON.parse(rawText)
+    } catch {
+      throw new Error('La IA no devolvió un CV en formato válido. Intenta de nuevo.')
+    }
 
     const cvHtml = svc.buildCvHtml(cvData)
     res.json({ ok: true, cvData, cvHtml })

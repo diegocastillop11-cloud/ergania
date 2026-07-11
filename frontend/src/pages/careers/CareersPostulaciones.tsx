@@ -7,7 +7,7 @@ import {
   Plus, FileText, Brain, MessageSquare, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Copy, CheckCircle2, X, Star, Send,
   Download, Eye, Rocket, Mail, AlertTriangle, Languages, DollarSign,
-  Pencil, Save, Check,
+  Pencil, Save, Check, MessagesSquare,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 
@@ -760,6 +760,158 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
   )
 }
 
+// ── Simulador de Entrevista (chat: pregunta → respuesta del usuario → feedback) ─
+
+interface SimTurn { pregunta: string; respuesta: string; feedback: string }
+
+function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const [lang] = useState<'es' | 'en'>(app.idioma || 'es')
+  const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const [preguntas, setPreguntas] = useState<string[]>([])
+  const [idx, setIdx] = useState(0)
+  const [respuesta, setRespuesta] = useState('')
+  const [history, setHistory] = useState<SimTurn[]>([])
+  const [loadingPreguntas, setLoadingPreguntas] = useState(true)
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
+  const [error, setError] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setLoadingPreguntas(true)
+      setError('')
+      try {
+        const userApiKey = getKeyForProvider(llmProvider)
+        const { data } = await api.post(`/applications/${app.id}/interview-simulate/questions`, {
+          llmProvider, idioma: lang, ...(userApiKey ? { userApiKey } : {}),
+        })
+        setPreguntas(data.preguntas || [])
+      } catch (err: unknown) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar las preguntas')
+      } finally {
+        setLoadingPreguntas(false)
+      }
+    }
+    loadQuestions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [history, loadingFeedback])
+
+  const submitRespuesta = async () => {
+    if (!respuesta.trim()) return
+    setLoadingFeedback(true)
+    setError('')
+    try {
+      const userApiKey = getKeyForProvider(llmProvider)
+      const { data } = await api.post(`/applications/${app.id}/interview-simulate/feedback`, {
+        pregunta: preguntas[idx], respuesta, llmProvider, idioma: lang, ...(userApiKey ? { userApiKey } : {}),
+      })
+      setHistory(h => [...h, { pregunta: preguntas[idx], respuesta, feedback: data.feedback }])
+      setRespuesta('')
+      setIdx(i => i + 1) // avanza sola a la siguiente pregunta
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar el feedback')
+    } finally {
+      setLoadingFeedback(false)
+    }
+  }
+
+  const done = idx >= preguntas.length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+          <div>
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <MessagesSquare size={16} className="text-indigo-400" />
+              Simulador de Entrevista — {app.empresa}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {loadingPreguntas ? 'Generando preguntas...' : `Pregunta ${Math.min(idx + 1, preguntas.length)}/${preguntas.length}`}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+        </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          {loadingPreguntas && (
+            <div className="flex items-center gap-3 p-4 bg-indigo-900/20 border border-indigo-800/50 rounded-xl text-indigo-300 text-sm">
+              <Loader2 size={16} className="animate-spin shrink-0" />
+              Preparando preguntas realistas para {app.rol}...
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-3 p-4 bg-red-900/20 border border-red-800/50 rounded-xl text-red-400 text-sm">
+              <AlertTriangle size={16} className="shrink-0" /> {error}
+            </div>
+          )}
+
+          {/* Historial de turnos ya respondidos */}
+          {history.map((turn, i) => (
+            <div key={i} className="space-y-2">
+              <div className="bg-indigo-900/20 border border-indigo-800/40 rounded-xl p-3">
+                <p className="text-xs text-indigo-400 font-medium mb-1">Entrevistador</p>
+                <p className="text-gray-200 text-sm">{turn.pregunta}</p>
+              </div>
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 ml-4">
+                <p className="text-xs text-gray-500 font-medium mb-1">Tu respuesta</p>
+                <p className="text-gray-300 text-sm whitespace-pre-wrap">{turn.respuesta}</p>
+              </div>
+              <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-xl p-3 ml-4">
+                <p className="text-xs text-emerald-400 font-medium mb-1">Feedback</p>
+                <p className="text-gray-300 text-sm whitespace-pre-wrap">{turn.feedback}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Pregunta activa */}
+          {!loadingPreguntas && !done && (
+            <div className="bg-indigo-900/20 border border-indigo-800/40 rounded-xl p-3">
+              <p className="text-xs text-indigo-400 font-medium mb-1">Entrevistador</p>
+              <p className="text-gray-200 text-sm">{preguntas[idx]}</p>
+            </div>
+          )}
+
+          {done && !loadingPreguntas && (
+            <div className="flex items-center gap-3 p-4 bg-emerald-900/20 border border-emerald-800/50 rounded-xl text-emerald-300 text-sm">
+              <CheckCircle2 size={16} className="shrink-0" />
+              Completaste la simulación — {history.length} preguntas respondidas.
+            </div>
+          )}
+        </div>
+
+        {!loadingPreguntas && !done && (
+          <div className="p-4 border-t border-gray-800 shrink-0 space-y-2">
+            <textarea
+              value={respuesta}
+              onChange={e => setRespuesta(e.target.value)}
+              placeholder="Escribe tu respuesta como si estuvieras en la entrevista..."
+              rows={3}
+              disabled={loadingFeedback}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500 resize-none disabled:opacity-60"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={submitRespuesta}
+                disabled={!respuesta.trim() || loadingFeedback}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {loadingFeedback ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {loadingFeedback ? 'Evaluando...' : 'Enviar respuesta'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Panel Postular (Apply Kit) ────────────────────────────────────────────────
 
 interface ApplyKitItem { pregunta: string; respuesta: string; tip?: string }
@@ -1247,6 +1399,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
   const [showCv, setShowCv] = useState(false)
   const [showPrep, setShowPrep] = useState(false)
   const [showQnA, setShowQnA] = useState(false)
+  const [showSimulator, setShowSimulator] = useState(false)
   const [showApply, setShowApply] = useState(false)
   const [showCoverLetter, setShowCoverLetter] = useState(false)
   const [showSalary, setShowSalary] = useState(false)
@@ -1268,6 +1421,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
   const openCv = async () => { await loadFullApp(); setShowCv(true) }
   const openPrep = async () => { await loadFullApp(); setShowPrep(true) }
   const openQnA = async () => { await loadFullApp(); setShowQnA(true) }
+  const openSimulator = async () => { await loadFullApp(); setShowSimulator(true) }
   const openApply = async () => { await loadFullApp(); setShowApply(true) }
   const openCoverLetter = async () => { await loadFullApp(); setShowCoverLetter(true) }
   const openSalary = async () => { await loadFullApp(); setShowSalary(true) }
@@ -1352,6 +1506,12 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               <MessageSquare size={11} /> Responder Preguntas
             </button>
             <button
+              onClick={openSimulator}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-800/50 text-indigo-300 rounded-lg text-xs font-medium transition-colors"
+            >
+              <MessagesSquare size={11} /> Simular Entrevista
+            </button>
+            <button
               onClick={openApply}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-800/50 text-orange-300 rounded-lg text-xs font-medium transition-colors"
             >
@@ -1419,6 +1579,9 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
       )}
       {showQnA && fullApp && (
         <QnAPanel app={fullApp} onClose={() => setShowQnA(false)} />
+      )}
+      {showSimulator && fullApp && (
+        <InterviewSimulatorPanel app={fullApp} onClose={() => setShowSimulator(false)} />
       )}
       {showApply && fullApp && (
         <ApplyKitPanel app={fullApp} onClose={() => setShowApply(false)} />

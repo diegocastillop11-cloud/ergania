@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, FileText, Save, Loader2, Check, Edit3,
   EyeOff, ChevronDown, ChevronUp, AlertCircle, MessageSquare,
-  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket, Download, X,
+  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket, Download, X, Languages,
 } from 'lucide-react'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -384,6 +384,56 @@ export default function CareersProfile() {
     setCvOptimizeOpen(false)
   }
 
+  // ── CV Translator (traduce el CV base a cualquier idioma a pedido) ─────────
+  const [translateLang, setTranslateLang] = useState('')
+  const [translating, setTranslating] = useState(false)
+  const [translateError, setTranslateError] = useState('')
+  const [translateResult, setTranslateResult] = useState<{ cvData: CvData; cvHtml: string } | null>(null)
+  const [translateOpen, setTranslateOpen] = useState(false)
+  const [translateDownloading, setTranslateDownloading] = useState(false)
+
+  const handleTranslateCv = async () => {
+    if (!translateLang.trim()) return
+    setTranslating(true)
+    setTranslateError('')
+    try {
+      const { data } = await api.post('/cv/translate', { idioma: translateLang.trim() })
+      setTranslateResult({ cvData: data.cvData, cvHtml: data.cvHtml })
+      setTranslateOpen(true)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      setTranslateError(e?.response?.data?.error || e?.message || 'Error al traducir el CV')
+    } finally {
+      setTranslating(false)
+    }
+  }
+
+  const handleDownloadTranslatedCv = async () => {
+    if (!translateResult) return
+    setTranslateDownloading(true)
+    try {
+      const { data } = await api.post('/cv/optimize/pdf', { cvData: translateResult.cvData }, { responseType: 'blob' })
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `CV_${translateLang.trim().replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setTranslateError('Error al descargar el PDF')
+    } finally {
+      setTranslateDownloading(false)
+    }
+  }
+
+  const handleSaveTranslatedAsBase = () => {
+    if (!translateResult) return
+    const md = cvDataToMarkdown(translateResult.cvData)
+    setCvContent(md)
+    cvMut.mutate(md)
+    setTranslateOpen(false)
+  }
+
   // ── LinkedIn Optimizer state ──────────────────────────────────────────────
   const [liLoading, setLiLoading] = useState(false)
   const [liError, setLiError] = useState('')
@@ -691,8 +741,73 @@ export default function CareersProfile() {
             {' · '}
             La IA lee este archivo para evaluar el match con cada oferta.
           </p>
+
+          <div className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 flex-wrap">
+            <label className="text-xs text-gray-500 shrink-0">Traducir este CV a:</label>
+            <input
+              value={translateLang}
+              onChange={e => setTranslateLang(e.target.value)}
+              placeholder="ej: Inglés, Portugués, Francés, Alemán..."
+              className="flex-1 min-w-[180px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={handleTranslateCv}
+              disabled={translating || !translateLang.trim()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+            >
+              {translating ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />}
+              {translating ? 'Traduciendo...' : 'Traducir CV'}
+            </button>
+          </div>
+          {translateError && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5 mt-2">
+              <AlertCircle size={12} /> {translateError}
+            </p>
+          )}
         </div>
       </div>
+
+      {translateOpen && translateResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+              <div>
+                <h3 className="text-white font-bold flex items-center gap-2">
+                  <Languages size={16} className="text-blue-400" />
+                  CV traducido a {translateLang}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">Vista previa — no se guarda hasta que elijas una acción abajo.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadTranslatedCv}
+                  disabled={translateDownloading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                >
+                  {translateDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  Descargar PDF
+                </button>
+                <button
+                  onClick={handleSaveTranslatedAsBase}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
+                  title="Reemplaza el CV Completo (Markdown) de tu perfil con esta versión traducida"
+                >
+                  <Save size={13} /> Guardar como mi CV base
+                </button>
+                <button
+                  onClick={() => setTranslateOpen(false)}
+                  className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden bg-white">
+              <iframe title="CV traducido" srcDoc={translateResult.cvHtml} className="w-full h-full border-0" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* LinkedIn Optimizer */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
