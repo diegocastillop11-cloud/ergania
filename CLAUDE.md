@@ -69,6 +69,20 @@ razonamiento de qué se descartó y por qué):
 - Reviews de empresas desde Glassdoor / Trustpilot (ver nota legal: ninguna de las dos tiene API
   pública gratuita para esto — evaluar Trustpilot Business API o partners de datos).
 
+### Quick wins pendientes (de análisis de competidor, 2026-07-10)
+
+Diego pidió analizar aiapply.co (competencia directa, EEUU). Triage con `/abogado-del-diablo`
+separó las ideas útiles de las inviables — ver "Ideas evaluadas y descartadas" más abajo para las
+que NO se van a construir. Estas dos sí sobrevivieron el veredicto (SEGUIR) por ser bajo costo y
+reusar código ya existente — van antes que Fase 3 porque son más rápidas de shippear:
+
+- **Interview Simulator** — modo interactivo de pregunta-respuesta con feedback, extendiendo
+  `interviewPrep` (hoy genera un documento único) a un chat. Mismo endpoint/modelo, sin
+  infraestructura nueva.
+- **CV Translator** — traducir el CV base a cualquier idioma a pedido (no solo el idioma detectado
+  de una oferta puntual). Reusa el pipeline de `POST /cv/optimize` (`CareersProfile.tsx`) que ya
+  existe, solo cambia la instrucción de idioma.
+
 ### Fase 3 — pendiente
 
 - Job board para que empresas publiquen ofertas directamente (nuevo tipo de cuenta B2B).
@@ -99,6 +113,22 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
   aviso, sin monitoreo en prod para detectarlo).
 - **Speedtest / video / audio de presentación** (para requisitos de proficiencia de idioma de
   empresas extranjeras) — feature nueva completa con subida a Supabase Storage y UI de captura.
+
+### Ideas evaluadas y descartadas (no reabrir sin nueva evidencia)
+
+- **Postulación automática a portales de terceros** ("Auto Apply", inspirado en aiapply.co,
+  2026-07-10) — MATAR. Escribir en formularios de LinkedIn/Indeed es 10× más detectable por
+  anti-bot que solo leer (Indeed ya bloquea lectura hoy); arriesga que se suspenda la cuenta de
+  LinkedIn del usuario, su activo profesional principal — irreversible y sin forma de compensarlo.
+  Además, sin colas/workers, "postular en background a cientos de ofertas" no cabe en la
+  arquitectura actual. El Escáner + generación de CV/carta ya cubre el 80% del valor sin ese
+  riesgo.
+- **Interview Buddy en vivo** (coaching de IA en tiempo real durante la entrevista real,
+  inspirado en aiapply.co, 2026-07-10) — MATAR. Requiere audio en tiempo real (captura, STT de
+  baja latencia, overlay) — es un producto nuevo, no una feature. Riesgo reputacional real si se
+  hace público que Ergania promueve "hacer trampa" en entrevistas, justo cuando recién se
+  consiguen los primeros pagantes chilenos. El Interview Simulator (arriba) ataca el mismo dolor
+  sin ese riesgo.
 
 ## Reglas generales
 
