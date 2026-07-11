@@ -118,6 +118,67 @@ export async function deleteSalaryAnchor(req: Request, res: Response) {
   res.json({ ok: true })
 }
 
+export async function listReports(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('internal_reports')
+    .select('*')
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ reports: data ?? [] })
+}
+
+export async function createReport(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { tipo, titulo, fecha, contenido, checklist, observaciones } = req.body ?? {}
+  if (!tipo || !titulo) return res.status(400).json({ error: 'tipo y titulo son requeridos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('internal_reports')
+    .insert({
+      tipo, titulo,
+      fecha: fecha || new Date().toISOString().slice(0, 10),
+      contenido: contenido || '',
+      checklist: checklist || [],
+      observaciones: observaciones || '',
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ report: data })
+}
+
+export async function updateReport(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { tipo, titulo, fecha, contenido, checklist, observaciones } = req.body ?? {}
+  const { error } = await supabaseAdmin
+    .from('internal_reports')
+    .update({ tipo, titulo, fecha, contenido, checklist, observaciones })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteReport(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('internal_reports').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
 export async function notifySignup(req: Request, res: Response) {
   const user = await getAdminUser(req)
   if (!user) return res.status(401).json({ error: 'No autorizado' })

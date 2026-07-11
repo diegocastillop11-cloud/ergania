@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign, Plus, Trash2, Pencil, X } from 'lucide-react'
+import {
+  Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save,
+} from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
 
@@ -154,6 +157,236 @@ function SalaryAnchorsTab({ token }: { token: string }) {
   )
 }
 
+// ── Reportes internos (correcciones / implementaciones / planes) ──────────────
+
+interface ChecklistItem { texto: string; marcado: boolean; nota: string }
+interface Report {
+  id: string
+  tipo: 'correccion' | 'implementacion' | 'plan'
+  titulo: string
+  fecha: string
+  contenido: string
+  checklist: ChecklistItem[]
+  observaciones: string
+}
+
+const TIPO_LABEL: Record<Report['tipo'], { label: string; color: string; bg: string }> = {
+  correccion:     { label: 'Corrección',     color: 'text-red-400',    bg: 'bg-red-900/30' },
+  implementacion: { label: 'Implementación', color: 'text-blue-400',   bg: 'bg-blue-900/30' },
+  plan:           { label: 'Plan futuro',    color: 'text-violet-400', bg: 'bg-violet-900/30' },
+}
+
+function ReportCard({ report, token, onChanged }: { report: Report; token: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(report.checklist)
+  const [observaciones, setObservaciones] = useState(report.observaciones)
+  const [newItem, setNewItem] = useState('')
+  const [saving, setSaving] = useState(false)
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  const tipoCfg = TIPO_LABEL[report.tipo]
+
+  const dirty = JSON.stringify(checklist) !== JSON.stringify(report.checklist) || observaciones !== report.observaciones
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await fetch(`/api/admin/reports/${report.id}`, {
+        method: 'PUT', headers: authHeaders,
+        body: JSON.stringify({ ...report, checklist, observaciones }),
+      })
+      onChanged()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!window.confirm(`¿Eliminar el reporte "${report.titulo}"?`)) return
+    await fetch(`/api/admin/reports/${report.id}`, { method: 'DELETE', headers: authHeaders })
+    onChanged()
+  }
+
+  const toggleItem = (i: number) => setChecklist(cl => cl.map((it, idx) => idx === i ? { ...it, marcado: !it.marcado } : it))
+  const updateNota  = (i: number, nota: string) => setChecklist(cl => cl.map((it, idx) => idx === i ? { ...it, nota } : it))
+  const removeItem  = (i: number) => setChecklist(cl => cl.filter((_, idx) => idx !== i))
+  const addItem = () => {
+    if (!newItem.trim()) return
+    setChecklist(cl => [...cl, { texto: newItem.trim(), marcado: false, nota: '' }])
+    setNewItem('')
+  }
+
+  const doneCount = checklist.filter(i => i.marcado).length
+
+  return (
+    <div className="border border-gray-800 rounded-lg overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800/30 transition-colors text-left">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${tipoCfg.bg} ${tipoCfg.color}`}>{tipoCfg.label}</span>
+          <span className="text-white font-medium text-sm truncate">{report.titulo}</span>
+          <span className="text-gray-600 text-xs shrink-0">{report.fecha}</span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {checklist.length > 0 && <span className="text-xs text-gray-500">{doneCount}/{checklist.length}</span>}
+          {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-3">
+          {report.contenido && <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">{report.contenido}</p>}
+
+          {checklist.length > 0 && (
+            <div className="space-y-2">
+              {checklist.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <button
+                    onClick={() => toggleItem(i)}
+                    className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center ${item.marcado ? 'bg-green-600 border-green-600' : 'border-gray-600'}`}
+                  >
+                    {item.marcado && <Check size={11} className="text-white" />}
+                  </button>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className={`text-sm ${item.marcado ? 'text-gray-500 line-through' : 'text-gray-200'}`}>{item.texto}</p>
+                    <input
+                      value={item.nota}
+                      onChange={e => updateNota(i, e.target.value)}
+                      placeholder="Observación de este ítem (opcional)"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <button onClick={() => removeItem(i)} className="text-gray-600 hover:text-red-400 shrink-0"><X size={13} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              value={newItem}
+              onChange={e => setNewItem(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addItem()}
+              placeholder="Agregar ítem al checklist..."
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            <button onClick={addItem} className="px-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs"><Plus size={13} /></button>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Observaciones generales</label>
+            <textarea
+              value={observaciones}
+              onChange={e => setObservaciones(e.target.value)}
+              rows={2}
+              placeholder="Notas de la reunión, feedback, etc."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+            >
+              <Save size={13} /> {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+            <button onClick={remove} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-400 rounded-lg text-xs">
+              <Trash2 size={13} /> Eliminar reporte
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReportsTab({ token }: { token: string }) {
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ tipo: 'correccion' as Report['tipo'], titulo: '', fecha: new Date().toISOString().slice(0, 10), contenido: '', checklistText: '' })
+  const [error, setError] = useState('')
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch('/api/admin/reports', { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setReports(d.reports || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const submit = async () => {
+    setError('')
+    if (!form.titulo.trim()) { setError('El título es requerido'); return }
+    const checklist = form.checklistText.split('\n').map(t => t.trim()).filter(Boolean)
+      .map(texto => ({ texto, marcado: false, nota: '' }))
+    try {
+      const res = await fetch('/api/admin/reports', {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ ...form, checklist }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
+      setForm({ tipo: 'correccion', titulo: '', fecha: new Date().toISOString().slice(0, 10), contenido: '', checklistText: '' })
+      load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    }
+  }
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">Nuevo reporte</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <select
+            value={form.tipo}
+            onChange={e => setForm(f => ({ ...f, tipo: e.target.value as Report['tipo'] }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+          >
+            <option value="correccion">Corrección</option>
+            <option value="implementacion">Implementación</option>
+            <option value="plan">Plan futuro</option>
+          </select>
+          <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
+          <input placeholder="Título" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 sm:col-span-1" />
+        </div>
+        <textarea
+          placeholder="Descripción del reporte"
+          value={form.contenido}
+          onChange={e => setForm(f => ({ ...f, contenido: e.target.value }))}
+          rows={3}
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+        />
+        <textarea
+          placeholder="Ítems del checklist, uno por línea (opcional)"
+          value={form.checklistText}
+          onChange={e => setForm(f => ({ ...f, checklistText: e.target.value }))}
+          rows={3}
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+        />
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+        <button onClick={submit} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+          <Plus size={13} /> Crear reporte
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      ) : reports.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin reportes todavía.</p>
+      ) : (
+        <div className="space-y-2">
+          {reports.map(r => <ReportCard key={r.id} report={r} token={token} onChanged={load} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   trial:           { label: 'Trial',     color: 'text-blue-400'   },
   active:          { label: 'Activo',    color: 'text-green-400'  },
@@ -175,7 +408,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries'>('users')
+  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
 
   useEffect(() => {
     if (!session) return
@@ -263,6 +496,7 @@ export default function Admin() {
               { key: 'payments', label: 'Pagos',             icon: CreditCard   },
               { key: 'messages', label: 'Mensajes contacto', icon: MessageSquare },
               { key: 'salaries', label: 'Salarios',           icon: DollarSign },
+              { key: 'reportes', label: 'Reportes',           icon: FileText },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -358,6 +592,9 @@ export default function Admin() {
 
             {/* Anclas salariales */}
             {tab === 'salaries' && session && <SalaryAnchorsTab token={session.access_token} />}
+
+            {/* Reportes internos */}
+            {tab === 'reportes' && session && <ReportsTab token={session.access_token} />}
 
           </div>
         </div>

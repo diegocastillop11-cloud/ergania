@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getStats, notifySignup,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
+  listReports, createReport, updateReport, deleteReport,
 } from '../controllers/adminController'
 
 const router = Router()
@@ -13,5 +14,10 @@ router.get('/salary-anchors', listSalaryAnchors)
 router.post('/salary-anchors', createSalaryAnchor)
 router.put('/salary-anchors/:id', updateSalaryAnchor)
 router.delete('/salary-anchors/:id', deleteSalaryAnchor)
+
+router.get('/reports', listReports)
+router.post('/reports', createReport)
+router.put('/reports/:id', updateReport)
+router.delete('/reports/:id', deleteReport)
 
 export { router as adminRoutes }
