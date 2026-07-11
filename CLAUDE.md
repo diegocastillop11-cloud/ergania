@@ -107,6 +107,11 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 3. Sin comentarios obvios; solo cuando el WHY no es evidente.
 4. Soluciones simples y directas, sin abstracciones prematuras.
 5. Trabajar de forma ordenada para gastar pocos tokens: leer → editar → commit.
+6. **Después de cada fix o feature que se shippee**, registrar un reporte en el módulo Reportes
+   (Admin) corriendo `node scripts/log-report.mjs --tipo <correccion|implementacion|plan>
+   --titulo "..." --contenido "..." --checklist "item 1|item 2"` — Diego no lo crea a mano, esto
+   reemplaza los PDFs sueltos como historial. `contenido` debe ser legible para alguien no técnico
+   (su socia lo revisa en reuniones).
 
 ## Stack
 
