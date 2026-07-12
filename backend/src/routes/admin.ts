@@ -3,12 +3,16 @@ import {
   getStats, notifySignup,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
+  listReceipts, downloadReceiptPdf,
 } from '../controllers/adminController'
 
 const router = Router()
 
 router.get('/stats', getStats)
 router.post('/notify-signup', notifySignup)
+
+router.get('/receipts', listReceipts)
+router.get('/receipts/:id/pdf', downloadReceiptPdf)
 
 router.get('/salary-anchors', listSalaryAnchors)
 router.post('/salary-anchors', createSalaryAnchor)

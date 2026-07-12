@@ -47,6 +47,40 @@ function buildReportHtml(report: {
 </body></html>`
 }
 
+function buildReceiptHtml(receipt: {
+  user_email: string; monto: number; moneda: string; plan: string; fecha: string; mp_payment_id: string
+}): string {
+  const esc = (s: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Comprobante de pago</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:32px;line-height:1.6;}
+  .header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #16a34a;padding-bottom:16px;margin-bottom:20px;}
+  .header img{width:40px;height:40px;object-fit:contain;}
+  .header h1{font-size:14px;color:#16a34a;margin:0;letter-spacing:1px;}
+  h2{font-size:20px;margin:4px 0 16px;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;}
+  td{padding:8px 0;}
+  td:first-child{color:#666;width:160px;}
+  .monto{font-size:20px;font-weight:bold;color:#16a34a;}
+  .nota{font-size:12px;color:#999;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:20px;}
+</style></head><body>
+  <div class="header"><img src="https://ergania.com/logo.png" /><h1>ERGANIA</h1></div>
+  <h2>Comprobante de pago</h2>
+  <table>
+    <tr><td>Cliente</td><td>${esc(receipt.user_email)}</td></tr>
+    <tr><td>Plan</td><td>${esc(receipt.plan)}</td></tr>
+    <tr><td>Monto</td><td class="monto">$${Number(receipt.monto).toLocaleString('es-CL')} ${esc(receipt.moneda)}</td></tr>
+    <tr><td>Fecha</td><td>${esc(receipt.fecha)}</td></tr>
+    <tr><td>ID de pago (MercadoPago)</td><td style="font-family:monospace;font-size:12px;">${esc(receipt.mp_payment_id)}</td></tr>
+  </table>
+  <p class="nota">
+    Este comprobante no tiene validez tributaria. Ergania está en trámite de habilitación como
+    emisor electrónico ante el SII — cuando esté lista, se emitirá la boleta electrónica oficial
+    por cada pago, incluidos los ya realizados.
+  </p>
+</body></html>`
+}
+
 async function getAdminUser(req: Request) {
   const auth = req.headers['authorization']
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
@@ -64,15 +98,17 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
+    supabaseAdmin.from('payment_receipts').select('*').order('fecha', { ascending: false }),
   ])
 
   const users = usersRes.data?.users ?? []
   const subs  = subsRes.data ?? []
   const msgs  = messagesRes.data ?? []
+  const receipts = receiptsRes.data ?? []
 
   const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
 
@@ -88,14 +124,16 @@ export async function getStats(req: Request, res: Response) {
     return acc
   }, {})
 
-  const payments = subs
-    .filter((s: any) => s.status === 'active' && s.mp_payment_id)
-    .map((s: any) => ({
-      userId:    s.user_id,
-      paymentId: s.mp_payment_id,
-      amount:    9990,
-      date:      s.updated_at,
-    }))
+  // Monto real por pago (antes venía hardcodeado a 9990) — un comprobante por cada
+  // pago aprobado, no solo el más reciente por usuario (ver payment_receipts).
+  const payments = receipts.map((r: any) => ({
+    userId:    r.user_id,
+    userEmail: r.user_email,
+    paymentId: r.mp_payment_id,
+    receiptId: r.id,
+    amount:    Number(r.monto),
+    date:      r.fecha,
+  }))
 
   res.json({
     totalUsers:    users.length,
@@ -239,6 +277,43 @@ export async function downloadReportPdf(req: Request, res: Response) {
     const html = buildReportHtml(report)
     const { buffer } = await svc.generatePDFFromHtml(html, 'Ergania', report.titulo, '', 'Reporte')
     const filename = `Reporte_${String(report.titulo).replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(buffer)
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message || 'Error al generar el PDF' })
+  }
+}
+
+export async function listReceipts(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('payment_receipts')
+    .select('*')
+    .order('fecha', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ receipts: data ?? [] })
+}
+
+export async function downloadReceiptPdf(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data: receipt, error } = await supabaseAdmin
+    .from('payment_receipts')
+    .select('*')
+    .eq('id', req.params.id)
+    .single()
+  if (error || !receipt) return res.status(404).json({ error: 'Comprobante no encontrado' })
+
+  try {
+    const html = buildReceiptHtml(receipt)
+    const { buffer } = await svc.generatePDFFromHtml(html, 'Ergania', receipt.user_email, '', 'Comprobante')
+    const filename = `Comprobante_${String(receipt.user_email).replace(/[^a-zA-Z0-9]+/g, '_')}_${receipt.fecha}.pdf`
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.send(buffer)

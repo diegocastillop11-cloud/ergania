@@ -84,6 +84,35 @@ export async function sendRenewalReminder(to: string, daysLeft: number) {
   await sendEmail(to, `Tu plan de Ergania vence ${dias} — renuévalo aquí`, html)
 }
 
+export async function sendSubscriptionConfirmation(
+  to: string,
+  opts: { monto: number; moneda: string; plan: string; fecha: string; paymentId: string },
+) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#16a34a;border-bottom:2px solid #16a34a;padding-bottom:8px;">
+        🎉 ¡Felicitaciones, estás suscrito a Ergania!
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        Tu pago fue confirmado y tu cuenta ya tiene acceso completo por 30 días.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <tr><td style="padding:8px 0;color:#666;width:140px;"><strong>Plan</strong></td><td style="padding:8px 0;">${opts.plan}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;"><strong>Monto</strong></td><td style="padding:8px 0;font-size:18px;font-weight:bold;color:#16a34a;">$${opts.monto.toLocaleString('es-CL')} ${opts.moneda}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;"><strong>Fecha</strong></td><td style="padding:8px 0;">${opts.fecha}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;"><strong>ID de pago</strong></td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${opts.paymentId}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#999;">
+        Este correo es tu comprobante de pago (sin validez tributaria). Ergania está en trámite de
+        habilitación como emisor electrónico ante el SII — cuando esté lista, recibirás tu boleta
+        electrónica oficial por cada pago, incluidos los ya realizados.
+      </p>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Confirmación de suscripción</p>
+    </div>
+  `
+  await sendEmail(to, '🎉 ¡Felicitaciones, estás suscrito a Ergania!', html)
+}
+
 export async function sendPaymentNotification(
   userId: string,
   paymentId: string,

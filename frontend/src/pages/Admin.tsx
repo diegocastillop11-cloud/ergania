@@ -425,7 +425,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 interface Stats {
   totalUsers:      number
   statusCount:     Record<string, number>
-  payments:        { userId: string; paymentId: string; amount: number; date: string }[]
+  payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; createdAt: string; sub: any }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string }[]
 }
@@ -576,19 +576,42 @@ export default function Admin() {
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
                     <th className="text-left px-5 py-3">Fecha</th>
+                    <th className="text-left px-5 py-3">Cliente</th>
                     <th className="text-left px-5 py-3">Monto</th>
                     <th className="text-left px-5 py-3">Payment ID</th>
+                    <th className="text-left px-5 py-3">Comprobante</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.payments.length === 0 && (
-                    <tr><td colSpan={3} className="px-5 py-8 text-center text-gray-600">Sin pagos registrados aún</td></tr>
+                    <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-600">Sin pagos registrados aún</td></tr>
                   )}
                   {stats.payments.map(p => (
-                    <tr key={p.paymentId} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                    <tr key={p.receiptId} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                       <td className="px-5 py-3 text-gray-400">{new Date(p.date).toLocaleDateString('es-CL')}</td>
+                      <td className="px-5 py-3 text-white">{p.userEmail}</td>
                       <td className="px-5 py-3 text-green-400 font-bold">${p.amount.toLocaleString('es-CL')} CLP</td>
                       <td className="px-5 py-3 text-gray-500 font-mono text-xs">{p.paymentId}</td>
+                      <td className="px-5 py-3">
+                        <button
+                          onClick={async () => {
+                            const res = await fetch(`/api/admin/receipts/${p.receiptId}/pdf`, {
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            })
+                            if (!res.ok) return
+                            const blob = await res.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `Comprobante_${p.userEmail}.pdf`
+                            a.click()
+                            URL.revokeObjectURL(url)
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                        >
+                          <FileText size={12} /> Descargar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
