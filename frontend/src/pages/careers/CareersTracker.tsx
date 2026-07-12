@@ -554,7 +554,7 @@ export default function CareersTracker() {
                                 title="Genera CV personalizado con IA y guarda en Postulaciones"
                               >
                                 <Send size={11} />
-                                Postular con IA
+                                Preparar postulación
                               </button>
                             )}
                           </div>
