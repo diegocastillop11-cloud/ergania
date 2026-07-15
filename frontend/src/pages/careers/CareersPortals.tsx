@@ -164,6 +164,220 @@ const LATAM_PORTALS: Omit<Portal, 'enabled'>[] = [
   },
 ]
 
+// Fallback para portales sin dominio confirmado: busca en Google en vez de inventar una URL
+const searchFallback = (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q + ' jobs')}`
+const igFallback = (handle: string) => `https://www.instagram.com/${handle}/`
+const liSearchFallback = (q: string) => `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(q)}`
+
+// Catálogo extendido de portales/agencias sugeridos por Diego (2026-07-15) — lista larga,
+// se muestra bajo demanda vía botón "Más Portales" en vez de saturar los tabs regionales.
+const MORE_PORTALS: Omit<Portal, 'enabled'>[] = [
+  { name: 'GoAbroad Jobs', careers_url: 'https://jobs.goabroad.com/', country: 'Internacional' },
+  { name: 'OverseasJobs', careers_url: 'https://www.overseasjobs.com/', country: 'Internacional' },
+  { name: 'JobsInNetwork', careers_url: 'https://www.jobsinnetwork.com/', country: 'Internacional' },
+  { name: 'Hiring Cafe', careers_url: 'https://hiring.cafe/', country: 'Internacional' },
+  { name: 'Snagajob', careers_url: 'https://www.snagajob.com/', country: 'Estados Unidos' },
+  { name: 'Wellfound Remote', careers_url: 'https://wellfound.com/remote', country: 'Remoto' },
+  { name: 'Quora', careers_url: 'https://www.quora.com/', country: 'Internacional' },
+  { name: 'Stillhiring.today', careers_url: 'https://stillhiring.today/', country: 'Remoto' },
+  { name: 'Wiseful', careers_url: searchFallback('Wiseful'), country: 'Remoto' },
+  { name: 'InHerSight', careers_url: 'https://www.inhersight.com/', country: 'Internacional' },
+  { name: 'The Ladders', careers_url: 'https://www.theladders.com/', country: 'Estados Unidos' },
+  { name: 'Massive', careers_url: searchFallback('Massive jobs platform'), country: 'Remoto' },
+  { name: 'Media Bistro', careers_url: 'https://www.mediabistro.com/', country: 'Estados Unidos' },
+  { name: 'Hire Black', careers_url: searchFallback('Hire Black'), country: 'Estados Unidos' },
+  { name: 'RemoteHub', careers_url: 'https://www.remotehub.com/', country: 'Remoto' },
+  { name: 'Job Board AI', careers_url: searchFallback('Job Board AI'), country: 'Remoto' },
+  { name: 'VirtualStaff.PH', careers_url: 'https://virtualstaff.ph/', country: 'Filipinas' },
+  { name: 'PeoplePerHour', careers_url: 'https://www.peopleperhour.com/', country: 'Freelance' },
+  { name: 'RemoteJobs.io', careers_url: 'https://remotejobs.io/', country: 'Remoto' },
+  { name: 'JustRemote', careers_url: 'https://justremote.co/', country: 'Remoto' },
+  { name: 'Remote.com', careers_url: 'https://remote.com/', country: 'Remoto' },
+  { name: 'PowerToFly', careers_url: 'https://powertofly.com/', country: 'Internacional' },
+  { name: 'Dynamite Jobs', careers_url: 'https://dynamitejobs.com/', country: 'Remoto' },
+  { name: 'Jobgether', careers_url: 'https://jobgether.com/', country: 'Remoto' },
+  { name: 'Virtual Vocations', careers_url: 'https://www.virtualvocations.com/', country: 'Remoto' },
+  { name: 'Gun.io', careers_url: 'https://gun.io/', country: 'Freelance' },
+  { name: 'Underdog.io', careers_url: 'https://underdog.io/', country: 'Estados Unidos' },
+  { name: 'Handshake', careers_url: 'https://joinhandshake.com/', country: 'Estados Unidos' },
+  { name: 'Djinni', careers_url: 'https://djinni.co/', country: 'Internacional' },
+  { name: 'StartupJobs', careers_url: searchFallback('Startupsuch jobs'), country: 'Remoto' },
+  { name: 'The Hub', careers_url: searchFallback('The Hub jobs board'), country: 'Remoto' },
+  { name: 'Landing.jobs', careers_url: 'https://landing.jobs/', country: 'España' },
+  { name: 'Connect Job', careers_url: searchFallback('Connect Job'), country: 'Internacional' },
+  { name: 'JobKorea', careers_url: 'https://www.jobkorea.co.kr/', country: 'Asia' },
+  { name: 'CT Good Jobs', careers_url: 'https://www.ctgoodjobs.hk/', country: 'Asia' },
+  { name: 'e27 Jobs', careers_url: 'https://e27.co/jobs/', country: 'Asia' },
+  { name: 'JobsDB', careers_url: 'https://www.jobsdb.com/', country: 'Asia' },
+  { name: 'Jobspresso', careers_url: 'https://jobspresso.co/', country: 'Remoto' },
+  { name: 'FlexJobs', careers_url: 'https://www.flexjobs.com/', country: 'Remoto' },
+  { name: 'Inclusively Remote', careers_url: searchFallback('inclusevelyremote.com'), country: 'Remoto' },
+  { name: 'Migrate Mate', careers_url: searchFallback('Migrate Mate jobs'), country: 'Internacional' },
+  { name: 'Real Work From Anywhere', careers_url: searchFallback('Real Work From Anywhere'), country: 'Remoto' },
+  { name: 'Graphic Design Jobs UK', careers_url: 'https://www.graphicdesignjobs.co.uk/', country: 'España' },
+  { name: 'Dribbble Jobs', careers_url: 'https://dribbble.com/jobs', country: 'Freelance' },
+  { name: 'If You Could Jobs', careers_url: 'https://ifyoucouldjobs.com/', country: 'Internacional' },
+  { name: 'The Generalist World', careers_url: 'https://www.generalist.world/', country: 'Remoto' },
+  { name: 'Remote 100k', careers_url: searchFallback('Remote 100k jobs'), country: 'Remoto' },
+  { name: 'NoDesk', careers_url: 'https://nodesk.co/', country: 'Remoto' },
+  { name: 'Flexa Careers', careers_url: 'https://flexa.careers/', country: 'Remoto' },
+  { name: 'Toptal', careers_url: 'https://www.toptal.com/', country: 'Freelance' },
+  { name: 'Pangian', careers_url: 'https://pangian.com/', country: 'Remoto' },
+  { name: 'Contra', careers_url: 'https://contra.com/', country: 'Freelance' },
+  { name: 'Arc.dev', careers_url: 'https://arc.dev/', country: 'Remoto' },
+  { name: 'Welcome to the Jungle', careers_url: 'https://www.welcometothejungle.com/', country: 'España' },
+  { name: 'Work in Startups', careers_url: 'https://workinstartups.com/', country: 'Internacional' },
+  { name: 'Remote Leverage', careers_url: searchFallback('Remote Leverage'), country: 'Remoto' },
+  { name: 'Global Talents EK', careers_url: igFallback('global.talents.ek'), country: 'LATAM' },
+  { name: 'The Cozy Agency', careers_url: igFallback('the.cozy.agency'), country: 'LATAM' },
+  { name: 'Hire LATAM', careers_url: 'https://www.hirelatam.com/', country: 'LATAM' },
+  { name: 'Bridgeways Careers', careers_url: igFallback('bridgewayscareers'), country: 'LATAM' },
+  { name: 'WBN Jobs', careers_url: igFallback('wbn_jobs'), country: 'LATAM' },
+  { name: 'Knight Shift Solutions', careers_url: searchFallback('Knight Shift Solutions'), country: 'LATAM' },
+  { name: 'Milanlab Agency', careers_url: igFallback('milanlab_agency'), country: 'LATAM' },
+  { name: 'QRS Official', careers_url: igFallback('qrs.officialsite'), country: 'LATAM' },
+  { name: 'Value Add Marketing', careers_url: igFallback('valueaddmarketing'), country: 'LATAM' },
+  { name: 'Loopae Talent', careers_url: igFallback('loopae.talent'), country: 'LATAM' },
+  { name: 'Staffing Nest', careers_url: igFallback('staffingnest'), country: 'LATAM' },
+  { name: 'Vintti', careers_url: 'https://www.vintti.com/', country: 'LATAM' },
+  { name: 'Near', careers_url: 'https://www.near.co/', country: 'LATAM' },
+  { name: 'Zagged', careers_url: liSearchFallback('Zagged'), country: 'LATAM' },
+  { name: 'Remote Talent LATAM', careers_url: liSearchFallback('Remote Talent LATAM'), country: 'LATAM' },
+  { name: 'Rec Latam', careers_url: liSearchFallback('Rec Latam'), country: 'LATAM' },
+  { name: 'RecruitingSKULL', careers_url: liSearchFallback('RecruitingSKULL'), country: 'LATAM' },
+  { name: 'Global Talent Connections', careers_url: 'https://globaltalentconnections.es/', country: 'España' },
+  { name: 'Interfell (Simera)', careers_url: 'https://interfell.simera.io/', country: 'LATAM' },
+  { name: 'Oberstaff', careers_url: searchFallback('Oberstaff'), country: 'LATAM' },
+  { name: 'Chumi IT', careers_url: searchFallback('chumi-it.com'), country: 'LATAM' },
+  { name: 'Alphas Remote Team', careers_url: 'https://alphasremote.team/', country: 'LATAM' },
+  { name: 'Talently', careers_url: 'https://talently.tech/', country: 'LATAM' },
+  { name: 'We Are Tims', careers_url: searchFallback('We Are Tims'), country: 'LATAM' },
+  { name: 'ScrumLaunch', careers_url: 'https://www.scrumlaunch.com/', country: 'LATAM' },
+  { name: 'Advantra', careers_url: liSearchFallback('Advantra'), country: 'LATAM' },
+  { name: 'VTM Jobs', careers_url: 'https://vtmjobs.com/', country: 'LATAM' },
+  { name: 'Lupa Hire', careers_url: searchFallback('Lupa Hire'), country: 'LATAM' },
+  { name: 'Athyna', careers_url: 'https://athyna.com/', country: 'LATAM' },
+  { name: 'Talent Harbor', careers_url: liSearchFallback('Talent Harbor'), country: 'LATAM' },
+  { name: 'Fetcher', careers_url: 'https://fetcher.ai/', country: 'Internacional' },
+  { name: 'Deel', careers_url: 'https://www.deel.com/', country: 'Internacional' },
+  { name: 'Newcombin', careers_url: searchFallback('newcombin.com'), country: 'LATAM' },
+  { name: 'Hire with Jarvis', careers_url: liSearchFallback('Hire with Jarvis'), country: 'LATAM' },
+  { name: 'Vacantes Digitales', careers_url: 'https://vacantesdigitales.com/', country: 'LATAM' },
+  { name: 'Floowi', careers_url: 'https://floowi.com/', country: 'LATAM' },
+  { name: 'Hire in LATAM', careers_url: searchFallback('Hire in LATAM'), country: 'LATAM' },
+  { name: 'LATAM Hire', careers_url: searchFallback('LATAM Hire'), country: 'LATAM' },
+  { name: 'Sagan Recruitment', careers_url: 'https://www.saganrecruitment.com/', country: 'LATAM' },
+  { name: 'Hire Matchmaker', careers_url: searchFallback('Hire Matchmaker'), country: 'LATAM' },
+  { name: 'LatHire', careers_url: searchFallback('LatHire'), country: 'LATAM' },
+  { name: 'Hire Top Remote Talent LATAM', careers_url: searchFallback('Hire top remote talent from latam'), country: 'LATAM' },
+  { name: 'Hire Central', careers_url: searchFallback('Hire Central LATAM'), country: 'LATAM' },
+  { name: 'Remotely Talents', careers_url: searchFallback('Remotely Talents'), country: 'LATAM' },
+  { name: 'Bullpen Talent', careers_url: searchFallback('Bullpen Talent'), country: 'LATAM' },
+  { name: 'LATAM Jobs', careers_url: searchFallback('LATAM Jobs board'), country: 'LATAM' },
+  { name: 'Select Assistants', careers_url: searchFallback('Select Assistants'), country: 'LATAM' },
+  { name: 'Rad Hires', careers_url: searchFallback('Rad Hires'), country: 'LATAM' },
+  { name: 'TLNT', careers_url: searchFallback('TLNT remote talent LATAM'), country: 'LATAM' },
+  { name: 'Latino Legends', careers_url: searchFallback('Latino Legends'), country: 'LATAM' },
+  { name: 'Activate Talent', careers_url: searchFallback('Activate Talent'), country: 'LATAM' },
+  { name: 'LATAMCent', careers_url: 'https://latamcent.com/', country: 'LATAM' },
+  { name: 'HireBoost', careers_url: searchFallback('HireBoost'), country: 'LATAM' },
+  { name: 'Kala Talent', careers_url: searchFallback('Kala Talent'), country: 'LATAM' },
+  { name: 'Howdy', careers_url: 'https://www.howdy.com/', country: 'LATAM' },
+  { name: 'WorldTeams', careers_url: searchFallback('WorldTeams'), country: 'LATAM' },
+  { name: 'Sur LATAM', careers_url: searchFallback('Sur LATAM staffing'), country: 'LATAM' },
+  { name: 'Strider', careers_url: searchFallback('Strider staffing'), country: 'LATAM' },
+  { name: 'Virtual Wizards', careers_url: searchFallback('Virtual Wizards'), country: 'LATAM' },
+  { name: 'Somewhere', careers_url: 'https://www.somewhere.com/', country: 'LATAM' },
+  { name: 'RemoteVA', careers_url: searchFallback('RemoteVA'), country: 'LATAM' },
+  { name: 'Remote Recruitment', careers_url: searchFallback('Remote Recruitment agency'), country: 'LATAM' },
+  { name: 'Emapta Global', careers_url: 'https://www.emapta.com/', country: 'Filipinas' },
+  { name: 'GoTeam', careers_url: 'https://goteam.com.ph/', country: 'Filipinas' },
+  { name: 'Outsourced', careers_url: 'https://outsourced.ph/', country: 'Filipinas' },
+  { name: 'Scale Army Careers', careers_url: searchFallback('Scale Army Careers'), country: 'LATAM' },
+  { name: 'JobDuck', careers_url: 'https://jobduck.com/', country: 'Filipinas' },
+  { name: 'Cloudstaff', careers_url: 'https://www.cloudstaff.com/', country: 'Filipinas' },
+  { name: 'Crossing Hurdles', careers_url: searchFallback('Crossing Hurdles'), country: 'LATAM' },
+  { name: 'Legal Soft', careers_url: searchFallback('Legal Soft staffing'), country: 'LATAM' },
+  { name: 'Solvo Global', careers_url: 'https://www.solvoglobal.com/', country: 'LATAM' },
+  { name: 'We Are Oasis', careers_url: searchFallback('We Are Oasis staffing'), country: 'LATAM' },
+  { name: 'Valatam', careers_url: 'https://valatam.com/', country: 'LATAM' },
+  { name: 'Allied Global', careers_url: searchFallback('Allied Global BPO careers'), country: 'LATAM' },
+  { name: 'Resilient Co', careers_url: searchFallback('Resilient Co staffing'), country: 'LATAM' },
+  { name: 'Scalepex', careers_url: searchFallback('Scalepex'), country: 'LATAM' },
+  { name: 'Arch LATAM', careers_url: 'https://cam.archlatam.com/', country: 'LATAM' },
+  { name: 'GSM Tech', careers_url: searchFallback('GSM Tech staffing'), country: 'LATAM' },
+  { name: 'Hire South', careers_url: searchFallback('Hire South'), country: 'LATAM' },
+  { name: 'Simpalm Staffing', careers_url: searchFallback('Simpalm Staffing'), country: 'LATAM' },
+  { name: 'Tech Talent Center', careers_url: searchFallback('Techtalent Center'), country: 'LATAM' },
+  { name: 'nCube', careers_url: searchFallback('nCube staffing'), country: 'LATAM' },
+  { name: 'TeamUp Staff Augmentation', careers_url: searchFallback('TeamUp Staff Augmentation'), country: 'LATAM' },
+  { name: 'Vartanix', careers_url: searchFallback('Vartanix'), country: 'LATAM' },
+  { name: 'BA Global Talent', careers_url: 'https://careers.baglobaltalent.com/', country: 'LATAM' },
+  { name: 'Workable Apply', careers_url: 'https://apply.workable.com/', country: 'Internacional' },
+  { name: 'Pearl Talent', careers_url: 'https://www.pearltalent.com/', country: 'LATAM' },
+  { name: 'Upwork', careers_url: 'https://www.upwork.com/', country: 'Freelance' },
+  { name: 'Fiverr', careers_url: 'https://www.fiverr.com/', country: 'Freelance' },
+  { name: 'Freelancer', careers_url: 'https://www.freelancer.com/', country: 'Freelance' },
+  { name: 'GG Designs', careers_url: searchFallback('Ggdesigns'), country: 'Freelance' },
+  { name: 'DesignCrowd', careers_url: 'https://www.designcrowd.com/', country: 'Freelance' },
+  { name: 'Behance Joblist', careers_url: 'https://www.behance.net/joblist', country: 'Freelance' },
+  { name: 'Hubstaff Talent', careers_url: 'https://talent.hubstaff.com/', country: 'Freelance' },
+  { name: 'Workana', careers_url: 'https://www.workana.com/', country: 'LATAM' },
+  { name: 'GrowthHackers', careers_url: 'https://growthhackers.com/', country: 'Internacional' },
+  { name: 'Toptal Designers', careers_url: 'https://www.toptal.com/designers', country: 'Freelance' },
+  { name: 'SEOClerks', careers_url: 'https://www.seoclerks.com/', country: 'Freelance' },
+  { name: 'Clickworker', careers_url: 'https://www.clickworker.com/', country: 'Freelance' },
+  { name: 'Amazon MTurk', careers_url: 'https://www.mturk.com/', country: 'Freelance' },
+  { name: 'Microworkers', careers_url: 'https://microworkers.com/', country: 'Freelance' },
+  { name: 'Remotasks', careers_url: 'https://www.remotasks.com/', country: 'Freelance' },
+  { name: 'Appen', careers_url: 'https://appen.com/', country: 'Freelance' },
+  { name: 'LiveOps', careers_url: 'https://www.liveops.com/', country: 'Estados Unidos' },
+  { name: 'Working Solutions', careers_url: 'https://www.workingsolutions.com/', country: 'Estados Unidos' },
+  { name: 'Support.com', careers_url: 'https://www.support.com/', country: 'Estados Unidos' },
+  { name: 'Arise', careers_url: 'https://www.arise.com/', country: 'Estados Unidos' },
+  { name: 'SimplyHired', careers_url: 'https://www.simplyhired.com/', country: 'Estados Unidos' },
+  { name: 'Salesforce Careers', careers_url: 'https://careers.salesforce.com/', country: 'Estados Unidos' },
+  { name: 'We Work Remotely', careers_url: 'https://weworkremotely.com/', country: 'Remoto' },
+  { name: 'Turing', careers_url: 'https://www.turing.com/', country: 'Remoto' },
+  { name: 'Hirable', careers_url: searchFallback('Hirable jobs'), country: 'Remoto' },
+  { name: 'ProBlogger Jobs', careers_url: 'https://problogger.com/jobs/', country: 'Freelance' },
+  { name: 'Contena', careers_url: 'https://www.contena.co/', country: 'Freelance' },
+  { name: 'Textbroker', careers_url: 'https://www.textbroker.com/', country: 'Freelance' },
+  { name: 'iWriter', careers_url: 'https://iwriter.com/', country: 'Freelance' },
+  { name: 'Scripted', careers_url: 'https://www.scripted.com/', country: 'Freelance' },
+  { name: 'Hootsuite Careers', careers_url: 'https://www.hootsuite.com/company/careers', country: 'Remoto' },
+  { name: 'Buffer Careers', careers_url: 'https://buffer.com/journey', country: 'Remoto' },
+  { name: 'SocialBoe', careers_url: searchFallback('socialBoe.io'), country: 'Freelance' },
+  { name: 'Rev', careers_url: 'https://www.rev.com/freelancers', country: 'Freelance' },
+  { name: 'TranscribeMe', careers_url: 'https://transcribeme.com/', country: 'Freelance' },
+  { name: 'One Hour Translation', careers_url: 'https://www.onehourtranslation.com/', country: 'Freelance' },
+  { name: 'Crowdsurf Work', careers_url: searchFallback('Crowdsurf work'), country: 'Freelance' },
+  { name: 'LawTrades', careers_url: searchFallback('LawTrades'), country: 'Freelance' },
+  { name: 'UpCounsel', careers_url: 'https://www.upcounsel.com/', country: 'Freelance' },
+  { name: 'HireAnEsquire', careers_url: searchFallback('Hire an Esquire'), country: 'Estados Unidos' },
+  { name: 'LegalZoom', careers_url: 'https://www.legalzoom.com/', country: 'Estados Unidos' },
+  { name: 'Hopin', careers_url: 'https://hopin.com/', country: 'Remoto' },
+  { name: 'Eventbrite', careers_url: 'https://www.eventbrite.com/', country: 'Internacional' },
+  { name: 'Run The World', careers_url: 'https://www.runtheworld.today/', country: 'Remoto' },
+  { name: 'VIPKid', careers_url: 'https://t.vipkid.com/', country: 'Internacional' },
+  { name: 'Teachable', careers_url: 'https://teachable.com/', country: 'Remoto' },
+  { name: 'Preply', careers_url: 'https://preply.com/', country: 'Internacional' },
+  { name: 'Outschool', careers_url: 'https://outschool.com/', country: 'Internacional' },
+  { name: 'Chegg Tutors', careers_url: 'https://www.chegg.com/tutors', country: 'Internacional' },
+  { name: 'HackerRank', careers_url: 'https://www.hackerrank.com/', country: 'Internacional' },
+  { name: 'Stack Overflow Jobs', careers_url: 'https://stackoverflow.com/jobs', country: 'Internacional' },
+  { name: 'Zirtual', careers_url: 'https://www.zirtual.com/', country: 'Estados Unidos' },
+  { name: 'Boldly', careers_url: 'https://boldly.com/', country: 'Remoto' },
+  { name: 'Time Etc', careers_url: 'https://www.timeetc.com/', country: 'Remoto' },
+  { name: 'Belay Solutions', careers_url: 'https://belaysolutions.com/', country: 'Estados Unidos' },
+  { name: 'Fancy Hands', careers_url: 'https://www.fancyhands.com/', country: 'Estados Unidos' },
+  { name: 'Teladoc Health', careers_url: 'https://www.teladochealth.com/', country: 'Estados Unidos' },
+  { name: 'MDLive', careers_url: 'https://www.mdlive.com/', country: 'Estados Unidos' },
+  { name: 'Doctor On Demand', careers_url: 'https://www.doctorondemand.com/', country: 'Estados Unidos' },
+  { name: 'HealthTap', careers_url: 'https://www.healthtap.com/', country: 'Estados Unidos' },
+  { name: 'Care Cam', careers_url: searchFallback('Care Cam'), country: 'Estados Unidos' },
+]
+
 const PORTAL_REGIONS: { id: string; label: string; emoji: string; portals: Omit<Portal, 'enabled'>[] }[] = [
   { id: 'chile', label: 'Chile', emoji: '🇨🇱', portals: CHILE_PORTALS },
   { id: 'global', label: 'Remoto Global', emoji: '🌎', portals: GLOBAL_PORTALS },
@@ -252,6 +466,8 @@ export default function CareersPortals() {
   const [saved, setSaved] = useState(false)
   const [filterCountry, setFilterCountry] = useState<string>('all')
   const [activeRegion, setActiveRegion] = useState(PORTAL_REGIONS[0].id)
+  const [showMorePortals, setShowMorePortals] = useState(false)
+  const [morePortalsSearch, setMorePortalsSearch] = useState('')
 
   const { data: config, isLoading } = useQuery<PortalsConfig>({
     queryKey: ['careers-portals'],
@@ -372,6 +588,13 @@ export default function CareersPortals() {
             </div>
           )}
           <button
+            onClick={() => setShowMorePortals(!showMorePortals)}
+            className="flex items-center gap-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Search size={15} />
+            Más Portales
+          </button>
+          <button
             onClick={() => setShowAdd(!showAdd)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
@@ -380,6 +603,57 @@ export default function CareersPortals() {
           </button>
         </div>
       </div>
+
+      {/* Catálogo extendido de portales sugeridos */}
+      {showMorePortals && (
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-5">
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <h3 className="text-white font-semibold">Más Portales ({MORE_PORTALS.length})</h3>
+            <input
+              autoFocus
+              value={morePortalsSearch}
+              onChange={e => setMorePortalsSearch(e.target.value)}
+              placeholder="Buscar portal o agencia..."
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-full sm:w-64"
+            />
+          </div>
+          <p className="text-gray-500 text-xs mb-4">
+            Catálogo extendido de portales y agencias de reclutamiento internacionales/LATAM.
+            Algunos no tienen sitio propio confirmado — en esos casos el enlace abre una búsqueda
+            en Google en vez de arriesgar una URL incorrecta.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto pr-1">
+            {MORE_PORTALS
+              .filter(p => p.name.toLowerCase().includes(morePortalsSearch.toLowerCase()))
+              .map(portal => {
+                const alreadyAdded = companies.some(c => c.careers_url === portal.careers_url)
+                return (
+                  <button
+                    key={portal.name}
+                    onClick={() => !alreadyAdded && addSuggestedPortal(portal)}
+                    disabled={alreadyAdded}
+                    className={`flex items-center justify-between gap-2 p-2.5 rounded-lg text-sm font-medium transition-all border text-left ${
+                      alreadyAdded
+                        ? 'bg-green-900/20 border-green-800/40 text-green-400 cursor-default'
+                        : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{portal.name}</span>
+                      {portal.country && (
+                        <span className="block text-xs text-gray-500 truncate">{portal.country}</span>
+                      )}
+                    </span>
+                    {alreadyAdded
+                      ? <Check size={13} className="shrink-0" />
+                      : <Plus size={13} className="shrink-0" />
+                    }
+                  </button>
+                )
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Portales sugeridos por región */}
       <div className="bg-gradient-to-r from-gray-800/40 to-gray-900 border border-gray-800 rounded-xl p-5">
