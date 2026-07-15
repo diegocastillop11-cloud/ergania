@@ -134,6 +134,16 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
     }
     return `Límite de requests de ${activeProvider} alcanzado. Espera 1 minuto y reintenta, o cambia a ${freeAlternative} en el Dashboard.`
   }
+  // Créditos agotados en la cuenta del servidor (nuestra cuenta, no la del usuario) —
+  // Anthropic devuelve esto como 400 con "credit balance is too low" en el mensaje.
+  // Sin este chequeo, el usuario vería literalmente el texto de billing de Diego
+  // ("ve a Plans & Billing a comprar créditos"), que no significa nada para él.
+  const lowerApiMsg = apiMsg.toLowerCase()
+  const lowerMsg    = msg.toLowerCase()
+  if (lowerApiMsg.includes('credit balance') || lowerMsg.includes('credit balance')
+    || ((lowerApiMsg.includes('credit') || lowerMsg.includes('credit')) && (lowerApiMsg.includes('low') || lowerMsg.includes('low')))) {
+    return 'El servicio de IA no está disponible en este momento. Ya lo sabemos y lo estamos resolviendo — por favor intenta de nuevo más tarde.'
+  }
   if (status === 400) {
     return `Error en la solicitud a ${activeProvider} (400).${apiMsg ? ` ${apiMsg}` : ' Puede ser un problema con el modelo o el formato.'}`
   }
@@ -142,6 +152,15 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
       return `Gemini: API key inválida o sin acceso al modelo (404). Verifica que tu key sea de Google AI Studio (aistudio.google.com) y que empiece con "AIzaSy".`
     }
     return `Modelo de ${activeProvider} no encontrado (404). Verifica tu API key o cambia de proveedor en el Dashboard.`
+  }
+  // 500/529: Anthropic reporta sobrecarga temporal de su lado — no es un bug nuestro,
+  // conviene decirle al usuario que reintente en vez de mostrarle un error técnico.
+  if (status === 500 || status === 529 || lowerMsg.includes('overloaded') || lowerApiMsg.includes('overloaded')) {
+    return `El servicio de ${activeProvider} está temporalmente sobrecargado. Intenta de nuevo en unos minutos.`
+  }
+  // Sin status HTTP (falla de red/conexión antes de llegar a la API)
+  if (!status && (lowerMsg.includes('timeout') || lowerMsg.includes('econn') || lowerMsg.includes('network') || lowerMsg.includes('fetch failed'))) {
+    return `No se pudo conectar con ${activeProvider}. Revisa tu conexión e intenta de nuevo.`
   }
   return apiMsg || msg || `Error desconocido al llamar a ${activeProvider}`
 }
@@ -870,7 +889,7 @@ export const generateCV = async (req: Request, res: Response) => {
     if (entryId) await svc.updateTrackerEntry(entryId, { pdf: false, estado: 'CV Generado' }, userEmail)
     res.json({ ok: true, cvHtml })
   } catch (err: unknown) {
-    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
@@ -980,7 +999,7 @@ export const getSalaryRecommendation = async (req: Request, res: Response) => {
 
     res.json({ ...parsed, basadoEnAncla: !!salaryAnchorsRef, carrera, pais })
   } catch (err: unknown) {
-    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+    res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
   }
 }
 
@@ -2003,7 +2022,7 @@ Genera las siguientes secciones del perfil LinkedIn optimizadas. Devuelve JSON e
     console.error('[linkedinOptimize] ERROR:', errMsg, { provider, stack: (err as Error)?.stack })
     if (!res.headersSent) {
       const friendly = friendlyAiError(err, provider)
-      res.status(500).json({ error: friendly || errMsg })
+      res.status((err as {status?:number}).status ?? 500).json({ error: friendly || errMsg })
     }
   }
 }
@@ -2720,7 +2739,7 @@ export const scanPortals = async (req: Request, res: Response) => {
     send('done', { total_portales: portals.length, ofertas_encontradas: totalFound, agregadas_pipeline: totalAdded })
 
   } catch (err: unknown) {
-    send('error', { error: (err as Error).message })
+    send('error', { error: friendlyAiError(err, getProviderFromRequest(req)) })
   } finally {
     res.end()
   }
@@ -2848,6 +2867,6 @@ ${rawText.substring(0, 8000)}`
   } catch (err: unknown) {
     const provider = getProviderFromRequest(req)
     const msg = friendlyAiError(err, normalizeProvider(provider))
-    res.status(500).json({ error: msg })
+    res.status((err as {status?:number}).status ?? 500).json({ error: msg })
   }
 }
