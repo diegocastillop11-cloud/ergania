@@ -439,6 +439,7 @@ export default function Admin() {
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
   const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
@@ -582,24 +583,41 @@ export default function Admin() {
 
         {/* Estado suscripciones */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Estado de suscripciones</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-white">Estado de suscripciones</h2>
+            {statusFilter && (
+              <button onClick={() => setStatusFilter(null)} className="text-xs text-gray-500 hover:text-white transition-colors">
+                Limpiar filtro
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-3">
-            <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border border-gray-700">
+            <button
+              onClick={() => { setStatusFilter(null); setTab('users') }}
+              className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === null ? 'border-blue-500' : 'border-gray-700 hover:border-gray-600'}`}
+            >
               <span className="text-lg font-bold text-white">
                 {Object.values(stats.statusCount).reduce((a, b) => a + b, 0)}
               </span>
               <span className="text-xs text-gray-400">Total</span>
-            </div>
+            </button>
             {Object.entries(STATUS_LABEL).map(([key, { label, color }]) => (
-              <div key={key} className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2">
+              <button
+                key={key}
+                onClick={() => { setStatusFilter(f => f === key ? null : key); setTab('users') }}
+                className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === key ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
+              >
                 <span className={`text-lg font-bold ${color}`}>{stats.statusCount[key] ?? 0}</span>
                 <span className="text-xs text-gray-400">{label}</span>
-              </div>
+              </button>
             ))}
-            <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2">
+            <button
+              onClick={() => { setStatusFilter(f => f === 'test' ? null : 'test'); setTab('users') }}
+              className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === 'test' ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
+            >
               <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
               <span className="text-xs text-gray-400">Prueba</span>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -642,7 +660,13 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.userList.map(u => {
+                  {stats.userList
+                    .filter(u => {
+                      if (!statusFilter) return true
+                      if (statusFilter === 'test') return !!u.sub?.is_test
+                      return u.sub?.status === statusFilter && !u.sub?.is_test
+                    })
+                    .map(u => {
                     const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
                     const vence = u.sub?.current_period_end ?? u.sub?.trial_ends_at
                     const isTest = !!u.sub?.is_test
