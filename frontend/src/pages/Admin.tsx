@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
-  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical,
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
@@ -430,26 +430,73 @@ interface Stats {
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string }[]
 }
 
+const SEEN_USERS_KEY = 'ergania_admin_seen_users'
+
 export default function Admin() {
   const { user, session, signOut } = useAuth()
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
+  const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
+  const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
+  const loadStats = () => {
     if (!session) return
-    if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
-
     fetch('/api/admin/stats', {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
       .then(r => r.json())
       .then(data => { setStats(data); setLoading(false) })
       .catch(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    if (!session) return
+    if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
+    loadStats()
   }, [session, user])
 
+  // "Nuevo" en usuarios que no estaban la última vez que se cargó este panel —
+  // se marca al comparar contra localStorage y se "consume" (deja de ser nuevo)
+  // apenas se guarda la lista actual, o sea en el próximo refresh ya no aparece.
+  useEffect(() => {
+    if (!stats) return
+    const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_USERS_KEY) || '[]'))
+    const currentIds = stats.userList.map(u => u.id)
+    setNewUserIds(new Set(currentIds.filter(id => !seen.has(id))))
+    localStorage.setItem(SEEN_USERS_KEY, JSON.stringify(currentIds))
+  }, [stats])
+
   const handleLogout = async () => { await signOut(); navigate('/login') }
+
+  const toggleTestFlag = async (u: { id: string; sub: any }) => {
+    if (!session) return
+    await fetch(`/api/admin/users/${u.id}/test`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isTest: !u.sub?.is_test }),
+    })
+    loadStats()
+  }
+
+  const deleteUserAccount = async (u: { id: string; email: string }) => {
+    if (!session) return
+    if (!window.confirm(`¿Eliminar la cuenta de ${u.email}? Esta acción no se puede deshacer.`)) return
+    await fetch(`/api/admin/users/${u.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    loadStats()
+  }
+
+  const toggleMsg = (id: string) => {
+    setOpenMsgIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -517,7 +564,7 @@ export default function Admin() {
 
         {/* Tabs */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="flex border-b border-gray-800">
+          <div className="flex overflow-x-auto border-b border-gray-800">
             {([
               { key: 'users',    label: 'Usuarios',          icon: Users        },
               { key: 'payments', label: 'Pagos',             icon: CreditCard   },
@@ -528,7 +575,7 @@ export default function Admin() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors border-b-2 ${
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors border-b-2 shrink-0 whitespace-nowrap ${
                   tab === key
                     ? 'border-blue-500 text-blue-400 bg-blue-600/5'
                     : 'border-transparent text-gray-400 hover:text-white'
@@ -550,18 +597,43 @@ export default function Admin() {
                     <th className="text-left px-5 py-3">Registro</th>
                     <th className="text-left px-5 py-3">Suscripción</th>
                     <th className="text-left px-5 py-3">Vence</th>
+                    <th className="text-right px-5 py-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.userList.map(u => {
                     const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
+                    const vence = u.sub?.current_period_end ?? u.sub?.trial_ends_at
+                    const isTest = !!u.sub?.is_test
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                        <td className="px-5 py-3 text-white font-medium">{u.email}</td>
+                        <td className="px-5 py-3 text-white font-medium">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {u.email}
+                            {newUserIds.has(u.id) && (
+                              <span className="bg-green-600/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Nuevo</span>
+                            )}
+                            {isTest && (
+                              <span className="bg-gray-700 text-gray-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Prueba</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-5 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
                         <td className="px-5 py-3"><span className={`font-semibold ${s.color}`}>{s.label}</span></td>
                         <td className="px-5 py-3 text-gray-400">
-                          {u.sub?.current_period_end ? new Date(u.sub.current_period_end).toLocaleDateString('es-CL') : '—'}
+                          {vence ? new Date(vence).toLocaleDateString('es-CL') : '—'}
+                        </td>
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => toggleTestFlag(u)}
+                            title={isTest ? 'Quitar marca de prueba' : 'Marcar como cuenta de prueba'}
+                            className={`p-1 ${isTest ? 'text-yellow-400 hover:text-gray-500' : 'text-gray-500 hover:text-yellow-400'}`}
+                          >
+                            <FlaskConical size={14} />
+                          </button>
+                          <button onClick={() => deleteUserAccount(u)} title="Eliminar usuario" className="p-1 text-gray-500 hover:text-red-400">
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     )
@@ -624,19 +696,31 @@ export default function Admin() {
                 {stats.contactMessages.length === 0 && (
                   <p className="px-5 py-8 text-center text-gray-600">Sin mensajes de contacto aún</p>
                 )}
-                {stats.contactMessages.map(m => (
-                  <div key={m.id} className="px-5 py-4 hover:bg-gray-800/30 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium text-sm">{m.name}</span>
-                        <span className="text-gray-500 text-xs">{m.email}</span>
-                        <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full">{m.category}</span>
+                {stats.contactMessages.map(m => {
+                  const open = openMsgIds.has(m.id)
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleMsg(m.id)}
+                      className="w-full text-left px-5 py-4 hover:bg-gray-800/30 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <span className="text-white font-medium text-sm">{m.name}</span>
+                          <span className="text-gray-500 text-xs break-all">{m.email}</span>
+                          <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full shrink-0">{m.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
+                          {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
-                    </div>
-                    <p className="text-sm text-gray-400 leading-relaxed">{m.message}</p>
-                  </div>
-                ))}
+                      <p className={`text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
+                        {m.message}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
             )}
 

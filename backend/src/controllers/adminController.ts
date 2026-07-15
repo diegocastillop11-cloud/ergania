@@ -119,21 +119,28 @@ export async function getStats(req: Request, res: Response) {
     sub:       subsByUserId[u.id] ?? null,
   }))
 
-  const statusCount = subs.reduce((acc: any, s: any) => {
+  // Cuentas marcadas is_test (correos de prueba internos) no cuentan en las
+  // métricas de negocio — sí siguen apareciendo en userList para poder gestionarlas.
+  const testUserIds = new Set(subs.filter((s: any) => s.is_test).map((s: any) => s.user_id))
+  const realSubs = subs.filter((s: any) => !testUserIds.has(s.user_id))
+
+  const statusCount = realSubs.reduce((acc: any, s: any) => {
     acc[s.status] = (acc[s.status] ?? 0) + 1
     return acc
   }, {})
 
   // Monto real por pago (antes venía hardcodeado a 9990) — un comprobante por cada
   // pago aprobado, no solo el más reciente por usuario (ver payment_receipts).
-  const payments = receipts.map((r: any) => ({
-    userId:    r.user_id,
-    userEmail: r.user_email,
-    paymentId: r.mp_payment_id,
-    receiptId: r.id,
-    amount:    Number(r.monto),
-    date:      r.fecha,
-  }))
+  const payments = receipts
+    .filter((r: any) => !testUserIds.has(r.user_id))
+    .map((r: any) => ({
+      userId:    r.user_id,
+      userEmail: r.user_email,
+      paymentId: r.mp_payment_id,
+      receiptId: r.id,
+      amount:    Number(r.monto),
+      date:      r.fecha,
+    }))
 
   res.json({
     totalUsers:    users.length,
@@ -320,6 +327,34 @@ export async function downloadReceiptPdf(req: Request, res: Response) {
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message || 'Error al generar el PDF' })
   }
+}
+
+export async function setUserTestFlag(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { isTest } = req.body ?? {}
+  const { error } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ is_test: !!isTest })
+    .eq('user_id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteUser(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const targetId = req.params.id
+  if (targetId === admin.id) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta de administrador' })
+
+  await supabaseAdmin.from('subscriptions').delete().eq('user_id', targetId)
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(targetId)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
 }
 
 export async function notifySignup(req: Request, res: Response) {

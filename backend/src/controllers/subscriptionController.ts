@@ -42,7 +42,7 @@ export async function getStatus(req: Request, res: Response) {
   try {
     const user = await getUserFromToken(req)
     console.log('[getStatus] user.id:', user.id)
-    const status = await svc.getOrCreateSubscription(user.id)
+    const status = await svc.getOrCreateSubscription(user.id, user.email)
     const computed = await svc.getSubscriptionStatus(user.id)
     res.json({ subscription: status, computed })
   } catch (e: unknown) {

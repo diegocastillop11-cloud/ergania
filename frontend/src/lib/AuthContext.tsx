@@ -60,12 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password })
-    if (!error && data?.session) {
-      fetch('/api/admin/notify-signup', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${data.session.access_token}` },
-      }).catch(() => {})
-    }
+    // La notificación de nuevo usuario al admin se dispara desde el backend
+    // (getOrCreateSubscription), no acá — así cubre tanto signUp como Google OAuth.
     return { error: error ? translateAuthError(error.message) : null, session: data?.session ?? null }
   }
 

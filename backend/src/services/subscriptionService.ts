@@ -29,7 +29,7 @@ async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: obje
   return JSON.parse(text)
 }
 
-export async function getOrCreateSubscription(userId: string) {
+export async function getOrCreateSubscription(userId: string, userEmail?: string | null) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { data, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
@@ -57,6 +57,15 @@ export async function getOrCreateSubscription(userId: string) {
     console.error('[sub/insert] error:', error.message, error.code)
     throw error
   }
+
+  // Se dispara acá (no en el frontend al hacer signUp) porque este es el único punto
+  // que corre exactamente una vez por usuario real, sin importar si entró con
+  // email/password o con Google OAuth (signInWithOAuth nunca pasa por signUp).
+  if (userEmail) {
+    const { sendNewUserNotification } = await import('./emailService')
+    sendNewUserNotification(userEmail).catch(err => console.error('[sub] Error notificación nuevo usuario:', err))
+  }
+
   return created
 }
 
@@ -99,6 +108,17 @@ export async function getSubscriptionStatus(userId: string) {
       return { status: 'active' as const, daysLeft, currentPeriodEnd: data.current_period_end }
     }
     return { status: 'active' as const, daysLeft: null, currentPeriodEnd: null }
+  }
+
+  // Pago pendiente (checkout iniciado y abandonado, o webhook aún no confirma):
+  // mientras no se le venza el trial original, sigue pudiendo usar la app —
+  // no se le corta el acceso solo por haber intentado pagar.
+  if (data.status === 'pending_payment' && data.trial_ends_at) {
+    const end = new Date(data.trial_ends_at)
+    if (now <= end) {
+      const daysLeft = calendarDaysUntil(end, now)
+      return { status: 'pending_payment' as const, daysLeft, trialEndsAt: data.trial_ends_at }
+    }
   }
 
   return { status: data.status as 'expired' | 'cancelled' | 'pending_payment', daysLeft: 0 }
