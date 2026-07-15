@@ -433,7 +433,7 @@ interface Stats {
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
 
 export default function Admin() {
-  const { user, session, signOut } = useAuth()
+  const { user, session, loading: authLoading, signOut } = useAuth()
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -455,10 +455,11 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    if (!session) return
+    if (authLoading) return // todavía resolviendo la sesión inicial — no decidir nada aún
+    if (!session) { navigate('/login'); return }
     if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
     loadStats()
-  }, [session, user])
+  }, [session, user, authLoading])
 
   // "Nuevo" en usuarios que no estaban la última vez que se cargó este panel —
   // se marca al comparar contra localStorage y se "consume" (deja de ser nuevo)
