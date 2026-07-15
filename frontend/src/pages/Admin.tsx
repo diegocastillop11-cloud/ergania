@@ -686,7 +686,14 @@ export default function Admin() {
                         <td className="px-5 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
                         <td className="px-5 py-3"><span className={`font-semibold ${s.color}`}>{s.label}</span></td>
                         <td className="px-5 py-3 text-gray-400">
-                          {vence ? new Date(vence).toLocaleDateString('es-CL') : '—'}
+                          {vence
+                            ? <>
+                                {new Date(vence).toLocaleDateString('es-CL')}{' '}
+                                <span className="text-gray-600 text-xs">
+                                  {new Date(vence).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </>
+                            : '—'}
                         </td>
                         <td className="px-5 py-3 text-right whitespace-nowrap">
                           <button
