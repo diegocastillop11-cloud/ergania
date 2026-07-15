@@ -427,11 +427,29 @@ interface Stats {
   statusCount:     Record<string, number>
   testCount:       number
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
-  userList:        { id: string; email: string; createdAt: string; sub: any }[]
+  userList:        { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null }[]
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
+
+function SortTh({ label, active, dir, align = 'left', onClick }: {
+  label: string; active: boolean; dir: 'asc' | 'desc'; align?: 'left' | 'right'; onClick: () => void
+}) {
+  return (
+    <th className={`px-5 py-3 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <button
+        onClick={onClick}
+        className={`flex items-center gap-1 hover:text-white transition-colors ${align === 'right' ? 'ml-auto' : ''} ${active ? 'text-white' : ''}`}
+      >
+        {label}
+        {active
+          ? (dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
+          : <ChevronDown size={12} className="opacity-20" />}
+      </button>
+    </th>
+  )
+}
 
 export default function Admin() {
   const { user, session, loading: authLoading, signOut } = useAuth()
@@ -440,6 +458,8 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
   const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
@@ -473,6 +493,22 @@ export default function Admin() {
     setNewUserIds(new Set(currentIds.filter(id => !seen.has(id))))
     localStorage.setItem(SEEN_USERS_KEY, JSON.stringify(currentIds))
   }, [stats])
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); return }
+    setSortKey(key)
+    setSortDir('desc')
+  }
+
+  const sortValue = (u: Stats['userList'][number], key: typeof sortKey): string | number => {
+    switch (key) {
+      case 'email':            return u.email?.toLowerCase() ?? ''
+      case 'createdAt':        return new Date(u.createdAt).getTime()
+      case 'status':           return u.sub?.status ?? ''
+      case 'vence':            return new Date(u.sub?.current_period_end ?? u.sub?.trial_ends_at ?? 0).getTime()
+      case 'evaluationsCount': return u.evaluationsCount
+    }
+  }
 
   const handleLogout = async () => { await signOut(); navigate('/login') }
 
@@ -652,10 +688,11 @@ export default function Admin() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-5 py-3">Email</th>
-                    <th className="text-left px-5 py-3">Registro</th>
-                    <th className="text-left px-5 py-3">Suscripción</th>
-                    <th className="text-left px-5 py-3">Vence</th>
+                    <SortTh label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggleSort('email')} />
+                    <SortTh label="Registro" active={sortKey === 'createdAt'} dir={sortDir} onClick={() => toggleSort('createdAt')} />
+                    <SortTh label="Suscripción" active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} />
+                    <SortTh label="Vence" active={sortKey === 'vence'} dir={sortDir} onClick={() => toggleSort('vence')} />
+                    <SortTh label="Ofertas evaluadas" active={sortKey === 'evaluationsCount'} dir={sortDir} align="right" onClick={() => toggleSort('evaluationsCount')} />
                     <th className="text-right px-5 py-3">Acciones</th>
                   </tr>
                 </thead>
@@ -665,6 +702,12 @@ export default function Admin() {
                       if (!statusFilter) return true
                       if (statusFilter === 'test') return !!u.sub?.is_test
                       return u.sub?.status === statusFilter && !u.sub?.is_test
+                    })
+                    .sort((a, b) => {
+                      const av = sortValue(a, sortKey)
+                      const bv = sortValue(b, sortKey)
+                      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+                      return sortDir === 'asc' ? cmp : -cmp
                     })
                     .map(u => {
                     const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
@@ -695,6 +738,7 @@ export default function Admin() {
                               </>
                             : '—'}
                         </td>
+                        <td className="px-5 py-3 text-right text-gray-300 font-medium">{u.evaluationsCount}</td>
                         <td className="px-5 py-3 text-right whitespace-nowrap">
                           <button
                             onClick={() => toggleTestFlag(u)}

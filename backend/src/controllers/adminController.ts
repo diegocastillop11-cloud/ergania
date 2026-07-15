@@ -98,11 +98,12 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('payment_receipts').select('*').order('fecha', { ascending: false }),
+    supabaseAdmin.from('tracker_entries').select('user_email'),
   ])
 
   const users = usersRes.data?.users ?? []
@@ -112,11 +113,20 @@ export async function getStats(req: Request, res: Response) {
 
   const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
 
+  // Conteo de ofertas evaluadas por usuario (tracker_entries se llena tanto por
+  // Evaluar Oferta como por Postulaciones, así que es "ofertas trackeadas", no
+  // solo evaluaciones estrictas de renta).
+  const evalCountByEmail = (trackerRes.data ?? []).reduce((acc: Record<string, number>, r: any) => {
+    acc[r.user_email] = (acc[r.user_email] ?? 0) + 1
+    return acc
+  }, {})
+
   const userList = users.map((u: any) => ({
-    id:        u.id,
-    email:     u.email,
-    createdAt: u.created_at,
-    sub:       subsByUserId[u.id] ?? null,
+    id:              u.id,
+    email:           u.email,
+    createdAt:       u.created_at,
+    sub:             subsByUserId[u.id] ?? null,
+    evaluationsCount: evalCountByEmail[u.email] ?? 0,
   }))
 
   // Cuentas marcadas is_test (correos de prueba internos) no cuentan en las
