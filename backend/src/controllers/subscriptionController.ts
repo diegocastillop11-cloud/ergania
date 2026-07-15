@@ -42,7 +42,7 @@ export async function getStatus(req: Request, res: Response) {
   try {
     const user = await getUserFromToken(req)
     console.log('[getStatus] user.id:', user.id)
-    const status = await svc.getOrCreateSubscription(user.id, user.email)
+    const status = await svc.getOrCreateSubscription(user.id)
     const computed = await svc.getSubscriptionStatus(user.id)
     res.json({ subscription: status, computed })
   } catch (e: unknown) {
@@ -91,6 +91,24 @@ export async function reminders(req: Request, res: Response) {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Error'
     console.error('[reminders] catch:', msg)
+    res.status(500).json({ error: msg })
+  }
+}
+
+// Vercel Cron (diario) — mismo mecanismo de auth que reminders
+export async function signupDigest(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  try {
+    const result = await svc.sendPendingSignupDigest()
+    console.log('[signup-digest]', JSON.stringify(result))
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[signup-digest] catch:', msg)
     res.status(500).json({ error: msg })
   }
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  getStats, notifySignup, setUserTestFlag, deleteUser, replyToMessage,
+  getStats, setUserTestFlag, deleteUser, replyToMessage,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
   listReceipts, downloadReceiptPdf,
@@ -9,7 +9,6 @@ import {
 const router = Router()
 
 router.get('/stats', getStats)
-router.post('/notify-signup', notifySignup)
 
 router.patch('/users/:id/test', setUserTestFlag)
 router.delete('/users/:id', deleteUser)

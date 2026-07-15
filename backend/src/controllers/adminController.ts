@@ -387,14 +387,3 @@ export async function deleteUser(req: Request, res: Response) {
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
 }
-
-export async function notifySignup(req: Request, res: Response) {
-  const user = await getAdminUser(req)
-  if (!user) return res.status(401).json({ error: 'No autorizado' })
-
-  const { sendNewUserNotification } = await import('../services/emailService')
-  sendNewUserNotification(user.email ?? 'desconocido')
-    .catch(err => console.error('[admin] Error notificación signup:', err))
-
-  res.json({ ok: true })
-}

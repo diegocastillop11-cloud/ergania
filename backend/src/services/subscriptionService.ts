@@ -29,7 +29,7 @@ async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: obje
   return JSON.parse(text)
 }
 
-export async function getOrCreateSubscription(userId: string, userEmail?: string | null) {
+export async function getOrCreateSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { data, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
@@ -58,15 +58,43 @@ export async function getOrCreateSubscription(userId: string, userEmail?: string
     throw error
   }
 
-  // Se dispara acá (no en el frontend al hacer signUp) porque este es el único punto
-  // que corre exactamente una vez por usuario real, sin importar si entró con
-  // email/password o con Google OAuth (signInWithOAuth nunca pasa por signUp).
-  if (userEmail) {
-    const { sendNewUserNotification } = await import('./emailService')
-    sendNewUserNotification(userEmail).catch(err => console.error('[sub] Error notificación nuevo usuario:', err))
-  }
+  // La notificación de nuevo usuario ya no se manda al toque (ver
+  // sendPendingSignupDigest) — se acumula acá (signup_notified_at queda NULL
+  // por defecto) y se avisa una vez al día en un solo correo, para no competir
+  // por el cupo diario de Resend con emails que sí son urgentes.
 
   return created
+}
+
+export async function sendPendingSignupDigest() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+
+  const { data, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, created_at')
+    .is('signup_notified_at', null)
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+  if (!data || data.length === 0) return { pending: 0, sent: 0 }
+
+  const users: { email: string; createdAt: string }[] = []
+  for (const row of data) {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(row.user_id)
+    if (userData?.user?.email) users.push({ email: userData.user.email, createdAt: row.created_at })
+  }
+
+  if (users.length > 0) {
+    const { sendNewUsersDigest } = await import('./emailService')
+    await sendNewUsersDigest(users)
+  }
+
+  await supabaseAdmin
+    .from('subscriptions')
+    .update({ signup_notified_at: new Date().toISOString() })
+    .in('user_id', data.map(r => r.user_id))
+
+  return { pending: data.length, sent: users.length }
 }
 
 export async function getSubscriptionStatus(userId: string) {

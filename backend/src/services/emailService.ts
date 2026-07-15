@@ -21,21 +21,26 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
-export async function sendNewUserNotification(email: string) {
-  const date = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })
+
+export async function sendNewUsersDigest(users: { email: string; createdAt: string }[]) {
+  const rows = users.map(u => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;"><a href="mailto:${u.email}">${u.email}</a></td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;color:#666;font-size:12px;">${new Date(u.createdAt).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</td>
+    </tr>`).join('')
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <h2 style="color:#2563eb;border-bottom:2px solid #2563eb;padding-bottom:8px;">
-        🎉 Nuevo usuario registrado
+        🎉 ${users.length} usuario${users.length === 1 ? '' : 's'} nuevo${users.length === 1 ? '' : 's'} registrado${users.length === 1 ? '' : 's'}
       </h2>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-        <tr><td style="padding:8px 0;color:#666;width:120px;"><strong>Email</strong></td><td style="padding:8px 0;"><a href="mailto:${email}">${email}</a></td></tr>
-        <tr><td style="padding:8px 0;color:#666;"><strong>Fecha</strong></td><td style="padding:8px 0;">${date}</td></tr>
+        <tr><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Email</th><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Registro</th></tr>
+        ${rows}
       </table>
-      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Notificación automática de registro</p>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Resumen diario de registros</p>
     </div>
   `
-  await sendEmail(ADMIN_EMAIL, `[Ergania] Nuevo usuario — ${email}`, html)
+  await sendEmail(ADMIN_EMAIL, `[Ergania] ${users.length} usuario${users.length === 1 ? '' : 's'} nuevo${users.length === 1 ? '' : 's'} registrado${users.length === 1 ? '' : 's'}`, html)
 }
 
 export async function sendContactEmail(name: string, email: string, category: string, message: string) {
