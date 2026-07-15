@@ -274,6 +274,35 @@ export async function sendExpiryReminders() {
   return { checked: data?.length ?? 0, sent }
 }
 
+// Llamado por Vercel Cron una vez al día: pending_payment marca "inició un
+// checkout de MercadoPago" — si a esta hora sigue en ese estado es porque
+// nunca completó el pago (si hubiera pagado, el webhook ya lo habría dejado
+// en 'active' sin importar el estado previo). Se limpia para que no quede
+// "Pendiente" para siempre en el panel — vuelve a 'trial' si le queda trial,
+// o 'expired' si no.
+export async function revertStalePendingPayments() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const nowIso = new Date().toISOString()
+
+  const { data: toTrial, error: e1 } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ status: 'trial' })
+    .eq('status', 'pending_payment')
+    .gt('trial_ends_at', nowIso)
+    .select('user_id')
+  if (e1) throw new Error(`DB error: ${e1.message}`)
+
+  const { data: toExpired, error: e2 } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ status: 'expired' })
+    .eq('status', 'pending_payment')
+    .or(`trial_ends_at.is.null,trial_ends_at.lte.${nowIso}`)
+    .select('user_id')
+  if (e2) throw new Error(`DB error: ${e2.message}`)
+
+  return { toTrial: toTrial?.length ?? 0, toExpired: toExpired?.length ?? 0 }
+}
+
 export async function cancelSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { error } = await supabaseAdmin

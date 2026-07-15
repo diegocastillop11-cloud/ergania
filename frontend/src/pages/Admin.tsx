@@ -425,6 +425,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 interface Stats {
   totalUsers:      number
   statusCount:     Record<string, number>
+  testCount:       number
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; createdAt: string; sub: any }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null }[]
@@ -583,12 +584,22 @@ export default function Admin() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <h2 className="text-sm font-semibold text-white mb-4">Estado de suscripciones</h2>
           <div className="flex flex-wrap gap-3">
+            <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border border-gray-700">
+              <span className="text-lg font-bold text-white">
+                {Object.values(stats.statusCount).reduce((a, b) => a + b, 0)}
+              </span>
+              <span className="text-xs text-gray-400">Total</span>
+            </div>
             {Object.entries(STATUS_LABEL).map(([key, { label, color }]) => (
               <div key={key} className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2">
                 <span className={`text-lg font-bold ${color}`}>{stats.statusCount[key] ?? 0}</span>
                 <span className="text-xs text-gray-400">{label}</span>
               </div>
             ))}
+            <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2">
+              <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
+              <span className="text-xs text-gray-400">Prueba</span>
+            </div>
           </div>
         </div>
 

@@ -145,6 +145,7 @@ export async function getStats(req: Request, res: Response) {
   res.json({
     totalUsers:    users.length,
     statusCount,
+    testCount:     testUserIds.size,
     payments,
     userList,
     contactMessages: msgs,

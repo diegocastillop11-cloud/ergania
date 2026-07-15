@@ -113,6 +113,24 @@ export async function signupDigest(req: Request, res: Response) {
   }
 }
 
+// Vercel Cron (diario) — mismo mecanismo de auth que reminders/signupDigest
+export async function revertPending(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  try {
+    const result = await svc.revertStalePendingPayments()
+    console.log('[revert-pending]', JSON.stringify(result))
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[revert-pending] catch:', msg)
+    res.status(500).json({ error: msg })
+  }
+}
+
 // MercadoPago IPN — no auth, MP signs the request
 export async function webhook(req: Request, res: Response) {
   if (!verifyMPSignature(req)) {
