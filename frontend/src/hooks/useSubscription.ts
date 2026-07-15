@@ -5,7 +5,7 @@ export type SubscriptionState = {
   loading: boolean
   status: ComputedStatus['status']
   daysLeft: number | null
-  isActive: boolean   // trial or active
+  isActive: boolean   // trial, active, o pending_payment dentro del trial
   openCheckout: () => Promise<void>
   cancel: () => Promise<void>
   refresh: () => Promise<void>
@@ -39,7 +39,10 @@ export function useSubscription(): SubscriptionState {
     await load()
   }
 
+  // pending_payment (checkout iniciado pero no confirmado) no bloquea mientras
+  // le queden días del trial original — solo se le pide pagar cuando se le acaben
   const isActive = computed.status === 'trial' || computed.status === 'active'
+    || (computed.status === 'pending_payment' && (computed.daysLeft ?? 0) > 0)
 
   return {
     loading,

@@ -29,7 +29,7 @@ async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: obje
   return JSON.parse(text)
 }
 
-export async function getOrCreateSubscription(userId: string) {
+export async function getOrCreateSubscription(userId: string, userEmail?: string | null) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { data, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
@@ -57,6 +57,15 @@ export async function getOrCreateSubscription(userId: string) {
     console.error('[sub/insert] error:', error.message, error.code)
     throw error
   }
+
+  // Se dispara acá (no en el frontend al hacer signUp) porque este es el único punto
+  // que corre exactamente una vez por usuario real, sin importar si entró con
+  // email/password o con Google OAuth (signInWithOAuth nunca pasa por signUp).
+  if (userEmail) {
+    const { sendNewUserNotification } = await import('./emailService')
+    sendNewUserNotification(userEmail).catch(err => console.error('[sub] Error notificación nuevo usuario:', err))
+  }
+
   return created
 }
 
@@ -99,6 +108,17 @@ export async function getSubscriptionStatus(userId: string) {
       return { status: 'active' as const, daysLeft, currentPeriodEnd: data.current_period_end }
     }
     return { status: 'active' as const, daysLeft: null, currentPeriodEnd: null }
+  }
+
+  // Pago pendiente (checkout iniciado y abandonado, o webhook aún no confirma):
+  // mientras no se le venza el trial original, sigue pudiendo usar la app —
+  // no se le corta el acceso solo por haber intentado pagar.
+  if (data.status === 'pending_payment' && data.trial_ends_at) {
+    const end = new Date(data.trial_ends_at)
+    if (now <= end) {
+      const daysLeft = calendarDaysUntil(end, now)
+      return { status: 'pending_payment' as const, daysLeft, trialEndsAt: data.trial_ends_at }
+    }
   }
 
   return { status: data.status as 'expired' | 'cancelled' | 'pending_payment', daysLeft: 0 }
@@ -154,13 +174,30 @@ export async function handleWebhook(topic: string, id: string) {
     updated_at: new Date().toISOString(),
   }).eq('user_id', userId)
 
-  const { sendPaymentNotification } = await import('./emailService')
-  sendPaymentNotification(
-    userId,
-    String(payment.id),
-    payment.transaction_amount ?? 0,
-    payment.payer?.email ?? 'desconocido',
-  ).catch(err => console.error('[webhook] Error enviando notificación de pago:', err))
+  const monto = payment.transaction_amount ?? 0
+  const fecha = new Date().toISOString().slice(0, 10)
+  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
+  const userEmail = userData?.user?.email || payment.payer?.email || 'desconocido'
+
+  const { data: receipt } = await supabaseAdmin.from('payment_receipts').insert({
+    user_id: userId,
+    user_email: userEmail,
+    monto,
+    moneda: PLAN_CURRENCY,
+    plan: 'Ergania — Plan mensual',
+    mp_payment_id: String(payment.id),
+    fecha,
+  }).select().single()
+
+  const { sendPaymentNotification, sendSubscriptionConfirmation } = await import('./emailService')
+  sendPaymentNotification(userId, String(payment.id), monto, payment.payer?.email ?? 'desconocido')
+    .catch(err => console.error('[webhook] Error enviando notificación admin:', err))
+
+  if (userEmail !== 'desconocido') {
+    sendSubscriptionConfirmation(userEmail, { monto, moneda: PLAN_CURRENCY, plan: 'Ergania — Plan mensual', fecha, paymentId: String(payment.id) })
+      .then(() => { if (receipt?.id) return supabaseAdmin!.from('payment_receipts').update({ email_sent: true }).eq('id', receipt.id) })
+      .catch(err => console.error('[webhook] Error enviando confirmación al usuario:', err))
+  }
 }
 
 // Llamado por Vercel Cron una vez al día: avisa a subs activas que vencen en ≤3 días,

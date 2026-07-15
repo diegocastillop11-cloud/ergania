@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
-  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send,
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
@@ -425,10 +425,12 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 interface Stats {
   totalUsers:      number
   statusCount:     Record<string, number>
-  payments:        { userId: string; paymentId: string; amount: number; date: string }[]
+  payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; createdAt: string; sub: any }[]
-  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string }[]
+  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null }[]
 }
+
+const SEEN_USERS_KEY = 'ergania_admin_seen_users'
 
 export default function Admin() {
   const { user, session, signOut } = useAuth()
@@ -436,20 +438,90 @@ export default function Admin() {
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
+  const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
+  const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [replyErrors, setReplyErrors] = useState<Record<string, string>>({})
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadStats = () => {
     if (!session) return
-    if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
-
     fetch('/api/admin/stats', {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
       .then(r => r.json())
       .then(data => { setStats(data); setLoading(false) })
       .catch(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    if (!session) return
+    if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
+    loadStats()
   }, [session, user])
 
+  // "Nuevo" en usuarios que no estaban la última vez que se cargó este panel —
+  // se marca al comparar contra localStorage y se "consume" (deja de ser nuevo)
+  // apenas se guarda la lista actual, o sea en el próximo refresh ya no aparece.
+  useEffect(() => {
+    if (!stats) return
+    const seen = new Set<string>(JSON.parse(localStorage.getItem(SEEN_USERS_KEY) || '[]'))
+    const currentIds = stats.userList.map(u => u.id)
+    setNewUserIds(new Set(currentIds.filter(id => !seen.has(id))))
+    localStorage.setItem(SEEN_USERS_KEY, JSON.stringify(currentIds))
+  }, [stats])
+
   const handleLogout = async () => { await signOut(); navigate('/login') }
+
+  const toggleTestFlag = async (u: { id: string; sub: any }) => {
+    if (!session) return
+    await fetch(`/api/admin/users/${u.id}/test`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isTest: !u.sub?.is_test }),
+    })
+    loadStats()
+  }
+
+  const deleteUserAccount = async (u: { id: string; email: string }) => {
+    if (!session) return
+    if (!window.confirm(`¿Eliminar la cuenta de ${u.email}? Esta acción no se puede deshacer.`)) return
+    await fetch(`/api/admin/users/${u.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    loadStats()
+  }
+
+  const toggleMsg = (id: string) => {
+    setOpenMsgIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const sendReply = async (m: { id: string }) => {
+    if (!session) return
+    const text = replyDrafts[m.id]?.trim()
+    if (!text) return
+    setSendingReplyId(m.id)
+    setReplyErrors(errs => ({ ...errs, [m.id]: '' }))
+    try {
+      const res = await fetch(`/api/admin/messages/${m.id}/reply`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reply: text }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al enviar') }
+      setReplyDrafts(d => { const next = { ...d }; delete next[m.id]; return next })
+      loadStats()
+    } catch (err: unknown) {
+      setReplyErrors(errs => ({ ...errs, [m.id]: err instanceof Error ? err.message : 'Error al enviar' }))
+    } finally {
+      setSendingReplyId(null)
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -486,19 +558,23 @@ export default function Admin() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10'   },
-            { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10'  },
-            { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10' },
-            { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10' },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          {([
+            { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'users'    },
+            { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'users'    },
+            { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
+            { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
+          ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
+            <button
+              key={label}
+              onClick={() => setTab(tabTarget)}
+              className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
+            >
               <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
                 <Icon size={18} className={color} />
               </div>
               <p className="text-2xl font-bold text-white">{value}</p>
               <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -517,7 +593,7 @@ export default function Admin() {
 
         {/* Tabs */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="flex border-b border-gray-800">
+          <div className="flex overflow-x-auto border-b border-gray-800">
             {([
               { key: 'users',    label: 'Usuarios',          icon: Users        },
               { key: 'payments', label: 'Pagos',             icon: CreditCard   },
@@ -528,7 +604,7 @@ export default function Admin() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors border-b-2 ${
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors border-b-2 shrink-0 whitespace-nowrap ${
                   tab === key
                     ? 'border-blue-500 text-blue-400 bg-blue-600/5'
                     : 'border-transparent text-gray-400 hover:text-white'
@@ -550,18 +626,43 @@ export default function Admin() {
                     <th className="text-left px-5 py-3">Registro</th>
                     <th className="text-left px-5 py-3">Suscripción</th>
                     <th className="text-left px-5 py-3">Vence</th>
+                    <th className="text-right px-5 py-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.userList.map(u => {
                     const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
+                    const vence = u.sub?.current_period_end ?? u.sub?.trial_ends_at
+                    const isTest = !!u.sub?.is_test
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                        <td className="px-5 py-3 text-white font-medium">{u.email}</td>
+                        <td className="px-5 py-3 text-white font-medium">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {u.email}
+                            {newUserIds.has(u.id) && (
+                              <span className="bg-green-600/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Nuevo</span>
+                            )}
+                            {isTest && (
+                              <span className="bg-gray-700 text-gray-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Prueba</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-5 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
                         <td className="px-5 py-3"><span className={`font-semibold ${s.color}`}>{s.label}</span></td>
                         <td className="px-5 py-3 text-gray-400">
-                          {u.sub?.current_period_end ? new Date(u.sub.current_period_end).toLocaleDateString('es-CL') : '—'}
+                          {vence ? new Date(vence).toLocaleDateString('es-CL') : '—'}
+                        </td>
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => toggleTestFlag(u)}
+                            title={isTest ? 'Quitar marca de prueba' : 'Marcar como cuenta de prueba'}
+                            className={`p-1 ${isTest ? 'text-yellow-400 hover:text-gray-500' : 'text-gray-500 hover:text-yellow-400'}`}
+                          >
+                            <FlaskConical size={14} />
+                          </button>
+                          <button onClick={() => deleteUserAccount(u)} title="Eliminar usuario" className="p-1 text-gray-500 hover:text-red-400">
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     )
@@ -576,19 +677,42 @@ export default function Admin() {
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
                     <th className="text-left px-5 py-3">Fecha</th>
+                    <th className="text-left px-5 py-3">Cliente</th>
                     <th className="text-left px-5 py-3">Monto</th>
                     <th className="text-left px-5 py-3">Payment ID</th>
+                    <th className="text-left px-5 py-3">Comprobante</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.payments.length === 0 && (
-                    <tr><td colSpan={3} className="px-5 py-8 text-center text-gray-600">Sin pagos registrados aún</td></tr>
+                    <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-600">Sin pagos registrados aún</td></tr>
                   )}
                   {stats.payments.map(p => (
-                    <tr key={p.paymentId} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                    <tr key={p.receiptId} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                       <td className="px-5 py-3 text-gray-400">{new Date(p.date).toLocaleDateString('es-CL')}</td>
+                      <td className="px-5 py-3 text-white">{p.userEmail}</td>
                       <td className="px-5 py-3 text-green-400 font-bold">${p.amount.toLocaleString('es-CL')} CLP</td>
                       <td className="px-5 py-3 text-gray-500 font-mono text-xs">{p.paymentId}</td>
+                      <td className="px-5 py-3">
+                        <button
+                          onClick={async () => {
+                            const res = await fetch(`/api/admin/receipts/${p.receiptId}/pdf`, {
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            })
+                            if (!res.ok) return
+                            const blob = await res.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `Comprobante_${p.userEmail}.pdf`
+                            a.click()
+                            URL.revokeObjectURL(url)
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                        >
+                          <FileText size={12} /> Descargar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -601,19 +725,68 @@ export default function Admin() {
                 {stats.contactMessages.length === 0 && (
                   <p className="px-5 py-8 text-center text-gray-600">Sin mensajes de contacto aún</p>
                 )}
-                {stats.contactMessages.map(m => (
-                  <div key={m.id} className="px-5 py-4 hover:bg-gray-800/30 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium text-sm">{m.name}</span>
-                        <span className="text-gray-500 text-xs">{m.email}</span>
-                        <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full">{m.category}</span>
-                      </div>
-                      <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
+                {stats.contactMessages.map(m => {
+                  const open = openMsgIds.has(m.id)
+                  return (
+                    <div key={m.id} className="px-5 py-4">
+                      <button
+                        onClick={() => toggleMsg(m.id)}
+                        className="w-full text-left hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="text-white font-medium text-sm">{m.name}</span>
+                            <span className="text-gray-500 text-xs break-all">{m.email}</span>
+                            <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full shrink-0">{m.category}</span>
+                            {m.replied_at && (
+                              <span className="bg-green-600/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Respondido</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
+                            {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                          </div>
+                        </div>
+                        <p className={`text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
+                          {m.message}
+                        </p>
+                      </button>
+
+                      {open && (
+                        <div className="mt-3 space-y-2">
+                          {m.replied_at ? (
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                              <p className="text-xs text-green-400 mb-1">
+                                Respondiste el {new Date(m.replied_at).toLocaleDateString('es-CL')}
+                              </p>
+                              <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{m.reply_text}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <textarea
+                                value={replyDrafts[m.id] ?? ''}
+                                onChange={e => setReplyDrafts(d => ({ ...d, [m.id]: e.target.value }))}
+                                rows={3}
+                                placeholder={`Responder a ${m.name}...`}
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => sendReply(m)}
+                                  disabled={!replyDrafts[m.id]?.trim() || sendingReplyId === m.id}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                                >
+                                  <Send size={13} /> {sendingReplyId === m.id ? 'Enviando...' : 'Enviar respuesta'}
+                                </button>
+                                {replyErrors[m.id] && <p className="text-red-400 text-xs">{replyErrors[m.id]}</p>}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-400 leading-relaxed">{m.message}</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 

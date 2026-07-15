@@ -1,14 +1,23 @@
 import { Router } from 'express'
 import {
-  getStats, notifySignup,
+  getStats, notifySignup, setUserTestFlag, deleteUser, replyToMessage,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
+  listReceipts, downloadReceiptPdf,
 } from '../controllers/adminController'
 
 const router = Router()
 
 router.get('/stats', getStats)
 router.post('/notify-signup', notifySignup)
+
+router.patch('/users/:id/test', setUserTestFlag)
+router.delete('/users/:id', deleteUser)
+
+router.post('/messages/:id/reply', replyToMessage)
+
+router.get('/receipts', listReceipts)
+router.get('/receipts/:id/pdf', downloadReceiptPdf)
 
 router.get('/salary-anchors', listSalaryAnchors)
 router.post('/salary-anchors', createSalaryAnchor)
