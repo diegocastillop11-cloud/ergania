@@ -1,5 +1,8 @@
 import { Link, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
+
+const ADSENSE_CLIENT = 'ca-pub-2632840688699034'
 
 const C = {
   cream:    '#FAF7F2',
@@ -17,6 +20,19 @@ const sans   = "'Source Sans Pro', sans-serif"
 
 export default function Landing() {
   const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (loading || user) return
+    if (document.querySelector(`script[data-adsbygoogle-client="${ADSENSE_CLIENT}"]`)) return
+    const script = document.createElement('script')
+    script.async = true
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`
+    script.crossOrigin = 'anonymous'
+    script.dataset.adsbygoogleClient = ADSENSE_CLIENT
+    document.head.appendChild(script)
+    return () => { script.remove() }
+  }, [loading, user])
+
   if (!loading && user) return <Navigate to="/dashboard" replace />
 
   return (
@@ -273,9 +289,9 @@ export default function Landing() {
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
           <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 26, color: C.cream }}>ergania</span>
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {['Funciones', 'Precios', 'Privacidad'].map(l => (
-              <a key={l} href={l === 'Precios' ? '#precios' : '#'} style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>{l}</a>
-            ))}
+            <a href="#como-funciona" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Funciones</a>
+            <a href="#precios" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Precios</a>
+            <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Privacidad</Link>
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(250,247,242,.30)' }}>
             Hecho en Chile · 2026

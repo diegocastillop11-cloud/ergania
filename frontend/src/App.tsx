@@ -3,6 +3,7 @@ import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
+import Privacy from './pages/Privacy'
 import Subscription from './pages/Subscription'
 import SubscriptionCallback from './pages/SubscriptionCallback'
 import CareersDashboard from './pages/careers/CareersDashboard'
@@ -35,6 +36,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/privacidad" element={<Privacy />} />
       <Route path="/login" element={<Login />} />
       {/* Redirect pages from MercadoPago — must be public, no auth required */}
       <Route path="/subscription/success" element={<SubscriptionCallback />} />
