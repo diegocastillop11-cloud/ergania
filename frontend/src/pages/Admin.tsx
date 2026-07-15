@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
-  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send,
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
@@ -427,7 +427,7 @@ interface Stats {
   statusCount:     Record<string, number>
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; createdAt: string; sub: any }[]
-  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string }[]
+  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null }[]
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
@@ -440,6 +440,9 @@ export default function Admin() {
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
   const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
   const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [replyErrors, setReplyErrors] = useState<Record<string, string>>({})
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null)
 
   const loadStats = () => {
     if (!session) return
@@ -498,6 +501,28 @@ export default function Admin() {
     })
   }
 
+  const sendReply = async (m: { id: string }) => {
+    if (!session) return
+    const text = replyDrafts[m.id]?.trim()
+    if (!text) return
+    setSendingReplyId(m.id)
+    setReplyErrors(errs => ({ ...errs, [m.id]: '' }))
+    try {
+      const res = await fetch(`/api/admin/messages/${m.id}/reply`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reply: text }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al enviar') }
+      setReplyDrafts(d => { const next = { ...d }; delete next[m.id]; return next })
+      loadStats()
+    } catch (err: unknown) {
+      setReplyErrors(errs => ({ ...errs, [m.id]: err instanceof Error ? err.message : 'Error al enviar' }))
+    } finally {
+      setSendingReplyId(null)
+    }
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -533,19 +558,23 @@ export default function Admin() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10'   },
-            { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10'  },
-            { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10' },
-            { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10' },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          {([
+            { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'users'    },
+            { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'users'    },
+            { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
+            { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
+          ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
+            <button
+              key={label}
+              onClick={() => setTab(tabTarget)}
+              className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
+            >
               <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
                 <Icon size={18} className={color} />
               </div>
               <p className="text-2xl font-bold text-white">{value}</p>
               <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -699,26 +728,63 @@ export default function Admin() {
                 {stats.contactMessages.map(m => {
                   const open = openMsgIds.has(m.id)
                   return (
-                    <button
-                      key={m.id}
-                      onClick={() => toggleMsg(m.id)}
-                      className="w-full text-left px-5 py-4 hover:bg-gray-800/30 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                          <span className="text-white font-medium text-sm">{m.name}</span>
-                          <span className="text-gray-500 text-xs break-all">{m.email}</span>
-                          <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full shrink-0">{m.category}</span>
+                    <div key={m.id} className="px-5 py-4">
+                      <button
+                        onClick={() => toggleMsg(m.id)}
+                        className="w-full text-left hover:opacity-80 transition-opacity"
+                      >
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="text-white font-medium text-sm">{m.name}</span>
+                            <span className="text-gray-500 text-xs break-all">{m.email}</span>
+                            <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full shrink-0">{m.category}</span>
+                            {m.replied_at && (
+                              <span className="bg-green-600/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Respondido</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
+                            {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
-                          {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+                        <p className={`text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
+                          {m.message}
+                        </p>
+                      </button>
+
+                      {open && (
+                        <div className="mt-3 space-y-2">
+                          {m.replied_at ? (
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                              <p className="text-xs text-green-400 mb-1">
+                                Respondiste el {new Date(m.replied_at).toLocaleDateString('es-CL')}
+                              </p>
+                              <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{m.reply_text}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <textarea
+                                value={replyDrafts[m.id] ?? ''}
+                                onChange={e => setReplyDrafts(d => ({ ...d, [m.id]: e.target.value }))}
+                                rows={3}
+                                placeholder={`Responder a ${m.name}...`}
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => sendReply(m)}
+                                  disabled={!replyDrafts[m.id]?.trim() || sendingReplyId === m.id}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                                >
+                                  <Send size={13} /> {sendingReplyId === m.id ? 'Enviando...' : 'Enviar respuesta'}
+                                </button>
+                                {replyErrors[m.id] && <p className="text-red-400 text-xs">{replyErrors[m.id]}</p>}
+                              </div>
+                            </>
+                          )}
                         </div>
-                      </div>
-                      <p className={`text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
-                        {m.message}
-                      </p>
-                    </button>
+                      )}
+                    </div>
                   )
                 })}
               </div>

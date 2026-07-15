@@ -329,6 +329,37 @@ export async function downloadReceiptPdf(req: Request, res: Response) {
   }
 }
 
+export async function replyToMessage(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { reply } = req.body ?? {}
+  if (!reply?.trim()) return res.status(400).json({ error: 'La respuesta no puede estar vacía' })
+
+  const { data: msg, error: fetchErr } = await supabaseAdmin
+    .from('contact_messages')
+    .select('*')
+    .eq('id', req.params.id)
+    .single()
+  if (fetchErr || !msg) return res.status(404).json({ error: 'Mensaje no encontrado' })
+
+  try {
+    const { sendContactReply } = await import('../services/emailService')
+    await sendContactReply(msg.email, msg.name, reply.trim())
+  } catch (err: unknown) {
+    return res.status(500).json({ error: (err as Error).message || 'No se pudo enviar el correo' })
+  }
+
+  const { error } = await supabaseAdmin
+    .from('contact_messages')
+    .update({ replied_at: new Date().toISOString(), reply_text: reply.trim() })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+
+  res.json({ ok: true })
+}
+
 export async function setUserTestFlag(req: Request, res: Response) {
   const admin = await getAdminUser(req)
   if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
