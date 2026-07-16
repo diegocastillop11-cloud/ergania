@@ -3,7 +3,7 @@ const RESEND_API = 'https://api.resend.com/emails'
 const FROM_EMAIL = () => process.env.EMAIL_FROM || 'Ergania <onboarding@resend.dev>'
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
 
-async function sendEmail(to: string, subject: string, html: string) {
+export async function sendEmail(to: string, subject: string, html: string) {
   const key = process.env.RESEND_API_KEY
   if (!key) {
     console.warn('[email] RESEND_API_KEY no configurada — email no enviado')
@@ -134,49 +134,6 @@ export async function sendSubscriptionConfirmation(
     </div>
   `
   await sendEmail(to, '🎉 ¡Felicitaciones, estás suscrito a Ergania!', html)
-}
-
-export const ACTIVATION_EMAIL_SUBJECT = 'Tu búsqueda de trabajo puede ir más rápido — Ergania'
-
-export function buildActivationEmailHtml() {
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
-        Tu búsqueda de trabajo puede ir más rápido
-      </h2>
-      <p style="color:#333;line-height:1.6;">
-        Notamos que aún no le has sacado todo el jugo a Ergania. Con tu cuenta puedes:
-      </p>
-      <ul style="color:#333;line-height:1.8;padding-left:20px;">
-        <li>Evaluar cualquier oferta con IA y ver qué tan buen match eres</li>
-        <li>Estimar la renta esperada antes de postular</li>
-        <li>Optimizar tu CV y carta de presentación para cada oferta</li>
-        <li>Postular y hacer seguimiento de todo en un solo lugar</li>
-      </ul>
-      <p style="color:#333;line-height:1.6;">
-        Si no sabes por dónde partir, el tutorial de 6 pasos te muestra exactamente qué hacer.
-      </p>
-      <div style="text-align:center;margin:28px 0;">
-        <a href="https://ergania.com/dashboard?guide=1"
-           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
-          Aprende a usar Ergania
-        </a>
-      </div>
-      <div style="text-align:center;margin:0 0 20px;">
-        <a href="https://ergania.com/dashboard"
-           style="color:#C4633A;text-decoration:underline;font-weight:bold;font-size:14px;">
-          Ir directo a mi cuenta →
-        </a>
-      </div>
-      <p style="font-size:12px;color:#999;margin-top:24px;">
-        Ergania · Si ya no quieres recibir estos correos, respóndenos y te sacamos de la lista.
-      </p>
-    </div>
-  `
-}
-
-export async function sendActivationEmail(to: string) {
-  await sendEmail(to, ACTIVATION_EMAIL_SUBJECT, buildActivationEmailHtml())
 }
 
 export async function sendPaymentNotification(

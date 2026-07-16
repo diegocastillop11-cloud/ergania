@@ -399,22 +399,127 @@ export async function deleteUser(req: Request, res: Response) {
   res.json({ ok: true })
 }
 
-const BULK_EMAIL_SENDERS: Record<string, (to: string) => Promise<void>> = {
-  activacion_trial_v1: async (to: string) => {
-    const { sendActivationEmail } = await import('../services/emailService')
-    await sendActivationEmail(to)
-  },
+function escBulk(s: string | null | undefined) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function renderBulkEmailBody(cuerpo: string): string {
+  const blocks = (cuerpo || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean)
+  return blocks.map(block => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
+    const isList = lines.length > 0 && lines.every(l => l.startsWith('- '))
+    if (isList) {
+      return `<ul style="color:#333;line-height:1.8;padding-left:20px;">${lines.map(l => `<li>${escBulk(l.slice(2))}</li>`).join('')}</ul>`
+    }
+    return `<p style="color:#333;line-height:1.6;">${lines.map(escBulk).join('<br/>')}</p>`
+  }).join('\n')
+}
+
+function buildBulkEmailHtml(email: {
+  titulo: string; cuerpo: string
+  cta1_texto: string | null; cta1_url: string | null
+  cta2_texto: string | null; cta2_url: string | null
+}): string {
+  const cta1 = email.cta1_texto && email.cta1_url ? `
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${escBulk(email.cta1_url)}"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          ${escBulk(email.cta1_texto)}
+        </a>
+      </div>` : ''
+  const cta2 = email.cta2_texto && email.cta2_url ? `
+      <div style="text-align:center;margin:0 0 20px;">
+        <a href="${escBulk(email.cta2_url)}"
+           style="color:#C4633A;text-decoration:underline;font-weight:bold;font-size:14px;">
+          ${escBulk(email.cta2_texto)}
+        </a>
+      </div>` : ''
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
+        ${escBulk(email.titulo)}
+      </h2>
+      ${renderBulkEmailBody(email.cuerpo)}
+      ${cta1}
+      ${cta2}
+      <p style="font-size:12px;color:#999;margin-top:24px;">
+        Ergania · Si ya no quieres recibir estos correos, respóndenos y te sacamos de la lista.
+      </p>
+    </div>
+  `
+}
+
+// ── CRUD de correos guardados ──────────────────────────────────────────────
+
+export async function listBulkEmails(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').order('created_at', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ emails: data ?? [] })
+}
+
+export async function createBulkEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
+  if (!titulo?.trim() || !asunto?.trim()) return res.status(400).json({ error: 'Título y asunto son requeridos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('bulk_emails')
+    .insert({
+      titulo: titulo.trim(), asunto: asunto.trim(), cuerpo: cuerpo || '',
+      cta1_texto: cta1_texto || null, cta1_url: cta1_url || null,
+      cta2_texto: cta2_texto || null, cta2_url: cta2_url || null,
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ email: data })
+}
+
+export async function updateBulkEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
+  if (!titulo?.trim() || !asunto?.trim()) return res.status(400).json({ error: 'Título y asunto son requeridos' })
+
+  const { error } = await supabaseAdmin
+    .from('bulk_emails')
+    .update({
+      titulo: titulo.trim(), asunto: asunto.trim(), cuerpo: cuerpo || '',
+      cta1_texto: cta1_texto || null, cta1_url: cta1_url || null,
+      cta2_texto: cta2_texto || null, cta2_url: cta2_url || null,
+    })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteBulkEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('bulk_emails').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
 }
 
 export async function getBulkEmailPreview(req: Request, res: Response) {
   const admin = await getAdminUser(req)
   if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const campaign = String(req.query.campaign || '')
-  if (campaign !== 'activacion_trial_v1') return res.status(400).json({ error: 'Campaña desconocida' })
-
-  const { ACTIVATION_EMAIL_SUBJECT, buildActivationEmailHtml } = await import('../services/emailService')
-  res.json({ subject: ACTIVATION_EMAIL_SUBJECT, html: buildActivationEmailHtml() })
+  const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
+  if (error || !data) return res.status(404).json({ error: 'Correo no encontrado' })
+  res.json({ subject: data.asunto, html: buildBulkEmailHtml(data) })
 }
 
 export async function listBulkEmailSent(req: Request, res: Response) {
@@ -422,38 +527,29 @@ export async function listBulkEmailSent(req: Request, res: Response) {
   if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const campaign = String(req.query.campaign || '')
-  if (!BULK_EMAIL_SENDERS[campaign]) return res.status(400).json({ error: 'Campaña desconocida' })
-
   const { data, error } = await supabaseAdmin
     .from('bulk_email_log')
     .select('email, sent_at')
-    .eq('campaign', campaign)
+    .eq('campaign', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
   res.json({ sent: data ?? [] })
 }
 
 // Envío secuencial con pausa entre correos para no pasarse del rate limit de
 // Resend — no hay colas/workers en este proyecto (serverless function única),
-// así que esto corre dentro de la misma request del botón "Enviar correo".
-export async function sendBulkEmail(req: Request, res: Response) {
-  const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
-  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
-
-  const { campaign, emails } = req.body ?? {}
-  const sender = BULK_EMAIL_SENDERS[campaign]
-  if (!sender) return res.status(400).json({ error: 'Campaña desconocida' })
-  if (!Array.isArray(emails) || emails.length === 0) return res.status(400).json({ error: 'Sin destinatarios' })
-  if (emails.length > 300) return res.status(400).json({ error: 'Máximo 300 destinatarios por envío' })
+// así que un envío manual corre dentro de la misma request del botón
+// "Enviar correo", y uno programado corre dentro de la misma request del cron.
+async function sendBulkEmailBatch(bulkEmailId: string, subject: string, html: string, emails: string[]) {
+  if (!supabaseAdmin) throw new Error('Sin conexión a base de datos')
 
   const { data: already } = await supabaseAdmin
     .from('bulk_email_log')
     .select('email')
-    .eq('campaign', campaign)
+    .eq('campaign', bulkEmailId)
     .in('email', emails)
   const alreadySent = new Set((already ?? []).map((r: any) => r.email))
 
+  const { sendEmail } = await import('../services/emailService')
   const sent: string[] = []
   const skipped: string[] = []
   const failed: { email: string; error: string }[] = []
@@ -461,8 +557,8 @@ export async function sendBulkEmail(req: Request, res: Response) {
   for (const email of emails) {
     if (alreadySent.has(email)) { skipped.push(email); continue }
     try {
-      await sender(email)
-      await supabaseAdmin.from('bulk_email_log').insert({ campaign, email })
+      await sendEmail(email, subject, html)
+      await supabaseAdmin.from('bulk_email_log').insert({ campaign: bulkEmailId, email })
       sent.push(email)
     } catch (err: unknown) {
       failed.push({ email, error: (err as Error).message || 'Error desconocido' })
@@ -470,5 +566,130 @@ export async function sendBulkEmail(req: Request, res: Response) {
     await new Promise(r => setTimeout(r, 400))
   }
 
-  res.json({ sent, skipped, failed })
+  return { sent, skipped, failed }
+}
+
+export async function sendBulkEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { emails } = req.body ?? {}
+  if (!Array.isArray(emails) || emails.length === 0) return res.status(400).json({ error: 'Sin destinatarios' })
+  if (emails.length > 300) return res.status(400).json({ error: 'Máximo 300 destinatarios por envío' })
+
+  const { data: bulkEmail, error: fetchErr } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
+  if (fetchErr || !bulkEmail) return res.status(404).json({ error: 'Correo no encontrado' })
+
+  const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail.asunto, buildBulkEmailHtml(bulkEmail), emails)
+  res.json(result)
+}
+
+// ── Audiencia: usuarios en trial con pocas ofertas evaluadas ───────────────
+
+async function loadTrialCandidates(maxEvals: number): Promise<string[]> {
+  if (!supabaseAdmin) return []
+  const [usersRes, subsRes, trackerRes] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    supabaseAdmin.from('subscriptions').select('user_id, status, is_test'),
+    supabaseAdmin.from('tracker_entries').select('user_email'),
+  ])
+  const users = usersRes.data?.users ?? []
+  const subs = subsRes.data ?? []
+  const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
+  const evalCountByEmail = (trackerRes.data ?? []).reduce((acc: Record<string, number>, r: any) => {
+    acc[r.user_email] = (acc[r.user_email] ?? 0) + 1
+    return acc
+  }, {})
+  return users
+    .filter((u: any) => {
+      const sub = subsByUserId[u.id]
+      if (!sub || sub.status !== 'trial' || sub.is_test) return false
+      return (evalCountByEmail[u.email] ?? 0) <= maxEvals
+    })
+    .map((u: any) => u.email)
+}
+
+// ── Programación por día ────────────────────────────────────────────────
+// Vercel Hobby corre crons una vez al día, a hora fija — no se puede elegir
+// hora exacta. Se guarda solo el día; el cron diario (runScheduledBulkEmails)
+// decide la hora real de envío y recalcula la audiencia al momento de
+// disparar, no al momento de programar, para no mandarle el correo a alguien
+// que ya pagó o dejó de calificar el filtro entre medio.
+
+export async function listScheduledEmails(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('scheduled_emails')
+    .select('*')
+    .eq('bulk_email_id', req.params.id)
+    .order('send_date', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ scheduled: data ?? [] })
+}
+
+export async function createScheduledEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { send_date, max_evals } = req.body ?? {}
+  if (!send_date || !/^\d{4}-\d{2}-\d{2}$/.test(send_date)) return res.status(400).json({ error: 'Fecha inválida' })
+  const maxEvals = Number.isFinite(max_evals) ? Number(max_evals) : 1
+
+  const { data, error } = await supabaseAdmin
+    .from('scheduled_emails')
+    .insert({ bulk_email_id: req.params.id, send_date, max_evals: maxEvals })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ scheduled: data })
+}
+
+export async function deleteScheduledEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('scheduled_emails').delete().eq('id', req.params.id).eq('status', 'pending')
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+// Vercel Cron (diario) — mismo mecanismo de auth que los crons de subscriptionController
+export async function runScheduledBulkEmails(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) return res.status(401).json({ error: 'No autorizado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: due, error } = await supabaseAdmin
+    .from('scheduled_emails')
+    .select('*')
+    .eq('status', 'pending')
+    .lte('send_date', today)
+  if (error) return res.status(500).json({ error: error.message })
+
+  const results: any[] = []
+  for (const row of due ?? []) {
+    try {
+      const { data: bulkEmail } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', row.bulk_email_id).single()
+      if (!bulkEmail) throw new Error('Correo asociado no existe')
+      const emails = await loadTrialCandidates(row.max_evals)
+      const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail.asunto, buildBulkEmailHtml(bulkEmail), emails)
+      await supabaseAdmin.from('scheduled_emails').update({ status: 'sent', sent_at: new Date().toISOString(), result }).eq('id', row.id)
+      results.push({ id: row.id, ...result })
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Error desconocido'
+      await supabaseAdmin.from('scheduled_emails').update({ status: 'failed', sent_at: new Date().toISOString(), result: { error: message } }).eq('id', row.id)
+      results.push({ id: row.id, error: message })
+    }
+  }
+
+  console.log('[bulk-email run-scheduled]', JSON.stringify(results))
+  res.json({ processed: results.length, results })
 }

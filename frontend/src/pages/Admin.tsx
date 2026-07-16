@@ -416,32 +416,64 @@ function ReportsTab({ token }: { token: string }) {
 
 // ── Correos masivos ────────────────────────────────────────────────────────
 
-const BULK_CAMPAIGN = 'activacion_trial_v1'
-
 interface BulkUser { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }
 
-function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[] }) {
+interface BulkEmail {
+  id: string; titulo: string; asunto: string; cuerpo: string
+  cta1_texto: string | null; cta1_url: string | null
+  cta2_texto: string | null; cta2_url: string | null
+}
+
+interface ScheduledEmail {
+  id: string; bulk_email_id: string; send_date: string; max_evals: number
+  status: 'pending' | 'sent' | 'failed' | 'cancelled'
+  sent_at: string | null; result: any
+}
+
+const EMPTY_BULK_EMAIL_FORM = { titulo: '', asunto: '', cuerpo: '', cta1_texto: '', cta1_url: '', cta2_texto: '', cta2_url: '' }
+
+function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen }: {
+  email: BulkEmail; token: string; userList: BulkUser[]
+  onChanged: () => void; onDeleted: () => void; startOpen?: boolean
+}) {
+  const [open, setOpen] = useState(!!startOpen)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(EMPTY_BULK_EMAIL_FORM)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
   const [maxEvals, setMaxEvals] = useState(1)
   const [sentEmails, setSentEmails] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadingAux, setLoadingAux] = useState(true)
   const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<{ sent: string[]; skipped: string[]; failed: { email: string; error: string }[] } | null>(null)
-  const [error, setError] = useState('')
+  const [sendResult, setSendResult] = useState<{ sent: string[]; skipped: string[]; failed: { email: string; error: string }[] } | null>(null)
+  const [sendError, setSendError] = useState('')
+
+  const [scheduled, setScheduled] = useState<ScheduledEmail[]>([])
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleMaxEvals, setScheduleMaxEvals] = useState(1)
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduleError, setScheduleError] = useState('')
+
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-  useEffect(() => {
-    setLoading(true)
+  const loadAux = () => {
+    setLoadingAux(true)
     Promise.all([
-      fetch(`/api/admin/bulk-email/preview?campaign=${BULK_CAMPAIGN}`, { headers: authHeaders }).then(r => r.json()),
-      fetch(`/api/admin/bulk-email/sent?campaign=${BULK_CAMPAIGN}`, { headers: authHeaders }).then(r => r.json()),
-    ]).then(([previewData, sentData]) => {
+      fetch(`/api/admin/bulk-emails/${email.id}/preview`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`/api/admin/bulk-emails/${email.id}/sent`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`/api/admin/bulk-emails/${email.id}/scheduled`, { headers: authHeaders }).then(r => r.json()),
+    ]).then(([previewData, sentData, scheduledData]) => {
       setPreview(previewData)
       setSentEmails(new Set((sentData.sent || []).map((r: any) => r.email)))
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+      setScheduled(scheduledData.scheduled || [])
+      setLoadingAux(false)
+    }).catch(() => setLoadingAux(false))
+  }
+
+  useEffect(() => { if (open) loadAux() }, [open, email.id])
 
   const candidates = userList.filter(u =>
     u.sub?.status === 'trial' && !u.sub?.is_test && u.evaluationsCount <= maxEvals
@@ -452,134 +484,362 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
   // ya se le mandó.
   useEffect(() => {
     setSelected(new Set(candidates.filter(u => !sentEmails.has(u.email)).map(u => u.email)))
-    setResult(null)
+    setSendResult(null)
   }, [maxEvals, userList.length, sentEmails.size])
 
-  const toggle = (email: string) => {
+  const toggle = (addr: string) => {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(email) ? next.delete(email) : next.add(email)
+      next.has(addr) ? next.delete(addr) : next.add(addr)
       return next
     })
+  }
+
+  const startEdit = () => {
+    setForm({
+      titulo: email.titulo, asunto: email.asunto, cuerpo: email.cuerpo,
+      cta1_texto: email.cta1_texto || '', cta1_url: email.cta1_url || '',
+      cta2_texto: email.cta2_texto || '', cta2_url: email.cta2_url || '',
+    })
+    setSaveError('')
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    setSaveError('')
+    if (!form.titulo.trim() || !form.asunto.trim()) { setSaveError('Título y asunto son requeridos'); return }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/admin/bulk-emails/${email.id}`, {
+        method: 'PUT', headers: authHeaders, body: JSON.stringify(form),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
+      setEditing(false)
+      onChanged()
+      loadAux()
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!window.confirm(`¿Eliminar el correo "${email.titulo}"? Esta acción no se puede deshacer.`)) return
+    await fetch(`/api/admin/bulk-emails/${email.id}`, { method: 'DELETE', headers: authHeaders })
+    onDeleted()
   }
 
   const send = async () => {
     if (selected.size === 0) return
     if (!window.confirm(`¿Enviar este correo a ${selected.size} usuario${selected.size === 1 ? '' : 's'}? Esta acción no se puede deshacer.`)) return
     setSending(true)
-    setError('')
-    setResult(null)
+    setSendError('')
+    setSendResult(null)
     try {
-      const res = await fetch('/api/admin/bulk-email', {
-        method: 'POST', headers: authHeaders,
-        body: JSON.stringify({ campaign: BULK_CAMPAIGN, emails: Array.from(selected) }),
+      const res = await fetch(`/api/admin/bulk-emails/${email.id}/send`, {
+        method: 'POST', headers: authHeaders, body: JSON.stringify({ emails: Array.from(selected) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al enviar')
-      setResult(data)
+      setSendResult(data)
       setSentEmails(prev => new Set([...prev, ...data.sent]))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al enviar')
+      setSendError(err instanceof Error ? err.message : 'Error al enviar')
     } finally {
       setSending(false)
+    }
+  }
+
+  const schedule = async () => {
+    setScheduleError('')
+    if (!scheduleDate) { setScheduleError('Elige una fecha'); return }
+    setScheduling(true)
+    try {
+      const res = await fetch(`/api/admin/bulk-emails/${email.id}/scheduled`, {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ send_date: scheduleDate, max_evals: scheduleMaxEvals }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al programar')
+      setScheduled(prev => [...prev, data.scheduled])
+      setScheduleDate('')
+    } catch (err: unknown) {
+      setScheduleError(err instanceof Error ? err.message : 'Error al programar')
+    } finally {
+      setScheduling(false)
+    }
+  }
+
+  const cancelScheduled = async (id: string) => {
+    if (!window.confirm('¿Cancelar este envío programado?')) return
+    await fetch(`/api/admin/scheduled/${id}`, { method: 'DELETE', headers: authHeaders })
+    setScheduled(prev => prev.filter(s => s.id !== id))
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  return (
+    <div className="border border-gray-800 rounded-lg overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800/30 transition-colors text-left">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-white font-medium text-sm truncate">{email.titulo}</span>
+          <span className="text-gray-500 text-xs truncate hidden sm:inline">{email.asunto}</span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {scheduled.some(s => s.status === 'pending') && (
+            <span className="bg-blue-600/20 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Programado</span>
+          )}
+          {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
+
+          {/* Edición de texto */}
+          {editing ? (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+              <input placeholder="Título interno" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+              <input placeholder="Asunto del correo" value={form.asunto} onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+              <textarea
+                placeholder="Cuerpo del correo. Deja una línea en blanco entre párrafos. Las líneas que empiecen con '- ' se muestran como lista."
+                value={form.cuerpo} onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))} rows={8}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input placeholder="Texto botón principal (opcional)" value={form.cta1_texto} onChange={e => setForm(f => ({ ...f, cta1_texto: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+                <input placeholder="URL botón principal" value={form.cta1_url} onChange={e => setForm(f => ({ ...f, cta1_url: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+                <input placeholder="Texto link secundario (opcional)" value={form.cta2_texto} onChange={e => setForm(f => ({ ...f, cta2_texto: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+                <input placeholder="URL link secundario" value={form.cta2_url} onChange={e => setForm(f => ({ ...f, cta2_url: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+              </div>
+              {saveError && <p className="text-red-400 text-xs">{saveError}</p>}
+              <div className="flex gap-2">
+                <button onClick={saveEdit} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
+                  <Save size={13} /> {saving ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+                <button onClick={() => setEditing(false)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+                  <X size={13} /> Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={startEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs">
+                <Pencil size={13} /> Editar texto
+              </button>
+              <button onClick={remove} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-400 rounded-lg text-xs">
+                <Trash2 size={13} /> Eliminar correo
+              </button>
+            </div>
+          )}
+
+          {/* Preview */}
+          {loadingAux ? (
+            <p className="text-gray-500 text-xs">Cargando...</p>
+          ) : preview && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
+              <div className="px-4 py-2 border-b border-gray-700 text-xs text-gray-400">
+                Vista previa · Asunto: <span className="text-white">{preview.subject}</span>
+              </div>
+              <iframe title={`preview-${email.id}`} srcDoc={preview.html} className="w-full bg-white" style={{ height: 380 }} />
+            </div>
+          )}
+
+          {/* Programar envío */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+            <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Programar envío</h4>
+            <p className="text-[11px] text-gray-500">
+              Se envía en algún momento del día elegido, no a una hora exacta (el servidor revisa una vez al día). La audiencia se recalcula justo antes de enviar, para no mandarle el correo a alguien que ya pagó o dejó de calificar el filtro entre medio.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-xs text-gray-400 flex flex-col gap-1">
+                Fecha
+                <input type="date" min={today} value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+              </label>
+              <label className="text-xs text-gray-400 flex flex-col gap-1">
+                Audiencia
+                <select value={scheduleMaxEvals} onChange={e => setScheduleMaxEvals(Number(e.target.value))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                  <option value={0}>Trial con 0 ofertas evaluadas</option>
+                  <option value={1}>Trial con 1 o menos</option>
+                  <option value={2}>Trial con 2 o menos</option>
+                  <option value={3}>Trial con 3 o menos</option>
+                </select>
+              </label>
+              <button onClick={schedule} disabled={scheduling} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
+                <Plus size={13} /> {scheduling ? 'Programando...' : 'Programar'}
+              </button>
+            </div>
+            {scheduleError && <p className="text-red-400 text-xs">{scheduleError}</p>}
+            {scheduled.length > 0 && (
+              <div className="space-y-1 pt-1">
+                {scheduled.map(s => (
+                  <div key={s.id} className="flex items-center justify-between text-xs bg-gray-900/50 rounded px-3 py-1.5">
+                    <span className="text-gray-300">
+                      {new Date(s.send_date + 'T00:00:00').toLocaleDateString('es-CL')} · audiencia ≤{s.max_evals} evaluadas
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={
+                        s.status === 'pending' ? 'text-blue-400' :
+                        s.status === 'sent' ? 'text-green-400' :
+                        s.status === 'failed' ? 'text-red-400' : 'text-gray-500'
+                      }>
+                        {s.status === 'pending' ? 'Pendiente' : s.status === 'sent' ? `Enviado (${s.result?.sent?.length ?? 0})` : s.status === 'failed' ? 'Falló' : 'Cancelado'}
+                      </span>
+                      {s.status === 'pending' && (
+                        <button onClick={() => cancelScheduled(s.id)} className="text-gray-500 hover:text-red-400"><X size={12} /></button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {sendError && <p className="text-red-400 text-xs">{sendError}</p>}
+
+          {sendResult && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-xs space-y-1">
+              <p className="text-green-400">Enviados: {sendResult.sent.length}</p>
+              {sendResult.skipped.length > 0 && <p className="text-gray-400">Ya habían recibido este correo (omitidos): {sendResult.skipped.length}</p>}
+              {sendResult.failed.length > 0 && (
+                <div className="text-red-400">
+                  Fallaron: {sendResult.failed.length}
+                  <ul className="list-disc pl-4 mt-1">
+                    {sendResult.failed.map(f => <li key={f.email}>{f.email}: {f.error}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Envío manual ahora */}
+          <div>
+            <label className="text-xs text-gray-400 flex items-center gap-2 mb-2">
+              Mostrar usuarios en trial con
+              <select value={maxEvals} onChange={e => setMaxEvals(Number(e.target.value))}
+                className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500">
+                <option value={0}>0 ofertas evaluadas</option>
+                <option value={1}>1 o menos ofertas evaluadas</option>
+                <option value={2}>2 o menos ofertas evaluadas</option>
+                <option value={3}>3 o menos ofertas evaluadas</option>
+              </select>
+            </label>
+
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">{selected.size} de {candidates.length} seleccionados</p>
+              <button onClick={send} disabled={sending || selected.size === 0}
+                className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+                <Send size={14} /> {sending ? 'Enviando...' : 'Enviar correo ahora'}
+              </button>
+            </div>
+
+            {candidates.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6">Sin usuarios que cumplan este filtro.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+                    <th className="text-left px-3 py-2 w-8"></th>
+                    <th className="text-left px-3 py-2">Email</th>
+                    <th className="text-left px-3 py-2">Registro</th>
+                    <th className="text-right px-3 py-2">Ofertas evaluadas</th>
+                    <th className="text-right px-3 py-2">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidates.map(u => {
+                    const wasSent = sentEmails.has(u.email)
+                    return (
+                      <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                        <td className="px-3 py-2">
+                          <input type="checkbox" checked={selected.has(u.email)} onChange={() => toggle(u.email)} />
+                        </td>
+                        <td className="px-3 py-2 text-white">{u.email}</td>
+                        <td className="px-3 py-2 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
+                        <td className="px-3 py-2 text-right text-gray-300">{u.evaluationsCount}</td>
+                        <td className="px-3 py-2 text-right">
+                          {wasSent
+                            ? <span className="text-green-400 text-xs">Ya enviado</span>
+                            : <span className="text-gray-600 text-xs">—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[] }) {
+  const [emails, setEmails] = useState<BulkEmail[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [newestId, setNewestId] = useState<string | null>(null)
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch('/api/admin/bulk-emails', { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setEmails(d.emails || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const createNew = async () => {
+    setCreating(true)
+    try {
+      const res = await fetch('/api/admin/bulk-emails', {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ titulo: 'Nuevo correo', asunto: 'Asunto del correo', cuerpo: '' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setNewestId(data.email.id)
+        load()
+      }
+    } finally {
+      setCreating(false)
     }
   }
 
   if (loading) return <p className="text-gray-500 text-sm p-5">Cargando...</p>
 
   return (
-    <div className="p-5 space-y-5">
-      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-white">Correo de activación — usuarios en trial con poco uso</h3>
-        <p className="text-xs text-gray-500">
-          Recuerda a usuarios en trial que pueden evaluar ofertas con IA, optimizar su CV y postular. Incluye botón "Aprende a usar Ergania".
-        </p>
-        <label className="text-xs text-gray-400 flex items-center gap-2">
-          Mostrar usuarios en trial con
-          <select
-            value={maxEvals}
-            onChange={e => setMaxEvals(Number(e.target.value))}
-            className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value={0}>0 ofertas evaluadas</option>
-            <option value={1}>1 o menos ofertas evaluadas</option>
-            <option value={2}>2 o menos ofertas evaluadas</option>
-            <option value={3}>3 o menos ofertas evaluadas</option>
-          </select>
-        </label>
-      </div>
-
-      {preview && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-700 text-xs text-gray-400">
-            Vista previa · Asunto: <span className="text-white">{preview.subject}</span>
-          </div>
-          <iframe title="preview" srcDoc={preview.html} className="w-full bg-white" style={{ height: 420 }} />
-        </div>
-      )}
-
-      {error && <p className="text-red-400 text-xs">{error}</p>}
-
-      {result && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-xs space-y-1">
-          <p className="text-green-400">Enviados: {result.sent.length}</p>
-          {result.skipped.length > 0 && <p className="text-gray-400">Ya habían recibido este correo (omitidos): {result.skipped.length}</p>}
-          {result.failed.length > 0 && (
-            <div className="text-red-400">
-              Fallaron: {result.failed.length}
-              <ul className="list-disc pl-4 mt-1">
-                {result.failed.map(f => <li key={f.email}>{f.email}: {f.error}</li>)}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">{selected.size} de {candidates.length} seleccionados</p>
-        <button
-          onClick={send}
-          disabled={sending || selected.size === 0}
-          className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-        >
-          <Send size={14} /> {sending ? 'Enviando...' : 'Enviar correo'}
+    <div className="p-5 space-y-3">
+      <div className="flex justify-end">
+        <button onClick={createNew} disabled={creating}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
+          <Plus size={13} /> {creating ? 'Creando...' : 'Nuevo correo'}
         </button>
       </div>
 
-      {candidates.length === 0 ? (
-        <p className="text-gray-600 text-sm text-center py-6">Sin usuarios que cumplan este filtro.</p>
+      {emails.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin correos guardados todavía.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
-              <th className="text-left px-3 py-2 w-8"></th>
-              <th className="text-left px-3 py-2">Email</th>
-              <th className="text-left px-3 py-2">Registro</th>
-              <th className="text-right px-3 py-2">Ofertas evaluadas</th>
-              <th className="text-right px-3 py-2">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {candidates.map(u => {
-              const wasSent = sentEmails.has(u.email)
-              return (
-                <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                  <td className="px-3 py-2">
-                    <input type="checkbox" checked={selected.has(u.email)} onChange={() => toggle(u.email)} />
-                  </td>
-                  <td className="px-3 py-2 text-white">{u.email}</td>
-                  <td className="px-3 py-2 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
-                  <td className="px-3 py-2 text-right text-gray-300">{u.evaluationsCount}</td>
-                  <td className="px-3 py-2 text-right">
-                    {wasSent
-                      ? <span className="text-green-400 text-xs">Ya enviado</span>
-                      : <span className="text-gray-600 text-xs">—</span>}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        <div className="space-y-2">
+          {emails.map(e => (
+            <BulkEmailCard
+              key={e.id} email={e} token={token} userList={userList}
+              onChanged={load} onDeleted={load}
+              startOpen={e.id === newestId}
+            />
+          ))}
+        </div>
       )}
     </div>
   )

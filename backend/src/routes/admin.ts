@@ -4,7 +4,9 @@ import {
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
   listReceipts, downloadReceiptPdf,
-  listBulkEmailSent, sendBulkEmail, getBulkEmailPreview,
+  listBulkEmails, createBulkEmail, updateBulkEmail, deleteBulkEmail,
+  getBulkEmailPreview, listBulkEmailSent, sendBulkEmail,
+  listScheduledEmails, createScheduledEmail, deleteScheduledEmail, runScheduledBulkEmails,
 } from '../controllers/adminController'
 
 const router = Router()
@@ -30,8 +32,16 @@ router.put('/reports/:id', updateReport)
 router.delete('/reports/:id', deleteReport)
 router.get('/reports/:id/pdf', downloadReportPdf)
 
-router.get('/bulk-email/preview', getBulkEmailPreview)
-router.get('/bulk-email/sent', listBulkEmailSent)
-router.post('/bulk-email', sendBulkEmail)
+router.get('/bulk-emails', listBulkEmails)
+router.post('/bulk-emails', createBulkEmail)
+router.put('/bulk-emails/:id', updateBulkEmail)
+router.delete('/bulk-emails/:id', deleteBulkEmail)
+router.get('/bulk-emails/:id/preview', getBulkEmailPreview)
+router.get('/bulk-emails/:id/sent', listBulkEmailSent)
+router.post('/bulk-emails/:id/send', sendBulkEmail)
+router.get('/bulk-emails/:id/scheduled', listScheduledEmails)
+router.post('/bulk-emails/:id/scheduled', createScheduledEmail)
+router.delete('/scheduled/:id', deleteScheduledEmail)
+router.get('/bulk-email/run-scheduled', runScheduledBulkEmails)
 
 export { router as adminRoutes }
