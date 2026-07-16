@@ -102,6 +102,27 @@ export default function Privacy() {
           </p>
         </Section>
 
+        <Section title="Contenido de terceros y portales de empleo">
+          <p style={{ marginBottom: 12 }}>
+            Ergania recopila y muestra información pública disponible en portales de empleo de
+            terceros (como LinkedIn, Indeed, GetOnBoard, Computrabajo, Bumeran, Laborum,
+            Trabajando.cl, entre otros) y en las ofertas de trabajo que tú mismo agregas o que
+            evaluamos a tu solicitud. Esta información es propiedad de cada portal o empleador;
+            Ergania no la verifica, edita ni garantiza.
+          </p>
+          <p style={{ marginBottom: 12 }}>
+            No nos hacemos responsables por la exactitud, vigencia, legalidad o contenido de las
+            ofertas, avisos o páginas de terceros a los que hacemos referencia o enlazamos. Te
+            recomendamos siempre confirmar directamente con el portal o empleador original antes
+            de postular, compartir tus datos o tomar decisiones basadas en esa información.
+          </p>
+          <p>
+            Si usas un servicio de un tercero al que Ergania te dirige (por ejemplo, al postular
+            en un portal externo), ese uso queda sujeto a los términos y políticas de privacidad
+            de ese tercero, no a los nuestros.
+          </p>
+        </Section>
+
         <Section title="Tus derechos">
           <p>
             Puedes pedirnos acceder, corregir o eliminar tus datos personales, o cerrar tu cuenta
