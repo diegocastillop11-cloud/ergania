@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchSubscriptionStatus, startCheckout, cancelSubscription, ComputedStatus } from '../lib/subscriptionApi'
+import { fetchSubscriptionStatus, startCheckout, startPayPalCheckout, cancelSubscription, ComputedStatus } from '../lib/subscriptionApi'
 
 export type SubscriptionState = {
   loading: boolean
   status: ComputedStatus['status']
   daysLeft: number | null
   isActive: boolean   // trial, active, o pending_payment dentro del trial
+  paymentProvider?: 'mercadopago' | 'paypal'
+  paymentSuspended: boolean
   openCheckout: () => Promise<void>
+  openPayPalCheckout: () => Promise<void>
   cancel: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -34,6 +37,11 @@ export function useSubscription(): SubscriptionState {
     window.location.href = checkoutUrl
   }
 
+  const openPayPalCheckout = async () => {
+    const { checkoutUrl } = await startPayPalCheckout()
+    window.location.href = checkoutUrl
+  }
+
   const cancel = async () => {
     await cancelSubscription()
     await load()
@@ -49,7 +57,10 @@ export function useSubscription(): SubscriptionState {
     status: computed.status,
     daysLeft: computed.daysLeft,
     isActive,
+    paymentProvider: computed.paymentProvider,
+    paymentSuspended: computed.paymentSuspended ?? false,
     openCheckout,
+    openPayPalCheckout,
     cancel,
     refresh: load,
   }

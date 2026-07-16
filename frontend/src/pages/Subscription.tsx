@@ -14,17 +14,29 @@ const STATUS_CFG = {
 export default function Subscription() {
   const sub = useSubscription()
   const [cancelling, setCancelling]       = useState(false)
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutProvider, setCheckoutProvider] = useState<'mercadopago' | 'paypal' | null>(null)
   const [error, setError]                 = useState<string | null>(null)
   const [cancelled, setCancelled]         = useState(false)
 
+  const checkoutLoading = checkoutProvider !== null
+
   const handleSubscribe = async () => {
-    setCheckoutLoading(true)
+    setCheckoutProvider('mercadopago')
     setError(null)
     try { await sub.openCheckout() }
     catch (e) {
       setError(e instanceof Error ? e.message : 'Error al conectar con MercadoPago')
-      setCheckoutLoading(false)
+      setCheckoutProvider(null)
+    }
+  }
+
+  const handleSubscribePayPal = async () => {
+    setCheckoutProvider('paypal')
+    setError(null)
+    try { await sub.openPayPalCheckout() }
+    catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al conectar con PayPal')
+      setCheckoutProvider(null)
     }
   }
 
@@ -99,7 +111,8 @@ export default function Subscription() {
           </div>
           <div className="text-right">
             <p className="text-lg font-bold text-white">$9.990</p>
-            <p className="text-xs text-gray-500">CLP / mes</p>
+            <p className="text-xs text-gray-500">CLP / mes con Mercado Pago</p>
+            <p className="text-sm font-semibold text-gray-300 mt-1">USD $12.99 / mes con PayPal</p>
           </div>
         </div>
       </div>
@@ -109,14 +122,24 @@ export default function Subscription() {
 
       {/* Acciones */}
       {canSubscribe && (
-        <button
-          onClick={handleSubscribe}
-          disabled={checkoutLoading}
-          className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors mb-3"
-        >
-          {checkoutLoading ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
-          Suscribirse — $9.990/mes con MercadoPago
-        </button>
+        <div className="flex flex-col gap-2 mb-3">
+          <button
+            onClick={handleSubscribe}
+            disabled={checkoutLoading}
+            className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            {checkoutProvider === 'mercadopago' ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
+            Suscribirse — $9.990/mes con Mercado Pago
+          </button>
+          <button
+            onClick={handleSubscribePayPal}
+            disabled={checkoutLoading}
+            className="w-full flex items-center justify-center gap-2 bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            {checkoutProvider === 'paypal' && <Loader2 size={15} className="animate-spin" />}
+            Pay with PayPal — USD $12.99/mo
+          </button>
+        </div>
       )}
 
       {canCancel && (

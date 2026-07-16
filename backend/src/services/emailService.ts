@@ -81,32 +81,6 @@ export async function sendContactReply(to: string, name: string, replyText: stri
   await sendEmail(to, 'Respuesta a tu mensaje — Ergania', html)
 }
 
-export async function sendRenewalReminder(to: string, daysLeft: number) {
-  const dias = daysLeft <= 0 ? 'hoy' : daysLeft === 1 ? 'mañana' : `en ${daysLeft} días`
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
-        Tu plan de Ergania vence ${dias}
-      </h2>
-      <p style="color:#333;line-height:1.6;">
-        Para seguir usando tu perfil, tus postulaciones y el escáner de ofertas sin interrupciones,
-        renueva tu plan mensual de $9.990 CLP antes del vencimiento.
-      </p>
-      <div style="text-align:center;margin:28px 0;">
-        <a href="https://ergania.com/subscription"
-           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
-          Renovar mi plan
-        </a>
-      </div>
-      <p style="font-size:12px;color:#999;">
-        Si ya renovaste, ignora este correo. El pago no se cobra automáticamente — tú decides cuándo renovar.
-      </p>
-      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Recordatorio de suscripción</p>
-    </div>
-  `
-  await sendEmail(to, `Tu plan de Ergania vence ${dias} — renuévalo aquí`, html)
-}
-
 export async function sendSubscriptionConfirmation(
   to: string,
   opts: { monto: number; moneda: string; plan: string; fecha: string; paymentId: string },
@@ -141,8 +115,10 @@ export async function sendPaymentNotification(
   paymentId: string,
   amount: number,
   payerEmail: string,
+  moneda: string = 'CLP',
 ) {
   const date = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' })
+  const montoFmt = moneda === 'CLP' ? amount.toLocaleString('es-CL') : amount.toLocaleString('en-US')
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <h2 style="color:#16a34a;border-bottom:2px solid #16a34a;padding-bottom:8px;">
@@ -150,7 +126,7 @@ export async function sendPaymentNotification(
       </h2>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <tr><td style="padding:8px 0;color:#666;width:140px;"><strong>Fecha</strong></td><td style="padding:8px 0;">${date}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;"><strong>Monto</strong></td><td style="padding:8px 0;font-size:20px;font-weight:bold;color:#16a34a;">$${amount.toLocaleString('es-CL')} CLP</td></tr>
+        <tr><td style="padding:8px 0;color:#666;"><strong>Monto</strong></td><td style="padding:8px 0;font-size:20px;font-weight:bold;color:#16a34a;">$${montoFmt} ${moneda}</td></tr>
         <tr><td style="padding:8px 0;color:#666;"><strong>Email pagador</strong></td><td style="padding:8px 0;">${payerEmail}</td></tr>
         <tr><td style="padding:8px 0;color:#666;"><strong>User ID</strong></td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${userId}</td></tr>
         <tr><td style="padding:8px 0;color:#666;"><strong>Payment ID</strong></td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${paymentId}</td></tr>
@@ -158,5 +134,5 @@ export async function sendPaymentNotification(
       <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Notificación automática de pago</p>
     </div>
   `
-  await sendEmail(ADMIN_EMAIL, `[Ergania] Pago recibido — $${amount.toLocaleString('es-CL')} CLP`, html)
+  await sendEmail(ADMIN_EMAIL, `[Ergania] Pago recibido — $${montoFmt} ${moneda}`, html)
 }
