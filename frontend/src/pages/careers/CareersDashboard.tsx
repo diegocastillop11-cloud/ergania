@@ -1,7 +1,7 @@
 import { api } from '../../lib/api'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Briefcase, FileText, Send, Award, Clock, TrendingUp,
   Search, ChevronRight, Star, Download, Upload,
@@ -58,6 +58,13 @@ export default function CareersDashboard() {
   const [keysSaved, setKeysSaved] = useState(false)
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; ms?: number; model?: string; error?: string } | 'loading'>>({})
   const [showGuide, setShowGuide] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('guide') !== '1') return
+    setShowGuide(true)
+    setSearchParams(prev => { prev.delete('guide'); return prev }, { replace: true })
+  }, [searchParams])
 
   const handleTestAi = async (providerId: string) => {
     setTestResults(r => ({ ...r, [providerId]: 'loading' }))

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
-  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send,
+  Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ergania.ai@gmail.com'
@@ -414,6 +414,177 @@ function ReportsTab({ token }: { token: string }) {
   )
 }
 
+// ── Correos masivos ────────────────────────────────────────────────────────
+
+const BULK_CAMPAIGN = 'activacion_trial_v1'
+
+interface BulkUser { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }
+
+function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[] }) {
+  const [maxEvals, setMaxEvals] = useState(1)
+  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ sent: string[]; skipped: string[]; failed: { email: string; error: string }[] } | null>(null)
+  const [error, setError] = useState('')
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      fetch(`/api/admin/bulk-email/preview?campaign=${BULK_CAMPAIGN}`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`/api/admin/bulk-email/sent?campaign=${BULK_CAMPAIGN}`, { headers: authHeaders }).then(r => r.json()),
+    ]).then(([previewData, sentData]) => {
+      setPreview(previewData)
+      setSentEmails(new Set((sentData.sent || []).map((r: any) => r.email)))
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const candidates = userList.filter(u =>
+    u.sub?.status === 'trial' && !u.sub?.is_test && u.evaluationsCount <= maxEvals
+  )
+
+  // Al cambiar el filtro, selecciona por defecto a los candidatos que aún no
+  // recibieron este correo — así el envío nunca parte seleccionando a quien
+  // ya se le mandó.
+  useEffect(() => {
+    setSelected(new Set(candidates.filter(u => !sentEmails.has(u.email)).map(u => u.email)))
+    setResult(null)
+  }, [maxEvals, userList.length, sentEmails.size])
+
+  const toggle = (email: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(email) ? next.delete(email) : next.add(email)
+      return next
+    })
+  }
+
+  const send = async () => {
+    if (selected.size === 0) return
+    if (!window.confirm(`¿Enviar este correo a ${selected.size} usuario${selected.size === 1 ? '' : 's'}? Esta acción no se puede deshacer.`)) return
+    setSending(true)
+    setError('')
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/bulk-email', {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ campaign: BULK_CAMPAIGN, emails: Array.from(selected) }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al enviar')
+      setResult(data)
+      setSentEmails(prev => new Set([...prev, ...data.sent]))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al enviar')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (loading) return <p className="text-gray-500 text-sm p-5">Cargando...</p>
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">Correo de activación — usuarios en trial con poco uso</h3>
+        <p className="text-xs text-gray-500">
+          Recuerda a usuarios en trial que pueden evaluar ofertas con IA, optimizar su CV y postular. Incluye botón "Aprende a usar Ergania".
+        </p>
+        <label className="text-xs text-gray-400 flex items-center gap-2">
+          Mostrar usuarios en trial con
+          <select
+            value={maxEvals}
+            onChange={e => setMaxEvals(Number(e.target.value))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+          >
+            <option value={0}>0 ofertas evaluadas</option>
+            <option value={1}>1 o menos ofertas evaluadas</option>
+            <option value={2}>2 o menos ofertas evaluadas</option>
+            <option value={3}>3 o menos ofertas evaluadas</option>
+          </select>
+        </label>
+      </div>
+
+      {preview && (
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-700 text-xs text-gray-400">
+            Vista previa · Asunto: <span className="text-white">{preview.subject}</span>
+          </div>
+          <iframe title="preview" srcDoc={preview.html} className="w-full bg-white" style={{ height: 420 }} />
+        </div>
+      )}
+
+      {error && <p className="text-red-400 text-xs">{error}</p>}
+
+      {result && (
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-xs space-y-1">
+          <p className="text-green-400">Enviados: {result.sent.length}</p>
+          {result.skipped.length > 0 && <p className="text-gray-400">Ya habían recibido este correo (omitidos): {result.skipped.length}</p>}
+          {result.failed.length > 0 && (
+            <div className="text-red-400">
+              Fallaron: {result.failed.length}
+              <ul className="list-disc pl-4 mt-1">
+                {result.failed.map(f => <li key={f.email}>{f.email}: {f.error}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">{selected.size} de {candidates.length} seleccionados</p>
+        <button
+          onClick={send}
+          disabled={sending || selected.size === 0}
+          className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+        >
+          <Send size={14} /> {sending ? 'Enviando...' : 'Enviar correo'}
+        </button>
+      </div>
+
+      {candidates.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin usuarios que cumplan este filtro.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+              <th className="text-left px-3 py-2 w-8"></th>
+              <th className="text-left px-3 py-2">Email</th>
+              <th className="text-left px-3 py-2">Registro</th>
+              <th className="text-right px-3 py-2">Ofertas evaluadas</th>
+              <th className="text-right px-3 py-2">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {candidates.map(u => {
+              const wasSent = sentEmails.has(u.email)
+              return (
+                <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={selected.has(u.email)} onChange={() => toggle(u.email)} />
+                  </td>
+                  <td className="px-3 py-2 text-white">{u.email}</td>
+                  <td className="px-3 py-2 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
+                  <td className="px-3 py-2 text-right text-gray-300">{u.evaluationsCount}</td>
+                  <td className="px-3 py-2 text-right">
+                    {wasSent
+                      ? <span className="text-green-400 text-xs">Ya enviado</span>
+                      : <span className="text-gray-600 text-xs">—</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   trial:           { label: 'Trial',     color: 'text-blue-400'   },
   active:          { label: 'Activo',    color: 'text-green-400'  },
@@ -456,7 +627,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes'>('users')
+  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes' | 'bulkemail'>('users')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -666,6 +837,7 @@ export default function Admin() {
               { key: 'messages', label: 'Mensajes contacto', icon: MessageSquare },
               { key: 'salaries', label: 'Salarios',           icon: DollarSign },
               { key: 'reportes', label: 'Reportes',           icon: FileText },
+              { key: 'bulkemail', label: 'Correos masivos',    icon: Megaphone },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -882,6 +1054,9 @@ export default function Admin() {
 
             {/* Reportes internos */}
             {tab === 'reportes' && session && <ReportsTab token={session.access_token} />}
+
+            {/* Correos masivos */}
+            {tab === 'bulkemail' && session && <BulkEmailTab token={session.access_token} userList={stats.userList} />}
 
           </div>
         </div>

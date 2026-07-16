@@ -398,3 +398,77 @@ export async function deleteUser(req: Request, res: Response) {
   if (error) return res.status(500).json({ error: error.message })
   res.json({ ok: true })
 }
+
+const BULK_EMAIL_SENDERS: Record<string, (to: string) => Promise<void>> = {
+  activacion_trial_v1: async (to: string) => {
+    const { sendActivationEmail } = await import('../services/emailService')
+    await sendActivationEmail(to)
+  },
+}
+
+export async function getBulkEmailPreview(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+
+  const campaign = String(req.query.campaign || '')
+  if (campaign !== 'activacion_trial_v1') return res.status(400).json({ error: 'Campaña desconocida' })
+
+  const { ACTIVATION_EMAIL_SUBJECT, buildActivationEmailHtml } = await import('../services/emailService')
+  res.json({ subject: ACTIVATION_EMAIL_SUBJECT, html: buildActivationEmailHtml() })
+}
+
+export async function listBulkEmailSent(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const campaign = String(req.query.campaign || '')
+  if (!BULK_EMAIL_SENDERS[campaign]) return res.status(400).json({ error: 'Campaña desconocida' })
+
+  const { data, error } = await supabaseAdmin
+    .from('bulk_email_log')
+    .select('email, sent_at')
+    .eq('campaign', campaign)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ sent: data ?? [] })
+}
+
+// Envío secuencial con pausa entre correos para no pasarse del rate limit de
+// Resend — no hay colas/workers en este proyecto (serverless function única),
+// así que esto corre dentro de la misma request del botón "Enviar correo".
+export async function sendBulkEmail(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { campaign, emails } = req.body ?? {}
+  const sender = BULK_EMAIL_SENDERS[campaign]
+  if (!sender) return res.status(400).json({ error: 'Campaña desconocida' })
+  if (!Array.isArray(emails) || emails.length === 0) return res.status(400).json({ error: 'Sin destinatarios' })
+  if (emails.length > 300) return res.status(400).json({ error: 'Máximo 300 destinatarios por envío' })
+
+  const { data: already } = await supabaseAdmin
+    .from('bulk_email_log')
+    .select('email')
+    .eq('campaign', campaign)
+    .in('email', emails)
+  const alreadySent = new Set((already ?? []).map((r: any) => r.email))
+
+  const sent: string[] = []
+  const skipped: string[] = []
+  const failed: { email: string; error: string }[] = []
+
+  for (const email of emails) {
+    if (alreadySent.has(email)) { skipped.push(email); continue }
+    try {
+      await sender(email)
+      await supabaseAdmin.from('bulk_email_log').insert({ campaign, email })
+      sent.push(email)
+    } catch (err: unknown) {
+      failed.push({ email, error: (err as Error).message || 'Error desconocido' })
+    }
+    await new Promise(r => setTimeout(r, 400))
+  }
+
+  res.json({ sent, skipped, failed })
+}
