@@ -423,25 +423,26 @@ function buildBulkEmailHtml(email: {
   cta1_texto: string | null; cta1_url: string | null
   cta2_texto: string | null; cta2_url: string | null
 }): string {
+  // Estilo deliberadamente "plano" (sin botón con fondo de color, sin header
+  // con línea de marca) — un botón tipo marketing es una de las señales que
+  // más pesa para que Gmail clasifique el correo como Promociones en vez de
+  // Principal. La frase de darte de baja se mantiene: protege ante reportes
+  // de spam aunque reste algo de chance de caer en Principal.
   const cta1 = email.cta1_texto && email.cta1_url ? `
-      <div style="text-align:center;margin:28px 0;">
-        <a href="${escBulk(email.cta1_url)}"
-           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+      <p style="margin:20px 0;">
+        <a href="${escBulk(email.cta1_url)}" style="color:#C4633A;text-decoration:underline;font-weight:bold;">
           ${escBulk(email.cta1_texto)}
         </a>
-      </div>` : ''
+      </p>` : ''
   const cta2 = email.cta2_texto && email.cta2_url ? `
-      <div style="text-align:center;margin:0 0 20px;">
-        <a href="${escBulk(email.cta2_url)}"
-           style="color:#C4633A;text-decoration:underline;font-weight:bold;font-size:14px;">
+      <p style="margin:0 0 20px;">
+        <a href="${escBulk(email.cta2_url)}" style="color:#C4633A;text-decoration:underline;">
           ${escBulk(email.cta2_texto)}
         </a>
-      </div>` : ''
+      </p>` : ''
   return `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
-        ${escBulk(email.titulo)}
-      </h2>
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#333;">
+      <p style="font-weight:bold;font-size:16px;margin:0 0 16px;">${escBulk(email.titulo)}</p>
       ${renderBulkEmailBody(email.cuerpo)}
       ${cta1}
       ${cta2}
