@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
 } from 'lucide-react'
 
-const ADMIN_EMAIL = 'ergania.ai@gmail.com'
+const ADMIN_EMAILS = ['ergania.ai@gmail.com', 'diego.castillop11@gmail.com', 'emesmediacontact@gmail.com']
 
 interface SalaryAnchor {
   id: string
@@ -969,7 +969,7 @@ export default function Admin() {
   useEffect(() => {
     if (authLoading) return // todavía resolviendo la sesión inicial — no decidir nada aún
     if (!session) { navigate('/login'); return }
-    if (user?.email !== ADMIN_EMAIL) { navigate('/dashboard'); return }
+    if (!user?.email || !ADMIN_EMAILS.includes(user.email)) { navigate('/dashboard'); return }
     loadStats()
   }, [session, user, authLoading])
 

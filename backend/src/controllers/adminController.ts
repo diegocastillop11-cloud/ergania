@@ -2,7 +2,10 @@ import { Request, Response } from 'express'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
 
-const ADMIN_EMAIL = 'ergania.ai@gmail.com'
+const ADMIN_EMAILS = ['ergania.ai@gmail.com', 'diego.castillop11@gmail.com', 'emesmediacontact@gmail.com']
+function isAdmin(email: string | undefined | null): boolean {
+  return !!email && ADMIN_EMAILS.includes(email)
+}
 
 const TIPO_LABEL: Record<string, string> = {
   correccion: 'Corrección',
@@ -92,7 +95,7 @@ async function getAdminUser(req: Request) {
 
 export async function getStats(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || !isAdmin(user.email)) {
     return res.status(403).json({ error: 'Acceso denegado' })
   }
 
@@ -164,7 +167,7 @@ export async function getStats(req: Request, res: Response) {
 
 export async function listSalaryAnchors(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin
@@ -177,7 +180,7 @@ export async function listSalaryAnchors(req: Request, res: Response) {
 
 export async function createSalaryAnchor(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { carrera, pais, rango_min, rango_max, moneda, nota } = req.body ?? {}
@@ -196,7 +199,7 @@ export async function createSalaryAnchor(req: Request, res: Response) {
 
 export async function updateSalaryAnchor(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { carrera, pais, rango_min, rango_max, moneda, nota } = req.body ?? {}
@@ -210,7 +213,7 @@ export async function updateSalaryAnchor(req: Request, res: Response) {
 
 export async function deleteSalaryAnchor(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { error } = await supabaseAdmin.from('salary_anchors').delete().eq('id', req.params.id)
@@ -220,7 +223,7 @@ export async function deleteSalaryAnchor(req: Request, res: Response) {
 
 export async function listReports(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin
@@ -234,7 +237,7 @@ export async function listReports(req: Request, res: Response) {
 
 export async function createReport(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { tipo, titulo, fecha, contenido, checklist, observaciones } = req.body ?? {}
@@ -257,7 +260,7 @@ export async function createReport(req: Request, res: Response) {
 
 export async function updateReport(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { tipo, titulo, fecha, contenido, checklist, observaciones } = req.body ?? {}
@@ -271,7 +274,7 @@ export async function updateReport(req: Request, res: Response) {
 
 export async function deleteReport(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { error } = await supabaseAdmin.from('internal_reports').delete().eq('id', req.params.id)
@@ -281,7 +284,7 @@ export async function deleteReport(req: Request, res: Response) {
 
 export async function downloadReportPdf(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data: report, error } = await supabaseAdmin
@@ -305,7 +308,7 @@ export async function downloadReportPdf(req: Request, res: Response) {
 
 export async function listReceipts(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin
@@ -318,7 +321,7 @@ export async function listReceipts(req: Request, res: Response) {
 
 export async function downloadReceiptPdf(req: Request, res: Response) {
   const user = await getAdminUser(req)
-  if (!user || user.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data: receipt, error } = await supabaseAdmin
@@ -342,7 +345,7 @@ export async function downloadReceiptPdf(req: Request, res: Response) {
 
 export async function replyToMessage(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { reply } = req.body ?? {}
@@ -373,7 +376,7 @@ export async function replyToMessage(req: Request, res: Response) {
 
 export async function setUserTestFlag(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { isTest } = req.body ?? {}
@@ -387,7 +390,7 @@ export async function setUserTestFlag(req: Request, res: Response) {
 
 export async function deleteUser(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const targetId = req.params.id
@@ -453,7 +456,7 @@ function buildBulkEmailHtml(email: {
 
 export async function listBulkEmails(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').order('created_at', { ascending: true })
@@ -463,7 +466,7 @@ export async function listBulkEmails(req: Request, res: Response) {
 
 export async function createBulkEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
@@ -484,7 +487,7 @@ export async function createBulkEmail(req: Request, res: Response) {
 
 export async function updateBulkEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
@@ -504,7 +507,7 @@ export async function updateBulkEmail(req: Request, res: Response) {
 
 export async function deleteBulkEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { error } = await supabaseAdmin.from('bulk_emails').delete().eq('id', req.params.id)
@@ -514,7 +517,7 @@ export async function deleteBulkEmail(req: Request, res: Response) {
 
 export async function getBulkEmailPreview(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
@@ -524,7 +527,7 @@ export async function getBulkEmailPreview(req: Request, res: Response) {
 
 export async function listBulkEmailSent(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin
@@ -571,7 +574,7 @@ async function sendBulkEmailBatch(bulkEmailId: string, subject: string, html: st
 
 export async function sendBulkEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { emails } = req.body ?? {}
@@ -619,7 +622,7 @@ async function loadTrialCandidates(maxEvals: number): Promise<string[]> {
 
 export async function listScheduledEmails(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { data, error } = await supabaseAdmin
@@ -633,7 +636,7 @@ export async function listScheduledEmails(req: Request, res: Response) {
 
 export async function createScheduledEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { send_date, max_evals } = req.body ?? {}
@@ -651,7 +654,7 @@ export async function createScheduledEmail(req: Request, res: Response) {
 
 export async function deleteScheduledEmail(req: Request, res: Response) {
   const admin = await getAdminUser(req)
-  if (!admin || admin.email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
   const { error } = await supabaseAdmin.from('scheduled_emails').delete().eq('id', req.params.id).eq('status', 'pending')
