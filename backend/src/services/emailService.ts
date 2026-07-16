@@ -81,6 +81,32 @@ export async function sendContactReply(to: string, name: string, replyText: stri
   await sendEmail(to, 'Respuesta a tu mensaje — Ergania', html)
 }
 
+export async function sendRenewalReminder(to: string, daysLeft: number) {
+  const dias = daysLeft <= 0 ? 'hoy' : daysLeft === 1 ? 'mañana' : `en ${daysLeft} días`
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
+        Tu plan de Ergania vence ${dias}
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        Para seguir usando tu perfil, tus postulaciones y el escáner de ofertas sin interrupciones,
+        renueva tu plan mensual de $9.990 CLP antes del vencimiento.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="https://ergania.com/subscription"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          Renovar mi plan
+        </a>
+      </div>
+      <p style="font-size:12px;color:#999;">
+        Si ya renovaste, ignora este correo. El pago no se cobra automáticamente — tú decides cuándo renovar.
+      </p>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Recordatorio de suscripción</p>
+    </div>
+  `
+  await sendEmail(to, `Tu plan de Ergania vence ${dias} — renuévalo aquí`, html)
+}
+
 export async function sendSubscriptionConfirmation(
   to: string,
   opts: { monto: number; moneda: string; plan: string; fecha: string; paymentId: string },

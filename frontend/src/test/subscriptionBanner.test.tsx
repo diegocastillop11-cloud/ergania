@@ -1,7 +1,7 @@
 /**
- * Tests de SubscriptionBanner: estados de trial/pago y los dos proveedores
- * (MercadoPago Preapproval + PayPal Subscriptions), ambos con cobro automático
- * — ya no existe recordatorio de renovación manual (ver 018_mp_preapproval.sql).
+ * Tests de SubscriptionBanner: estados de trial/pago y los dos proveedores.
+ * MP es Checkout Pro (pago manual, sí necesita recordatorio de renovación).
+ * PayPal es Subscriptions (cobro automático, no lo necesita).
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -21,22 +21,31 @@ const base: SubscriptionState = {
 }
 
 describe('SubscriptionBanner — plan activo', () => {
-  it('no muestra nada con plan activo y cobro al día, sin importar days left', () => {
+  it('no muestra nada con plan activo lejos de vencer', () => {
     const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 20 }} />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('no muestra nada con plan activo cerca de vencer — MP y PayPal cobran solos', () => {
-    // Antes de migrar MP a Preapproval, esto mostraba un recordatorio "Renovar".
-    // Con cobro automático en ambos proveedores, ya no hay nada que recordarle al usuario.
-    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 2 }} />)
+  it('no muestra nada con plan activo sin fecha de vencimiento', () => {
+    const { container } = render(<SubscriptionBanner sub={base} />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('muestra banner de actualizar método de pago si el cobro automático quedó suspendido', () => {
-    render(<SubscriptionBanner sub={{ ...base, paymentSuspended: true }} />)
-    expect(screen.getByText(/No pudimos cobrar tu suscripción/)).toBeInTheDocument()
-    expect(screen.getByText(/Actualizar método de pago/)).toBeInTheDocument()
+  it('muestra recordatorio con botón Renovar cuando MP vence en ≤3 días', () => {
+    render(<SubscriptionBanner sub={{ ...base, daysLeft: 2, paymentProvider: 'mercadopago' }} />)
+    expect(screen.getByText(/vence en 2 días/)).toBeInTheDocument()
+    expect(screen.getByText(/Renovar/)).toBeInTheDocument()
+  })
+
+  it('NO muestra recordatorio de renovación si el proveedor es PayPal (cobra solo)', () => {
+    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 2, paymentProvider: 'paypal' }} />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('el recordatorio de MP es descartable', () => {
+    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 3, paymentProvider: 'mercadopago' }} />)
+    fireEvent.click(container.querySelector('button:last-child')!)
+    expect(container.firstChild).toBeNull()
   })
 })
 

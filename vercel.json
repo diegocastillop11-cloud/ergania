@@ -12,6 +12,7 @@
     { "source": "/api/(.*)", "destination": "/api/index.ts" }
   ],
   "crons": [
+    { "path": "/api/subscription/reminders", "schedule": "0 12 * * *" },
     { "path": "/api/subscription/signup-digest", "schedule": "0 9 * * *" },
     { "path": "/api/subscription/revert-pending", "schedule": "0 6 * * *" }
   ]

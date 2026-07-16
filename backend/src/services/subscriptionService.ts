@@ -158,91 +158,51 @@ export async function getSubscriptionStatus(userId: string) {
   return { status: data.status as 'expired' | 'cancelled' | 'pending_payment', daysLeft: 0 }
 }
 
-// Preapproval (cobro automático) reemplaza Checkout Pro — no hay usuarios activos
-// en el flujo viejo que migrar (confirmado antes de este cambio), así que no queda
-// código de Checkout Pro en paralelo.
+// MP vuelve a Checkout Pro (pago manual repetido cada mes) — la migración a
+// Preapproval (cobro automático) se probó en producción y no se pudo
+// confirmar con una transacción real (la única cuenta MP disponible para
+// probar como comprador es la misma que recibe los pagos de Ergania, y MP no
+// permite pagarse a uno mismo). Se revierte para no arriesgar el único medio
+// de pago que sí tiene historial de funcionar con clientes reales. PayPal
+// Subscriptions no se toca — ya se confirmó funcionando en producción.
 export async function createCheckoutLink(userId: string, userEmail: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   if (!MP_TOKEN()) throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado')
   console.log('[MP] back_url base:', BACK_URL())
 
-  // "Suscripción sin plan asociado": reason + auto_recurring van directo en el
-  // request (no preapproval_plan_id) y status:'pending' explícito — así MP no
-  // exige card_token_id y devuelve init_point para redirigir al checkout
-  // hospedado por MP. Usar preapproval_plan_id obliga a mandar card_token_id
-  // (confirmado en pruebas: MercadoPago 400 "card_token_id is required").
-  const preapproval = await mpFetch('/preapproval', 'POST', {
-    reason: 'Ergania — Plan mensual',
-    payer_email: userEmail,
-    external_reference: userId,
-    back_url: `${BACK_URL()}/subscription/success`,
-    status: 'pending',
-    auto_recurring: {
-      frequency: 1,
-      frequency_type: 'months',
-      transaction_amount: PLAN_AMOUNT,
+  const preference = await mpFetch('/checkout/preferences', 'POST', {
+    items: [{
+      title: 'Ergania — Plan mensual',
+      quantity: 1,
+      unit_price: PLAN_AMOUNT,
       currency_id: PLAN_CURRENCY,
+    }],
+    payer: { email: userEmail },
+    back_urls: {
+      success: `${BACK_URL()}/subscription/success`,
+      failure: `${BACK_URL()}/subscription/failure`,
+      pending: `${BACK_URL()}/subscription/pending`,
     },
+    auto_return: 'approved',
+    metadata: { user_id: userId },
+    notification_url: `${BACK_URL()}/api/subscription/webhook`,
   })
 
   await supabaseAdmin.from('subscriptions').upsert(
-    { user_id: userId, mp_payer_email: userEmail, status: 'pending_payment', mp_preapproval_id: preapproval.id, payment_provider: 'mercadopago' },
+    { user_id: userId, mp_payer_email: userEmail, status: 'pending_payment', mp_preference_id: preference.id, payment_provider: 'mercadopago' },
     { onConflict: 'user_id' }
   )
 
-  const checkoutUrl = preapproval.init_point as string | undefined
-  if (!checkoutUrl) throw new Error('MP no devolvió URL de autorización — revisar respuesta de /preapproval')
-  return { checkoutUrl }
-}
-
-const MP_STATUS_MAP: Record<string, 'active' | 'cancelled' | null> = {
-  authorized: 'active',
-  cancelled: 'cancelled',
-}
-
-// Mapeo puro status MP → status local, testeable en aislamiento.
-export function mapMpPreapprovalStatus(mpStatus: string): 'active' | 'cancelled' | null {
-  return MP_STATUS_MAP[mpStatus] ?? null
+  return { checkoutUrl: preference.init_point as string }
 }
 
 export async function handleWebhook(topic: string, id: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
-
-  if (topic === 'subscription_preapproval') {
-    const preapproval = await mpFetch(`/preapproval/${id}`, 'GET')
-    const userId = preapproval.external_reference
-    if (!userId) return
-
-    const mapped = mapMpPreapprovalStatus(preapproval.status)
-    if (mapped === 'active') {
-      await supabaseAdmin.from('subscriptions').update({
-        status: 'active',
-        mp_preapproval_id: preapproval.id,
-        payment_suspended: false,
-        updated_at: new Date().toISOString(),
-      }).eq('user_id', userId)
-    } else if (mapped === 'cancelled') {
-      await supabaseAdmin.from('subscriptions').update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      }).eq('user_id', userId)
-    } else if (preapproval.status === 'paused' || preapproval.status === 'suspended') {
-      // MP agotó los reintentos automáticos de cobro — pedir actualizar la tarjeta,
-      // sin cortar el acceso todavía (current_period_end sigue vigente).
-      await supabaseAdmin.from('subscriptions').update({
-        payment_suspended: true,
-        updated_at: new Date().toISOString(),
-      }).eq('user_id', userId)
-    }
-    return
-  }
-
-  if (topic !== 'payment' && topic !== 'subscription_authorized_payment') return
+  if (topic !== 'payment') return
 
   const payment = await mpFetch(`/v1/payments/${id}`, 'GET')
 
-  // Checkout Pro (histórico) usaba metadata.user_id; Preapproval usa external_reference.
-  const userId = payment.metadata?.user_id || payment.external_reference
+  const userId = payment.metadata?.user_id
   if (!userId || payment.status !== 'approved') return
 
   const periodEnd = new Date()
@@ -252,7 +212,6 @@ export async function handleWebhook(topic: string, id: string) {
     status: 'active',
     mp_payment_id: String(payment.id),
     current_period_end: periodEnd.toISOString(),
-    payment_suspended: false,
     updated_at: new Date().toISOString(),
   }).eq('user_id', userId)
 
@@ -283,12 +242,54 @@ export async function handleWebhook(topic: string, id: string) {
   }
 }
 
-// sendExpiryReminders (recordatorio de renovación manual) se retiró junto con
-// la migración de MP a Preapproval — MP y PayPal cobran solos ahora, no hay
-// vencimiento que recordarle a mano al usuario. revertStalePendingPayments
-// abajo SÍ sigue vigente: un checkout (MP o PayPal) que el usuario abandona
-// sin autorizar deja la fila local en 'pending_payment' sin importar el
-// proveedor, y eso hay que limpiarlo igual que antes.
+// Llamado por Vercel Cron una vez al día: avisa a subs activas que vencen en ≤3 días,
+// una sola vez por período (reminder_for_period_end guarda para qué vencimiento ya se avisó).
+// Solo aplica a MP (Checkout Pro, pago manual) — un usuario activo con PayPal
+// (cobro automático) no necesita recordatorio de renovación.
+export async function sendExpiryReminders() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const now = new Date()
+  const cutoff = new Date(now.getTime() + 3 * 86_400_000)
+
+  const { data, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, current_period_end, reminder_for_period_end, is_exempt, payment_provider')
+    .eq('status', 'active')
+    .not('current_period_end', 'is', null)
+    .neq('payment_provider', 'paypal')
+    .gt('current_period_end', now.toISOString())
+    .lte('current_period_end', cutoff.toISOString())
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  let sent = 0
+  const { sendRenewalReminder } = await import('./emailService')
+
+  for (const sub of data ?? []) {
+    if (sub.is_exempt) continue
+    if (sub.reminder_for_period_end === sub.current_period_end) continue
+
+    try {
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(sub.user_id)
+      const email = userData?.user?.email
+      if (!email) continue
+
+      const daysLeft = calendarDaysUntil(new Date(sub.current_period_end), now)
+      await sendRenewalReminder(email, daysLeft)
+
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ reminder_for_period_end: sub.current_period_end })
+        .eq('user_id', sub.user_id)
+      sent++
+    } catch (err) {
+      // No marcar como enviado: el cron de mañana reintenta
+      console.error(`[reminders] fallo para user ${sub.user_id}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  return { checked: data?.length ?? 0, sent }
+}
 
 // Llamado por Vercel Cron una vez al día: pending_payment marca "inició un
 // checkout de MercadoPago" — si a esta hora sigue en ese estado es porque
@@ -319,26 +320,20 @@ export async function revertStalePendingPayments() {
   return { toTrial: toTrial?.length ?? 0, toExpired: toExpired?.length ?? 0 }
 }
 
-// Cancelar en la app tiene que cancelar también en el proveedor real — si no,
-// MP/PayPal siguen cobrando el mes que viene aunque la fila local diga
-// 'cancelled' (a diferencia de Checkout Pro, acá SÍ hay un cobro automático
-// activo del lado del proveedor que hay que apagar).
+// MP (Checkout Pro) no tiene nada que cancelar del lado del proveedor — es
+// pago manual, no hay cobro automático que apagar. PayPal sí (Subscriptions
+// cobra solo), así que cancelar en la app también cancela en PayPal, si no
+// seguiría cobrando el mes que viene aunque la fila local diga 'cancelled'.
 export async function cancelSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
 
   const { data: sub } = await supabaseAdmin
     .from('subscriptions')
-    .select('payment_provider, mp_preapproval_id, paypal_subscription_id')
+    .select('payment_provider, paypal_subscription_id')
     .eq('user_id', userId)
     .single()
 
-  if (sub?.payment_provider === 'mercadopago' && sub.mp_preapproval_id) {
-    try {
-      await mpFetch(`/preapproval/${sub.mp_preapproval_id}`, 'PUT', { status: 'cancelled' })
-    } catch (err) {
-      console.error('[cancel] Error cancelando preapproval en MP:', err instanceof Error ? err.message : err)
-    }
-  } else if (sub?.payment_provider === 'paypal' && sub.paypal_subscription_id) {
+  if (sub?.payment_provider === 'paypal' && sub.paypal_subscription_id) {
     try {
       const { cancelPayPalSubscription } = await import('./paypalService')
       await cancelPayPalSubscription(sub.paypal_subscription_id)

@@ -90,6 +90,25 @@ export async function cancelSub(req: Request, res: Response) {
 }
 
 // Vercel Cron (diario) — auth por CRON_SECRET, no por token de usuario
+export async function reminders(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  // Header: Vercel Cron. Query ?key=: prueba manual desde el navegador.
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  try {
+    const result = await svc.sendExpiryReminders()
+    console.log('[reminders]', JSON.stringify(result))
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[reminders] catch:', msg)
+    res.status(500).json({ error: msg })
+  }
+}
+
+// Vercel Cron (diario) — mismo mecanismo de auth que reminders
 export async function signupDigest(req: Request, res: Response) {
   const secret = process.env.CRON_SECRET
   const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
