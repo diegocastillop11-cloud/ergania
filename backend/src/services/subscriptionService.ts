@@ -12,8 +12,7 @@ const BACK_URL = () => {
   return raw.replace(/\/$/, '')
 }
 const TRIAL_DAYS   = 3
-// El monto ($9.990/mes) vive en el plan de MP (MP_PREAPPROVAL_PLAN_ID) — no se
-// pasa por request como antes con Checkout Pro.
+const PLAN_AMOUNT   = 9990
 const PLAN_CURRENCY = 'CLP'
 
 async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: object) {
@@ -165,15 +164,25 @@ export async function getSubscriptionStatus(userId: string) {
 export async function createCheckoutLink(userId: string, userEmail: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   if (!MP_TOKEN()) throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado')
-  const planId = stripBOM(process.env.MP_PREAPPROVAL_PLAN_ID || '')
-  if (!planId) throw new Error('MP_PREAPPROVAL_PLAN_ID no configurado')
   console.log('[MP] back_url base:', BACK_URL())
 
+  // "Suscripción sin plan asociado": reason + auto_recurring van directo en el
+  // request (no preapproval_plan_id) y status:'pending' explícito — así MP no
+  // exige card_token_id y devuelve init_point para redirigir al checkout
+  // hospedado por MP. Usar preapproval_plan_id obliga a mandar card_token_id
+  // (confirmado en pruebas: MercadoPago 400 "card_token_id is required").
   const preapproval = await mpFetch('/preapproval', 'POST', {
-    preapproval_plan_id: planId,
+    reason: 'Ergania — Plan mensual',
     payer_email: userEmail,
     external_reference: userId,
     back_url: `${BACK_URL()}/subscription/success`,
+    status: 'pending',
+    auto_recurring: {
+      frequency: 1,
+      frequency_type: 'months',
+      transaction_amount: PLAN_AMOUNT,
+      currency_id: PLAN_CURRENCY,
+    },
   })
 
   await supabaseAdmin.from('subscriptions').upsert(
@@ -181,10 +190,6 @@ export async function createCheckoutLink(userId: string, userEmail: string) {
     { onConflict: 'user_id' }
   )
 
-  // NOTA: verificar en sandbox el nombre exacto del campo de redirect que
-  // devuelve /preapproval sin card_token_id — la documentación pública no lo
-  // expuso al momento de escribir esto. init_point es el equivalente usado
-  // por Checkout Pro; si Preapproval usa otro nombre, ajustar acá.
   const checkoutUrl = preapproval.init_point as string | undefined
   if (!checkoutUrl) throw new Error('MP no devolvió URL de autorización — revisar respuesta de /preapproval')
   return { checkoutUrl }
