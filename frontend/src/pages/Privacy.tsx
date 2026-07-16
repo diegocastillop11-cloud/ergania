@@ -102,24 +102,30 @@ export default function Privacy() {
           </p>
         </Section>
 
-        <Section title="Contenido de terceros y portales de empleo">
+        <Section title="Fuentes de información de terceros y limitación de responsabilidad">
           <p style={{ marginBottom: 12 }}>
-            Ergania recopila y muestra información pública disponible en portales de empleo de
-            terceros (como LinkedIn, Indeed, GetOnBoard, Computrabajo, Bumeran, Laborum,
-            Trabajando.cl, entre otros) y en las ofertas de trabajo que tú mismo agregas o que
-            evaluamos a tu solicitud. Esta información es propiedad de cada portal o empleador;
-            Ergania no la verifica, edita ni garantiza.
+            Ergania recopila y presenta información de carácter público, disponible en portales
+            de empleo operados por terceros —incluyendo, sin limitarse a, LinkedIn, Indeed,
+            GetOnBoard, Computrabajo, Bumeran, Laborum y Trabajando.cl—, así como en las ofertas
+            laborales que el usuario incorpora directamente a la plataforma o que son evaluadas a
+            solicitud de este. La totalidad de dicha información es de propiedad exclusiva de los
+            respectivos portales o empleadores, por lo que Ergania no efectúa verificación,
+            edición ni otorga garantía alguna respecto de su contenido.
           </p>
           <p style={{ marginBottom: 12 }}>
-            No nos hacemos responsables por la exactitud, vigencia, legalidad o contenido de las
-            ofertas, avisos o páginas de terceros a los que hacemos referencia o enlazamos. Te
-            recomendamos siempre confirmar directamente con el portal o empleador original antes
-            de postular, compartir tus datos o tomar decisiones basadas en esa información.
+            En consecuencia, Ergania no asume responsabilidad alguna por la exactitud, vigencia,
+            legalidad o contenido de las ofertas, avisos o sitios web de terceros a los que haga
+            referencia o a los cuales enlace. Se recomienda encarecidamente a los usuarios
+            verificar dicha información directamente con el portal o empleador correspondiente,
+            de manera previa a postular, a compartir datos personales o a adoptar cualquier
+            decisión fundada en dicho contenido.
           </p>
           <p>
-            Si usas un servicio de un tercero al que Ergania te dirige (por ejemplo, al postular
-            en un portal externo), ese uso queda sujeto a los términos y políticas de privacidad
-            de ese tercero, no a los nuestros.
+            Asimismo, en caso de que el usuario haga uso de un servicio prestado por un tercero al
+            cual Ergania lo redirija —a modo ejemplar, al postular a través de un portal
+            externo—, dicho uso se regirá exclusivamente por los términos y condiciones y la
+            política de privacidad establecidos por ese tercero, quedando expresamente excluida
+            la aplicación de los términos y políticas de Ergania respecto de dicha interacción.
           </p>
         </Section>
 
