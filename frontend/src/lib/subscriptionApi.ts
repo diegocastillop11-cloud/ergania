@@ -36,6 +36,11 @@ export async function startCheckout(): Promise<{ checkoutUrl: string }> {
   return data
 }
 
+export async function startPayPalCheckout(): Promise<{ checkoutUrl: string }> {
+  const { data } = await api.post('/checkout/paypal')
+  return data
+}
+
 export async function cancelSubscription(): Promise<void> {
   await api.post('/cancel')
 }
@@ -46,6 +51,8 @@ export interface SubscriptionRecord {
   status: 'trial' | 'active' | 'expired' | 'cancelled' | 'pending_payment' | 'none'
   trial_ends_at: string | null
   current_period_end: string | null
+  payment_provider?: 'mercadopago' | 'paypal'
+  payment_suspended?: boolean
 }
 
 export interface ComputedStatus {
@@ -53,4 +60,6 @@ export interface ComputedStatus {
   daysLeft: number | null
   trialEndsAt?: string
   currentPeriodEnd?: string
+  paymentProvider?: 'mercadopago' | 'paypal'
+  paymentSuspended?: boolean
 }

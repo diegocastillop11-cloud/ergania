@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import crypto from 'crypto'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/subscriptionService'
+import * as paypalSvc from '../services/paypalService'
 
 function verifyMPSignature(req: Request): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET
@@ -65,6 +66,18 @@ export async function createCheckout(req: Request, res: Response) {
   }
 }
 
+export async function createPayPalCheckout(req: Request, res: Response) {
+  try {
+    const user = await getUserFromToken(req)
+    if (!user.email) throw new Error('Usuario sin email')
+    const result = await paypalSvc.createPayPalCheckoutLink(user.id, user.email)
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    res.status(400).json({ error: msg })
+  }
+}
+
 export async function cancelSub(req: Request, res: Response) {
   try {
     const user = await getUserFromToken(req)
@@ -77,25 +90,6 @@ export async function cancelSub(req: Request, res: Response) {
 }
 
 // Vercel Cron (diario) — auth por CRON_SECRET, no por token de usuario
-export async function reminders(req: Request, res: Response) {
-  const secret = process.env.CRON_SECRET
-  // Header: Vercel Cron. Query ?key=: prueba manual desde el navegador.
-  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
-  if (!authorized) {
-    return res.status(401).json({ error: 'No autorizado' })
-  }
-  try {
-    const result = await svc.sendExpiryReminders()
-    console.log('[reminders]', JSON.stringify(result))
-    res.json(result)
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error'
-    console.error('[reminders] catch:', msg)
-    res.status(500).json({ error: msg })
-  }
-}
-
-// Vercel Cron (diario) — mismo mecanismo de auth que reminders
 export async function signupDigest(req: Request, res: Response) {
   const secret = process.env.CRON_SECRET
   const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
@@ -113,7 +107,7 @@ export async function signupDigest(req: Request, res: Response) {
   }
 }
 
-// Vercel Cron (diario) — mismo mecanismo de auth que reminders/signupDigest
+// Vercel Cron (diario) — mismo mecanismo de auth que signupDigest
 export async function revertPending(req: Request, res: Response) {
   const secret = process.env.CRON_SECRET
   const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
@@ -144,5 +138,16 @@ export async function webhook(req: Request, res: Response) {
     res.sendStatus(200)
   } catch {
     res.sendStatus(200) // always 200 to avoid MP retries on logic errors
+  }
+}
+
+// PayPal webhook — verificación propia (verify-webhook-signature), no reusa verifyMPSignature
+export async function paypalWebhook(req: Request, res: Response) {
+  try {
+    await paypalSvc.handlePayPalWebhook(req)
+    res.sendStatus(200)
+  } catch (err) {
+    console.error('[paypal webhook] catch:', err instanceof Error ? err.message : err)
+    res.sendStatus(200) // always 200 to avoid PayPal retries on logic errors
   }
 }
