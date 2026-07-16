@@ -92,6 +92,12 @@ export async function createPayPalCheckoutLink(userId: string, userEmail: string
   return { checkoutUrl: approveLink }
 }
 
+export async function cancelPayPalSubscription(paypalSubscriptionId: string) {
+  await ppFetch(`/v1/billing/subscriptions/${paypalSubscriptionId}/cancel`, 'POST', {
+    reason: 'Cancelado por el usuario desde Ergania',
+  })
+}
+
 async function verifyPayPalSignature(req: Request): Promise<boolean> {
   const webhookId = PAYPAL_WEBHOOK_ID()
   if (!webhookId) return true // verificación no configurada aún — permitir (mismo criterio que MP_WEBHOOK_SECRET)

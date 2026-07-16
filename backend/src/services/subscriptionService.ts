@@ -319,8 +319,34 @@ export async function revertStalePendingPayments() {
   return { toTrial: toTrial?.length ?? 0, toExpired: toExpired?.length ?? 0 }
 }
 
+// Cancelar en la app tiene que cancelar también en el proveedor real — si no,
+// MP/PayPal siguen cobrando el mes que viene aunque la fila local diga
+// 'cancelled' (a diferencia de Checkout Pro, acá SÍ hay un cobro automático
+// activo del lado del proveedor que hay que apagar).
 export async function cancelSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+
+  const { data: sub } = await supabaseAdmin
+    .from('subscriptions')
+    .select('payment_provider, mp_preapproval_id, paypal_subscription_id')
+    .eq('user_id', userId)
+    .single()
+
+  if (sub?.payment_provider === 'mercadopago' && sub.mp_preapproval_id) {
+    try {
+      await mpFetch(`/preapproval/${sub.mp_preapproval_id}`, 'PUT', { status: 'cancelled' })
+    } catch (err) {
+      console.error('[cancel] Error cancelando preapproval en MP:', err instanceof Error ? err.message : err)
+    }
+  } else if (sub?.payment_provider === 'paypal' && sub.paypal_subscription_id) {
+    try {
+      const { cancelPayPalSubscription } = await import('./paypalService')
+      await cancelPayPalSubscription(sub.paypal_subscription_id)
+    } catch (err) {
+      console.error('[cancel] Error cancelando subscription en PayPal:', err instanceof Error ? err.message : err)
+    }
+  }
+
   const { error } = await supabaseAdmin
     .from('subscriptions')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
