@@ -431,6 +431,32 @@ interface ScheduledEmail {
 }
 
 const EMPTY_BULK_EMAIL_FORM = { titulo: '', asunto: '', cuerpo: '', cta1_texto: '', cta1_url: '', cta2_texto: '', cta2_url: '' }
+type BulkEmailFormState = typeof EMPTY_BULK_EMAIL_FORM
+
+function BulkEmailFields({ form, setForm }: { form: BulkEmailFormState; setForm: (fn: (f: BulkEmailFormState) => BulkEmailFormState) => void }) {
+  return (
+    <>
+      <input placeholder="Título interno" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      <input placeholder="Asunto del correo" value={form.asunto} onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))}
+        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      <textarea
+        placeholder="Cuerpo del correo. Deja una línea en blanco entre párrafos. Las líneas que empiecen con '- ' se muestran como lista."
+        value={form.cuerpo} onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))} rows={8}
+        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input placeholder="Texto botón principal (opcional)" value={form.cta1_texto} onChange={e => setForm(f => ({ ...f, cta1_texto: e.target.value }))}
+          className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        <input placeholder="URL botón principal" value={form.cta1_url} onChange={e => setForm(f => ({ ...f, cta1_url: e.target.value }))}
+          className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        <input placeholder="Texto link secundario (opcional)" value={form.cta2_texto} onChange={e => setForm(f => ({ ...f, cta2_texto: e.target.value }))}
+          className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        <input placeholder="URL link secundario" value={form.cta2_url} onChange={e => setForm(f => ({ ...f, cta2_url: e.target.value }))}
+          className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      </div>
+    </>
+  )
+}
 
 function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen }: {
   email: BulkEmail; token: string; userList: BulkUser[]
@@ -493,6 +519,11 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
       next.has(addr) ? next.delete(addr) : next.add(addr)
       return next
     })
+  }
+
+  const allSelected = candidates.length > 0 && candidates.every(u => selected.has(u.email))
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(candidates.map(u => u.email)))
   }
 
   const startEdit = () => {
@@ -600,24 +631,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
           {/* Edición de texto */}
           {editing ? (
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
-              <input placeholder="Título interno" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-              <input placeholder="Asunto del correo" value={form.asunto} onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-              <textarea
-                placeholder="Cuerpo del correo. Deja una línea en blanco entre párrafos. Las líneas que empiecen con '- ' se muestran como lista."
-                value={form.cuerpo} onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))} rows={8}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input placeholder="Texto botón principal (opcional)" value={form.cta1_texto} onChange={e => setForm(f => ({ ...f, cta1_texto: e.target.value }))}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-                <input placeholder="URL botón principal" value={form.cta1_url} onChange={e => setForm(f => ({ ...f, cta1_url: e.target.value }))}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-                <input placeholder="Texto link secundario (opcional)" value={form.cta2_texto} onChange={e => setForm(f => ({ ...f, cta2_texto: e.target.value }))}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-                <input placeholder="URL link secundario" value={form.cta2_url} onChange={e => setForm(f => ({ ...f, cta2_url: e.target.value }))}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-              </div>
+              <BulkEmailFields form={form} setForm={setForm} />
               {saveError && <p className="text-red-400 text-xs">{saveError}</p>}
               <div className="flex gap-2">
                 <button onClick={saveEdit} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
@@ -733,8 +747,14 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
               </select>
             </label>
 
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-500">{selected.size} de {candidates.length} seleccionados</p>
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-gray-500">{selected.size} de {candidates.length} seleccionados</p>
+                <button onClick={toggleAll} disabled={candidates.length === 0}
+                  className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:hover:text-blue-400">
+                  {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
+                </button>
+              </div>
               <button onClick={send} disabled={sending || selected.size === 0}
                 className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
                 <Send size={14} /> {sending ? 'Enviando...' : 'Enviar correo ahora'}
@@ -747,7 +767,9 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-3 py-2 w-8"></th>
+                    <th className="text-left px-3 py-2 w-8">
+                      <input type="checkbox" checked={allSelected} onChange={toggleAll} title="Marcar/desmarcar todos" />
+                    </th>
                     <th className="text-left px-3 py-2">Email</th>
                     <th className="text-left px-3 py-2">Registro</th>
                     <th className="text-right px-3 py-2">Ofertas evaluadas</th>
@@ -786,7 +808,10 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[] }) {
   const [emails, setEmails] = useState<BulkEmail[]>([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+  const [draft, setDraft] = useState<BulkEmailFormState>(EMPTY_BULK_EMAIL_FORM)
+  const [saving, setSaving] = useState(false)
+  const [draftError, setDraftError] = useState('')
   const [newestId, setNewestId] = useState<string | null>(null)
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
@@ -800,20 +825,38 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
 
   useEffect(() => { load() }, [])
 
-  const createNew = async () => {
-    setCreating(true)
+  const startDraft = () => {
+    setDraft({ ...EMPTY_BULK_EMAIL_FORM, titulo: 'Nuevo correo', asunto: 'Asunto del correo' })
+    setDraftError('')
+    setDrafting(true)
+  }
+
+  const cancelDraft = () => {
+    setDrafting(false)
+    setDraft(EMPTY_BULK_EMAIL_FORM)
+    setDraftError('')
+  }
+
+  // No se crea nada en la base hasta que se confirma acá — así "Cancelar"
+  // no deja filas huérfanas si Diego se arrepiente de armar un correo nuevo.
+  const saveDraft = async () => {
+    setDraftError('')
+    if (!draft.titulo.trim() || !draft.asunto.trim()) { setDraftError('Título y asunto son requeridos'); return }
+    setSaving(true)
     try {
       const res = await fetch('/api/admin/bulk-emails', {
-        method: 'POST', headers: authHeaders,
-        body: JSON.stringify({ titulo: 'Nuevo correo', asunto: 'Asunto del correo', cuerpo: '' }),
+        method: 'POST', headers: authHeaders, body: JSON.stringify(draft),
       })
       const data = await res.json()
-      if (res.ok) {
-        setNewestId(data.email.id)
-        load()
-      }
+      if (!res.ok) throw new Error(data.error || 'Error al guardar')
+      setNewestId(data.email.id)
+      setDrafting(false)
+      setDraft(EMPTY_BULK_EMAIL_FORM)
+      load()
+    } catch (err: unknown) {
+      setDraftError(err instanceof Error ? err.message : 'Error al guardar')
     } finally {
-      setCreating(false)
+      setSaving(false)
     }
   }
 
@@ -821,12 +864,28 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
 
   return (
     <div className="p-5 space-y-3">
-      <div className="flex justify-end">
-        <button onClick={createNew} disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
-          <Plus size={13} /> {creating ? 'Creando...' : 'Nuevo correo'}
-        </button>
-      </div>
+      {drafting ? (
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-white">Nuevo correo</h3>
+          <BulkEmailFields form={draft} setForm={setDraft} />
+          {draftError && <p className="text-red-400 text-xs">{draftError}</p>}
+          <div className="flex gap-2">
+            <button onClick={saveDraft} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
+              <Save size={13} /> {saving ? 'Guardando...' : 'Guardar correo'}
+            </button>
+            <button onClick={cancelDraft} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+              <X size={13} /> Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-end">
+          <button onClick={startDraft}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+            <Plus size={13} /> Nuevo correo
+          </button>
+        </div>
+      )}
 
       {emails.length === 0 ? (
         <p className="text-gray-600 text-sm text-center py-6">Sin correos guardados todavía.</p>
