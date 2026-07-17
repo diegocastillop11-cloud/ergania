@@ -320,6 +320,28 @@ export async function revertStalePendingPayments() {
   return { toTrial: toTrial?.length ?? 0, toExpired: toExpired?.length ?? 0 }
 }
 
+// Llamado por Vercel Cron una vez al día: los trials vencidos solo se marcan
+// 'expired' cuando el propio usuario vuelve a entrar (getSubscriptionStatus
+// lo recalcula en vivo en ese momento). Si el usuario nunca vuelve, la fila
+// queda congelada en 'trial' para siempre y el reporte de Admin muestra un
+// estado desactualizado — este cron la actualiza igual, sin depender de que
+// el usuario abra la app de nuevo (no cambia el acceso real, que ya estaba
+// bloqueado en tiempo real; solo mantiene el dato del panel correcto).
+export async function expireStaleTrials() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const nowIso = new Date().toISOString()
+
+  const { data, error } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ status: 'expired' })
+    .eq('status', 'trial')
+    .lt('trial_ends_at', nowIso)
+    .select('user_id')
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  return { expired: data?.length ?? 0 }
+}
+
 // MP (Checkout Pro) no tiene nada que cancelar del lado del proveedor — es
 // pago manual, no hay cobro automático que apagar. PayPal sí (Subscriptions
 // cobra solo), así que cancelar en la app también cancela en PayPal, si no
