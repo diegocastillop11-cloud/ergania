@@ -7,6 +7,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { translateAuthError } from '../lib/authErrors'
 import SubscriptionCallback from '../pages/SubscriptionCallback'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 // ─── ISSUE-001: Errores de Supabase deben mostrarse en español ───────────────
 
@@ -38,13 +39,15 @@ describe('ISSUE-001: traducción de errores de autenticación', () => {
 describe('ISSUE-003: páginas de callback de MercadoPago', () => {
   const renderCallback = (path: string) =>
     render(
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/subscription/success"  element={<SubscriptionCallback />} />
-          <Route path="/subscription/failure"  element={<SubscriptionCallback />} />
-          <Route path="/subscription/pending"  element={<SubscriptionCallback />} />
-        </Routes>
-      </MemoryRouter>
+      <LanguageProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/subscription/success"  element={<SubscriptionCallback />} />
+            <Route path="/subscription/failure"  element={<SubscriptionCallback />} />
+            <Route path="/subscription/pending"  element={<SubscriptionCallback />} />
+          </Routes>
+        </MemoryRouter>
+      </LanguageProvider>
     )
 
   it('muestra "¡Pago recibido!" en /subscription/success', () => {

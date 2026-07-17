@@ -1,14 +1,16 @@
 import { useState, FormEvent } from 'react'
 import { X, MessageSquare, Loader, CheckCircle, AlertCircle } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { useTranslation } from '../lib/i18n/LanguageContext'
 
-const CATEGORIES = [
-  'Consulta general',
-  'Problema técnico',
-  'Sugerencia',
-  'Reclamo',
-  'Felicitación',
-  'Otro',
+// Los value= se envían al backend en español — solo la etiqueta visible se traduce.
+const CATEGORIES: Array<{ value: string; key: string }> = [
+  { value: 'Consulta general',  key: 'general' },
+  { value: 'Problema técnico',  key: 'technical' },
+  { value: 'Sugerencia',        key: 'suggestion' },
+  { value: 'Reclamo',           key: 'complaint' },
+  { value: 'Felicitación',      key: 'compliment' },
+  { value: 'Otro',              key: 'other' },
 ]
 
 interface Props {
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export default function ContactModal({ onClose }: Props) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState(user?.email ?? '')
@@ -37,10 +40,10 @@ export default function ContactModal({ onClose }: Props) {
         body: JSON.stringify({ name, email, category, message }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al enviar')
+      if (!res.ok) throw new Error(data.error || t('contactModal.genericError'))
       setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo enviar el mensaje')
+      setError(err instanceof Error ? err.message : t('contactModal.sendFailed'))
     } finally {
       setLoading(false)
     }
@@ -55,20 +58,20 @@ export default function ContactModal({ onClose }: Props) {
       />
 
       {/* Panel derecho */}
-      <div className="relative w-full max-w-sm bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl animate-slide-in-right">
+      <div className="relative w-full max-w-sm bg-[var(--bg-surface)] border-l border-[var(--border-default)] flex flex-col shadow-2xl animate-slide-in-right">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-default)] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center shrink-0">
               <MessageSquare size={16} className="text-blue-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">Contáctanos</h2>
-              <p className="text-xs text-gray-500">Responderemos a la brevedad</p>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t('contactModal.title')}</h2>
+              <p className="text-xs text-[var(--text-muted)]">{t('contactModal.subtitle')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1">
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1">
             <X size={18} />
           </button>
         </div>
@@ -78,13 +81,13 @@ export default function ContactModal({ onClose }: Props) {
           {sent ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <CheckCircle size={48} className="text-green-400" />
-              <p className="text-white font-semibold text-base">¡Mensaje enviado!</p>
-              <p className="text-sm text-gray-400">Lo revisaremos pronto y te responderemos por correo.</p>
+              <p className="text-[var(--text-primary)] font-semibold text-base">{t('contactModal.sentTitle')}</p>
+              <p className="text-sm text-[var(--text-tertiary)]">{t('contactModal.sentDesc')}</p>
               <button
                 onClick={onClose}
-                className="mt-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
+                className="mt-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] text-sm font-medium rounded-xl transition-colors"
               >
-                Cerrar
+                {t('contactModal.close')}
               </button>
             </div>
           ) : (
@@ -92,56 +95,56 @@ export default function ContactModal({ onClose }: Props) {
 
               {/* Nombre */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Nombre</label>
+                <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">{t('contactModal.nameLabel')}</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={t('contactModal.namePlaceholder')}
+                  className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Correo electrónico</label>
+                <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">{t('contactModal.emailLabel')}</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="tu@correo.cl"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={t('contactModal.emailPlaceholder')}
+                  className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               {/* Categoría */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Categoría</label>
+                <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">{t('contactModal.categoryLabel')}</label>
                 <select
                   required
                   value={category}
                   onChange={e => setCategory(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Selecciona una opción</option>
+                  <option value="">{t('contactModal.categorySelect')}</option>
                   {CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c.value} value={c.value}>{t(`contactModal.categories.${c.key}`)}</option>
                   ))}
                 </select>
               </div>
 
               {/* Mensaje */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Mensaje</label>
+                <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">{t('contactModal.messageLabel')}</label>
                 <textarea
                   required
                   rows={5}
                   value={message}
                   onChange={e => setMessage(e.target.value)}
-                  placeholder="Cuéntanos en qué podemos ayudarte..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder={t('contactModal.messagePlaceholder')}
+                  className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
               </div>
 
@@ -157,11 +160,11 @@ export default function ContactModal({ onClose }: Props) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-[var(--text-primary)] rounded-xl text-sm font-semibold transition-colors"
               >
                 {loading
-                  ? <><Loader size={14} className="animate-spin" /> Enviando...</>
-                  : <><MessageSquare size={14} /> Enviar mensaje</>
+                  ? <><Loader size={14} className="animate-spin" /> {t('contactModal.sending')}</>
+                  : <><MessageSquare size={14} /> {t('contactModal.send')}</>
                 }
               </button>
             </form>

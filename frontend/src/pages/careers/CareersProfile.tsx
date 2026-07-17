@@ -11,6 +11,7 @@ import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import PerfilTabs from '../../components/careers/PerfilTabs'
 import { COUNTRIES } from '../../lib/countries'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 
 interface ProfileData {
@@ -65,16 +66,16 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-800/30 transition-colors"
       >
         <div className="flex items-center gap-3">
           <Icon size={18} className="text-blue-400" />
-          <h3 className="text-white font-semibold">{title}</h3>
+          <h3 className="text-[var(--text-primary)] font-semibold">{title}</h3>
         </div>
-        {open ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+        {open ? <ChevronUp size={16} className="text-[var(--text-muted)]" /> : <ChevronDown size={16} className="text-[var(--text-muted)]" />}
       </button>
       {open && <div className="px-5 pb-5">{children}</div>}
     </div>
@@ -89,13 +90,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">{label}</label>
+      <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">{label}</label>
       <input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
     </div>
   )
@@ -109,11 +110,11 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">{label}</label>
+      <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">{label}</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+        className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500"
       >
         <option value="">Sin especificar</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -125,6 +126,7 @@ function SelectField({
 export default function CareersProfile() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [saved, setSaved] = useState(false)
   const [cvSaved, setCvSaved] = useState(false)
   const [cvEdit, setCvEdit] = useState(false)
@@ -481,25 +483,25 @@ export default function CareersProfile() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">Perfil & CV</h2>
-          <p className="text-gray-400 mt-1">Datos personales que la IA usa para evaluar y personalizar tu CV</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t('careersProfile.title')}</h2>
+          <p className="text-[var(--text-tertiary)] mt-1">{t('careersProfile.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {cvImportSuccess && (
             <span className="flex items-center gap-1 text-green-400 text-sm">
-              <CheckCircle2 size={14} /> CV importado — revisa los campos
+              <CheckCircle2 size={14} /> {t('careersProfile.cvImportedSuccess')}
             </span>
           )}
           {saved && (
             <span className="flex items-center gap-1 text-green-400 text-sm">
-              <Check size={14} /> Perfil guardado
+              <Check size={14} /> {t('careersProfile.profileSaved')}
             </span>
           )}
-          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-purple-700 hover:bg-purple-600 text-white'}`}>
+          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-purple-700 hover:bg-purple-600 text-[var(--text-primary)]'}`}>
             {cvImporting ? (
-              <><Loader2 size={14} className="animate-spin" /> Analizando CV...</>
+              <><Loader2 size={14} className="animate-spin" /> {t('careersProfile.analyzingCv')}</>
             ) : (
-              <><Upload size={14} /> Importar CV con IA</>
+              <><Upload size={14} /> {t('careersProfile.importCv')}</>
             )}
             <input
               type="file"
@@ -512,12 +514,12 @@ export default function CareersProfile() {
           <button
             onClick={() => saveMut.mutate(profile)}
             disabled={saveMut.isPending}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
           >
             {saveMut.isPending ? (
-              <><Loader2 size={14} className="animate-spin" /> Guardando...</>
+              <><Loader2 size={14} className="animate-spin" /> {t('careersProfile.saving')}</>
             ) : (
-              <><Save size={14} /> Guardar Perfil</>
+              <><Save size={14} /> {t('careersProfile.saveProfile')}</>
             )}
           </button>
         </div>
@@ -528,9 +530,8 @@ export default function CareersProfile() {
       <div className="bg-blue-900/20 border border-blue-800/40 rounded-xl p-4 flex gap-3">
         <AlertCircle size={18} className="text-blue-400 shrink-0 mt-0.5" />
         <p className="text-blue-300 text-sm">
-          La IA lee estos datos para evaluar el match con cada oferta y personalizar tu CV.
-          Mantén todo actualizado para mejores resultados.
-          {' '}Puedes subir tu CV (PDF, DOCX o TXT) con el botón <strong>"Importar CV con IA"</strong> para rellenar los campos automáticamente.
+          {t('careersProfile.aiNote1')}
+          {' '}{t('careersProfile.aiNote2')} <strong>"{t('careersProfile.importCv')}"</strong> {t('careersProfile.aiNote3')}
         </p>
       </div>
 
@@ -538,7 +539,7 @@ export default function CareersProfile() {
         <div className="bg-red-900/20 border border-red-700/50 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-red-300 text-sm font-medium">Error al importar CV</p>
+            <p className="text-red-300 text-sm font-medium">{t('careersProfile.importCvErrorTitle')}</p>
             <p className="text-red-400 text-xs mt-1">{cvImportError}</p>
           </div>
           <button onClick={() => setCvImportError('')} className="ml-auto text-red-500 hover:text-red-300 text-xs">✕</button>
@@ -546,41 +547,41 @@ export default function CareersProfile() {
       )}
 
       {/* Datos personales */}
-      <Section title="Datos Personales" icon={User}>
+      <Section title={t('careersProfile.sections.personalData')} icon={User}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Nombre completo" value={c.full_name || ''} onChange={v => set(['candidate', 'full_name'], v)} />
-          <Field label="Email" value={c.email || ''} onChange={v => set(['candidate', 'email'], v)} type="email" />
-          <Field label="Teléfono" value={c.phone || ''} onChange={v => set(['candidate', 'phone'], v)} placeholder="+56 9..." />
-          <Field label="Ciudad/País" value={c.location || ''} onChange={v => set(['candidate', 'location'], v)} placeholder="Santiago, Chile" />
-          <Field label="LinkedIn" value={c.linkedin || ''} onChange={v => set(['candidate', 'linkedin'], v)} placeholder="linkedin.com/in/..." />
-          <Field label="GitHub" value={c.github || ''} onChange={v => set(['candidate', 'github'], v)} placeholder="github.com/..." />
-          <Field label="Portfolio" value={c.portfolio_url || ''} onChange={v => set(['candidate', 'portfolio_url'], v)} placeholder="https://..." />
+          <Field label={t('careersProfile.fields.fullName')} value={c.full_name || ''} onChange={v => set(['candidate', 'full_name'], v)} />
+          <Field label={t('careersProfile.fields.email')} value={c.email || ''} onChange={v => set(['candidate', 'email'], v)} type="email" />
+          <Field label={t('careersProfile.fields.phone')} value={c.phone || ''} onChange={v => set(['candidate', 'phone'], v)} placeholder="+56 9..." />
+          <Field label={t('careersProfile.fields.cityCountry')} value={c.location || ''} onChange={v => set(['candidate', 'location'], v)} placeholder="Santiago, Chile" />
+          <Field label={t('careersProfile.fields.linkedin')} value={c.linkedin || ''} onChange={v => set(['candidate', 'linkedin'], v)} placeholder="linkedin.com/in/..." />
+          <Field label={t('careersProfile.fields.github')} value={c.github || ''} onChange={v => set(['candidate', 'github'], v)} placeholder="github.com/..." />
+          <Field label={t('careersProfile.fields.portfolio')} value={c.portfolio_url || ''} onChange={v => set(['candidate', 'portfolio_url'], v)} placeholder="https://..." />
         </div>
       </Section>
 
       {/* Compensación */}
-      <Section title="Compensación & Disponibilidad" icon={FileText}>
+      <Section title={t('careersProfile.sections.compensation')} icon={FileText}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field
-            label="Rango objetivo"
+            label={t('careersProfile.fields.targetRange')}
             value={comp.target_range || ''}
             onChange={v => set(['compensation', 'target_range'], v)}
             placeholder="$80M-120M CLP o USD 2000-3500/mes"
           />
           <Field
-            label="Mínimo aceptable"
+            label={t('careersProfile.fields.minimumAcceptable')}
             value={comp.minimum || ''}
             onChange={v => set(['compensation', 'minimum'], v)}
             placeholder="$70M CLP"
           />
           <Field
-            label="Moneda preferida"
+            label={t('careersProfile.fields.preferredCurrency')}
             value={comp.currency || ''}
             onChange={v => set(['compensation', 'currency'], v)}
             placeholder="CLP, USD, EUR"
           />
           <Field
-            label="Flexibilidad"
+            label={t('careersProfile.fields.flexibility')}
             value={comp.location_flexibility || ''}
             onChange={v => set(['compensation', 'location_flexibility'], v)}
             placeholder="Remoto preferido, híbrido Santiago posible"
@@ -589,25 +590,25 @@ export default function CareersProfile() {
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <SelectField
-            label="País"
+            label={t('careersProfile.fields.country')}
             value={loc.country || ''}
             onChange={v => set(['location', 'country'], v)}
             options={COUNTRIES.map(c => ({ value: c.nombre, label: c.nombre }))}
           />
           <Field
-            label="Ciudad"
+            label={t('careersProfile.fields.city')}
             value={loc.city || ''}
             onChange={v => set(['location', 'city'], v)}
             placeholder="Santiago"
           />
           <Field
-            label="Timezone"
+            label={t('careersProfile.fields.timezone')}
             value={loc.timezone || ''}
             onChange={v => set(['location', 'timezone'], v)}
             placeholder="CLT (GMT-3)"
           />
           <Field
-            label="Status visado"
+            label={t('careersProfile.fields.visaStatus')}
             value={loc.visa_status || ''}
             onChange={v => set(['location', 'visa_status'], v)}
             placeholder="Ciudadano chileno, no requiere visa"
@@ -616,29 +617,29 @@ export default function CareersProfile() {
       </Section>
 
       {/* Narrativa */}
-      <Section title="Narrativa Profesional" icon={Edit3} defaultOpen={false}>
+      <Section title={t('careersProfile.sections.narrative')} icon={Edit3} defaultOpen={false}>
         <div className="space-y-4">
           <Field
-            label="Headline"
+            label={t('careersProfile.fields.headline')}
             value={narr.headline || ''}
             onChange={v => set(['narrative', 'headline'], v)}
             placeholder="Senior DB Analyst | SQL Server · Azure · Automatización"
           />
           <div>
-            <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">
-              Historia de salida / diferenciador
+            <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">
+              {t('careersProfile.fields.exitStory')}
             </label>
             <textarea
               value={narr.exit_story || ''}
               onChange={e => set(['narrative', 'exit_story'], e.target.value)}
-              placeholder="Qué te hace único y por qué estás buscando trabajo ahora..."
+              placeholder={t('careersProfile.fields.exitStoryPlaceholder')}
               rows={3}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">
-              Superpoderes (uno por línea)
+            <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">
+              {t('careersProfile.fields.superpowers')}
             </label>
             <textarea
               value={(narr.superpowers || []).join('\n')}
@@ -648,12 +649,12 @@ export default function CareersProfile() {
               }))}
               placeholder="Optimización de stored procedures bajo alta carga&#10;Automatización de procesos T-SQL&#10;..."
               rows={4}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">
-              Roles objetivo (uno por línea)
+            <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">
+              {t('careersProfile.fields.targetRoles')}
             </label>
             <textarea
               value={(tr.primary || []).join('\n')}
@@ -663,30 +664,30 @@ export default function CareersProfile() {
               }))}
               placeholder="Database Administrator&#10;Data Engineer&#10;SQL Developer"
               rows={4}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
           </div>
         </div>
       </Section>
 
       {/* CV Editor */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--border-default)]">
           <div className="flex items-center gap-3">
             <FileText size={18} className="text-purple-400" />
-            <h3 className="text-white font-semibold">CV Completo (Markdown)</h3>
+            <h3 className="text-[var(--text-primary)] font-semibold">{t('careersProfile.cvEditor.title')}</h3>
           </div>
           <div className="flex items-center gap-2">
             {cvSaved && (
               <span className="flex items-center gap-1 text-green-400 text-sm">
-                <Check size={14} /> Guardado
+                <Check size={14} /> {t('careersProfile.cvEditor.saved')}
               </span>
             )}
-            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`}>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${cvImporting ? 'bg-purple-800 opacity-60 cursor-not-allowed' : 'bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-[var(--text-secondary)]'}`}>
               {cvImporting ? (
-                <><Loader2 size={13} className="animate-spin" /> Analizando...</>
+                <><Loader2 size={13} className="animate-spin" /> {t('careersProfile.cvEditor.analyzing')}</>
               ) : (
-                <><Upload size={13} /> Importar CV con IA</>
+                <><Upload size={13} /> {t('careersProfile.importCv')}</>
               )}
               <input
                 type="file"
@@ -698,20 +699,20 @@ export default function CareersProfile() {
             </label>
             <button
               onClick={() => setCvEdit(!cvEdit)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-[var(--text-secondary)] rounded-lg text-sm transition-colors"
             >
-              {cvEdit ? <><EyeOff size={14} /> Solo ver</> : <><Edit3 size={14} /> Editar</>}
+              {cvEdit ? <><EyeOff size={14} /> {t('careersProfile.cvEditor.viewOnly')}</> : <><Edit3 size={14} /> {t('careersProfile.cvEditor.edit')}</>}
             </button>
             {cvEdit && (
               <button
                 onClick={() => cvMut.mutate(cvContent)}
                 disabled={cvMut.isPending}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
               >
                 {cvMut.isPending ? (
-                  <><Loader2 size={13} className="animate-spin" /> Guardando...</>
+                  <><Loader2 size={13} className="animate-spin" /> {t('careersProfile.saving')}</>
                 ) : (
-                  <><Save size={13} /> Guardar CV</>
+                  <><Save size={13} /> {t('careersProfile.cvEditor.saveCv')}</>
                 )}
               </button>
             )}
@@ -727,36 +728,36 @@ export default function CareersProfile() {
             <textarea
               value={cvContent}
               onChange={e => setCvContent(e.target.value)}
-              className="w-full h-[600px] bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-gray-300 text-xs font-mono focus:outline-none focus:border-blue-500 resize-y leading-relaxed"
+              className="w-full h-[600px] bg-[var(--bg-app)] border border-[var(--border-alt)] rounded-lg px-4 py-3 text-[var(--text-secondary)] text-xs font-mono focus:outline-none focus:border-blue-500 resize-y leading-relaxed"
             />
           ) : (
-            <div className="bg-gray-950 rounded-lg p-4 max-h-[400px] overflow-y-auto">
-              <pre className="text-gray-300 text-xs whitespace-pre-wrap font-mono leading-relaxed">
-                {cvContent || 'CV vacío. Haz click en "Editar" para ingresar tu CV en formato Markdown.'}
+            <div className="bg-[var(--bg-app)] rounded-lg p-4 max-h-[400px] overflow-y-auto">
+              <pre className="text-[var(--text-secondary)] text-xs whitespace-pre-wrap font-mono leading-relaxed">
+                {cvContent || t('careersProfile.cvEditor.emptyPlaceholder')}
               </pre>
             </div>
           )}
-          <p className="text-xs text-gray-600 mt-3">
-            Archivo: <code className="text-gray-500">career-ops/cv.md</code>
+          <p className="text-xs text-[var(--text-faint)] mt-3">
+            {t('careersProfile.cvEditor.fileNote1')} <code className="text-[var(--text-muted)]">career-ops/cv.md</code>
             {' · '}
-            La IA lee este archivo para evaluar el match con cada oferta.
+            {t('careersProfile.cvEditor.fileNote2')}
           </p>
 
-          <div className="mt-4 pt-4 border-t border-gray-800 flex items-center gap-2 flex-wrap">
-            <label className="text-xs text-gray-500 shrink-0">Traducir este CV a:</label>
+          <div className="mt-4 pt-4 border-t border-[var(--border-default)] flex items-center gap-2 flex-wrap">
+            <label className="text-xs text-[var(--text-muted)] shrink-0">{t('careersProfile.cvEditor.translateLabel')}</label>
             <input
               value={translateLang}
               onChange={e => setTranslateLang(e.target.value)}
-              placeholder="ej: Inglés, Portugués, Francés, Alemán..."
-              className="flex-1 min-w-[180px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder={t('careersProfile.cvEditor.translatePlaceholder')}
+              className="flex-1 min-w-[180px] bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={handleTranslateCv}
               disabled={translating || !translateLang.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors shrink-0"
             >
               {translating ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />}
-              {translating ? 'Traduciendo...' : 'Traducir CV'}
+              {translating ? t('careersProfile.cvEditor.translating') : t('careersProfile.cvEditor.translateButton')}
             </button>
           </div>
           {translateError && (
@@ -769,34 +770,34 @@ export default function CareersProfile() {
 
       {translateOpen && translateResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
               <div>
-                <h3 className="text-white font-bold flex items-center gap-2">
+                <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
                   <Languages size={16} className="text-blue-400" />
-                  CV traducido a {translateLang}
+                  {t('careersProfile.translateModal.title', { lang: translateLang })}
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Vista previa — no se guarda hasta que elijas una acción abajo.</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersProfile.translateModal.previewNote')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadTranslatedCv}
                   disabled={translateDownloading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 >
                   {translateDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  Descargar PDF
+                  {t('careersProfile.translateModal.downloadPdf')}
                 </button>
                 <button
                   onClick={handleSaveTranslatedAsBase}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
-                  title="Reemplaza el CV Completo (Markdown) de tu perfil con esta versión traducida"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+                  title={t('careersProfile.translateModal.saveAsBaseTitle')}
                 >
-                  <Save size={13} /> Guardar como mi CV base
+                  <Save size={13} /> {t('careersProfile.translateModal.saveAsBase')}
                 </button>
                 <button
                   onClick={() => setTranslateOpen(false)}
-                  className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg"
+                  className="p-1.5 bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-[var(--text-tertiary)] rounded-lg"
                 >
                   <X size={16} />
                 </button>
@@ -810,34 +811,34 @@ export default function CareersProfile() {
       )}
 
       {/* LinkedIn Optimizer */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--border-default)]">
           <div className="flex items-center gap-3">
             <Linkedin size={18} className="text-blue-400" />
             <div>
-              <h3 className="text-white font-semibold">Optimizar Perfil LinkedIn</h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Genera headline, about, skills y tips adaptados a todos tus roles objetivo simultáneamente
+              <h3 className="text-[var(--text-primary)] font-semibold">{t('careersProfile.linkedinOptimizer.title')}</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {t('careersProfile.linkedinOptimizer.subtitle')}
               </p>
             </div>
           </div>
           <button
             onClick={generateLinkedin}
             disabled={liLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
           >
             {liLoading
-              ? <><Loader2 size={14} className="animate-spin" /> Generando...</>
+              ? <><Loader2 size={14} className="animate-spin" /> {t('careersProfile.linkedinOptimizer.generating')}</>
               : liResult
-                ? <><Sparkles size={14} /> Regenerar optimización</>
-                : <><Sparkles size={14} /> Generar optimización</>
+                ? <><Sparkles size={14} /> {t('careersProfile.linkedinOptimizer.regenerate')}</>
+                : <><Sparkles size={14} /> {t('careersProfile.linkedinOptimizer.generate')}</>
             }
           </button>
         </div>
 
         {liError && !liLoading && (
           <div className="mx-5 mt-4 p-3 bg-red-900/20 border border-red-700 rounded-lg flex items-start gap-2">
-            <span className="text-red-400 font-bold text-sm shrink-0">Error:</span>
+            <span className="text-red-400 font-bold text-sm shrink-0">{t('careersProfile.linkedinOptimizer.errorPrefix')}</span>
             <span className="text-red-300 text-sm break-words">{liError}</span>
           </div>
         )}
@@ -845,7 +846,7 @@ export default function CareersProfile() {
         {liLoading && (
           <div className="p-8 flex flex-col items-center gap-3 text-center">
             <Loader2 size={28} className="animate-spin text-blue-400" />
-            <p className="text-gray-400 text-sm">Analizando tu CV y roles objetivo para construir tu perfil ideal...</p>
+            <p className="text-[var(--text-tertiary)] text-sm">{t('careersProfile.linkedinOptimizer.analyzingNote')}</p>
           </div>
         )}
 
@@ -853,25 +854,25 @@ export default function CareersProfile() {
           <div className="p-5 space-y-5">
             {/* Headline */}
             {liResult.headline && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Titular (Headline)</p>
-                  <button onClick={() => copyLi('headline', liResult.headline!)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-white">
-                    {liCopied === 'headline' ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                  <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider">{t('careersProfile.linkedinOptimizer.headlineLabel')}</p>
+                  <button onClick={() => copyLi('headline', liResult.headline!)} className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    {liCopied === 'headline' ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersProfile.linkedinOptimizer.copied')}</> : <><Copy size={12} /> {t('careersProfile.linkedinOptimizer.copy')}</>}
                   </button>
                 </div>
-                <p className="text-white font-medium">{liResult.headline}</p>
-                <p className="text-xs text-gray-600 mt-1">{liResult.headline.length}/220 caracteres</p>
+                <p className="text-[var(--text-primary)] font-medium">{liResult.headline}</p>
+                <p className="text-xs text-[var(--text-faint)] mt-1">{t('careersProfile.linkedinOptimizer.charCount', { count: liResult.headline.length })}</p>
               </div>
             )}
 
             {/* About */}
             {liResult.about && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Sección "Acerca de"</p>
-                  <button onClick={() => copyLi('about', liResult.about!)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-white">
-                    {liCopied === 'about' ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                  <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider">{t('careersProfile.linkedinOptimizer.aboutLabel')}</p>
+                  <button onClick={() => copyLi('about', liResult.about!)} className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    {liCopied === 'about' ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersProfile.linkedinOptimizer.copied')}</> : <><Copy size={12} /> {t('careersProfile.linkedinOptimizer.copy')}</>}
                   </button>
                 </div>
                 <p className="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{liResult.about}</p>
@@ -880,11 +881,11 @@ export default function CareersProfile() {
 
             {/* Skills */}
             {liResult.skills && liResult.skills.length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Skills a agregar (en orden)</p>
-                  <button onClick={() => copyLi('skills', liResult.skills!.join(', '))} className="flex items-center gap-1 text-xs text-gray-500 hover:text-white">
-                    {liCopied === 'skills' ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</> : <><Copy size={12} /> Copiar todas</>}
+                  <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider">{t('careersProfile.linkedinOptimizer.skillsLabel')}</p>
+                  <button onClick={() => copyLi('skills', liResult.skills!.join(', '))} className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    {liCopied === 'skills' ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersProfile.linkedinOptimizer.copied')}</> : <><Copy size={12} /> {t('careersProfile.linkedinOptimizer.copyAll')}</>}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -899,9 +900,9 @@ export default function CareersProfile() {
             {liResult.open_to_work && (
               <div className="bg-green-900/20 border border-green-800/40 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-green-400 font-medium uppercase tracking-wider">Texto "Open to Work"</p>
-                  <button onClick={() => copyLi('otw', liResult.open_to_work!)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-white">
-                    {liCopied === 'otw' ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                  <p className="text-xs text-green-400 font-medium uppercase tracking-wider">{t('careersProfile.linkedinOptimizer.openToWorkLabel')}</p>
+                  <button onClick={() => copyLi('otw', liResult.open_to_work!)} className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    {liCopied === 'otw' ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersProfile.linkedinOptimizer.copied')}</> : <><Copy size={12} /> {t('careersProfile.linkedinOptimizer.copy')}</>}
                   </button>
                 </div>
                 <p className="text-gray-200 text-sm">{liResult.open_to_work}</p>
@@ -910,13 +911,13 @@ export default function CareersProfile() {
 
             {/* Experience tips */}
             {liResult.experience_tips && liResult.experience_tips.length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-3">Tips por experiencia laboral</p>
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
+                <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-3">{t('careersProfile.linkedinOptimizer.experienceTipsLabel')}</p>
                 <div className="space-y-3">
                   {liResult.experience_tips.map((tip, i) => (
                     <div key={i} className="border-l-2 border-blue-700 pl-3">
-                      <p className="text-white text-sm font-medium">{tip.empresa}</p>
-                      <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">{tip.sugerencia}</p>
+                      <p className="text-[var(--text-primary)] text-sm font-medium">{tip.empresa}</p>
+                      <p className="text-[var(--text-tertiary)] text-xs mt-0.5 leading-relaxed">{tip.sugerencia}</p>
                     </div>
                   ))}
                 </div>
@@ -925,24 +926,24 @@ export default function CareersProfile() {
 
             {/* Keywords */}
             {liResult.keywords_to_include && liResult.keywords_to_include.length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-3">Keywords clave para aparecer en búsquedas</p>
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
+                <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-3">{t('careersProfile.linkedinOptimizer.keywordsLabel')}</p>
                 <div className="flex flex-wrap gap-2">
                   {liResult.keywords_to_include.map((k, i) => (
-                    <span key={i} className="text-xs bg-gray-700 text-gray-300 px-2.5 py-1 rounded-full">{k}</span>
+                    <span key={i} className="text-xs bg-gray-700 text-[var(--text-secondary)] px-2.5 py-1 rounded-full">{k}</span>
                   ))}
                 </div>
-                <p className="text-xs text-gray-600 mt-2">Asegúrate de que estas keywords aparezcan de forma natural en tu About, experiencia y skills.</p>
+                <p className="text-xs text-[var(--text-faint)] mt-2">{t('careersProfile.linkedinOptimizer.keywordsNote')}</p>
               </div>
             )}
 
             {/* Featured ideas */}
             {liResult.featured_ideas && liResult.featured_ideas.length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-3">Ideas para sección "Destacados"</p>
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
+                <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-3">{t('careersProfile.linkedinOptimizer.featuredIdeasLabel')}</p>
                 <ul className="space-y-1">
                   {liResult.featured_ideas.map((idea, i) => (
-                    <li key={i} className="text-gray-300 text-sm flex items-start gap-2">
+                    <li key={i} className="text-[var(--text-secondary)] text-sm flex items-start gap-2">
                       <span className="text-blue-400 mt-0.5">•</span>{idea}
                     </li>
                   ))}
@@ -953,49 +954,45 @@ export default function CareersProfile() {
         )}
 
         {!liResult && !liLoading && !liError && (
-          <div className="p-6 text-center text-gray-500 text-sm">
-            Haz clic en "Generar optimización" para obtener recomendaciones personalizadas para tu perfil de LinkedIn.
+          <div className="p-6 text-center text-[var(--text-muted)] text-sm">
+            {t('careersProfile.linkedinOptimizer.emptyState')}
           </div>
         )}
       </div>
 
       {/* Instrucciones de redacción para la IA */}
-      <Section title="Instrucciones de Redacción de CV" icon={MessageSquare} defaultOpen={false}>
+      <Section title={t('careersProfile.sections.cvInstructions')} icon={MessageSquare} defaultOpen={false}>
         <div className="space-y-3">
-          <p className="text-sm text-gray-400">
-            Escribe aquí cómo quieres que la IA redacte tu CV. Por ejemplo: qué experiencia destacar,
-            qué omitir, el tono que prefieres, si incluir o no años de experiencia, etc.
-            Estas instrucciones tienen prioridad máxima al generar cada CV personalizado.
+          <p className="text-sm text-[var(--text-tertiary)]">
+            {t('careersProfile.cvInstructions.desc')}
           </p>
           <div>
-            <label className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1.5 block">
-              Mis preferencias para la IA
+            <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 block">
+              {t('careersProfile.cvInstructions.myPreferencesLabel')}
             </label>
             <textarea
               value={profile.cv_instructions || ''}
               onChange={e => setProfile(prev => ({ ...prev, cv_instructions: e.target.value }))}
               placeholder={`Ejemplos:\n- Enfócate en mi experiencia en SQL Server y Azure, no en Python.\n- No menciones mis años de experiencia, solo logros concretos.\n- El tono debe ser directo y técnico, sin frases motivacionales.\n- Prioriza los proyectos personales de IA sobre los roles administrativos.\n- Siempre incluye mis certificaciones en el CV.`}
               rows={8}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
           </div>
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-xs text-gray-600">
-              "Generar" aplica estas instrucciones a tu CV base (el de la sección de arriba) y te deja
-              previsualizarlo y descargarlo en PDF — útil si lo quieres usar fuera de una postulación
-              puntual. También se aplican cada vez que generas o regeneras el CV de{' '}
+            <p className="text-xs text-[var(--text-faint)]">
+              {t('careersProfile.cvInstructions.generateNote1')}{' '}
               <button onClick={() => navigate('/postulaciones')} className="text-purple-400 hover:underline">
-                una postulación específica en Postulaciones
+                {t('careersProfile.cvInstructions.generateNoteLink')}
               </button>.
             </p>
             <button
               onClick={handleOptimizeCv}
               disabled={cvOptimizing || !profile.cv_instructions?.trim()}
-              title={!profile.cv_instructions?.trim() ? 'Escribe tus instrucciones primero' : undefined}
-              className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+              title={!profile.cv_instructions?.trim() ? t('careersProfile.cvInstructions.generateButtonTitle') : undefined}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors shrink-0"
             >
               {cvOptimizing ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
-              {cvOptimizing ? 'Generando...' : 'Generar CV con estas instrucciones'}
+              {cvOptimizing ? t('careersProfile.cvInstructions.generating') : t('careersProfile.cvInstructions.generateButton')}
             </button>
           </div>
           {cvOptimizeError && (
@@ -1008,34 +1005,34 @@ export default function CareersProfile() {
 
       {cvOptimizeOpen && cvOptimizeResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
               <div>
-                <h3 className="text-white font-bold flex items-center gap-2">
+                <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
                   <FileText size={16} className="text-purple-400" />
-                  CV optimizado con tus instrucciones
+                  {t('careersProfile.optimizedModal.title')}
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Vista previa — no se guarda hasta que elijas una acción abajo.</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersProfile.optimizedModal.previewNote')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadOptimizedCv}
                   disabled={cvOptimizeDownloading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 >
                   {cvOptimizeDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  Descargar PDF
+                  {t('careersProfile.translateModal.downloadPdf')}
                 </button>
                 <button
                   onClick={handleSaveOptimizedAsBase}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
-                  title="Reemplaza el CV Completo (Markdown) de tu perfil con esta versión"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+                  title={t('careersProfile.optimizedModal.saveAsBaseTitle')}
                 >
-                  <Save size={13} /> Guardar como mi CV base
+                  <Save size={13} /> {t('careersProfile.translateModal.saveAsBase')}
                 </button>
                 <button
                   onClick={() => setCvOptimizeOpen(false)}
-                  className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg"
+                  className="p-1.5 bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-[var(--text-tertiary)] rounded-lg"
                 >
                   <X size={16} />
                 </button>

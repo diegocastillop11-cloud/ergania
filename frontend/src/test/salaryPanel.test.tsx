@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import type { Application } from '../types/careers'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 const postMock = vi.fn()
 
@@ -32,7 +33,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
     postMock.mockResolvedValue({
       data: { rango_min: 1800000, rango_max: 2400000, moneda: 'CLP', explicacion: 'Estimación para este cargo.', basadoEnAncla: true },
     })
-    render(<SalaryPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
 
     await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1' })))
     expect(await screen.findByText(/1.800.000 - 2.400.000 CLP/)).toBeInTheDocument()
@@ -41,14 +42,14 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
 
   it('muestra el título con el rol y la empresa de la postulación', async () => {
     postMock.mockResolvedValue({ data: { rango_min: 1, rango_max: 2, moneda: 'CLP', explicacion: '', basadoEnAncla: false } })
-    render(<SalaryPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     expect(screen.getByText(/Ingeniero de Datos en TRES60/)).toBeInTheDocument()
     await waitFor(() => expect(postMock).toHaveBeenCalled())
   })
 
   it('si falla, muestra el error con botón de reintentar', async () => {
     postMock.mockRejectedValue({ response: { data: { error: 'Falta país en el perfil' } } })
-    render(<SalaryPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
 
     await waitFor(() => expect(screen.getByText('Falta país en el perfil')).toBeInTheDocument())
     const retryBtn = screen.getByText('Reintentar')
@@ -62,7 +63,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
   it('el botón de cerrar llama a onClose', async () => {
     postMock.mockResolvedValue({ data: { rango_min: 1, rango_max: 2, moneda: 'CLP', explicacion: '', basadoEnAncla: false } })
     const onClose = vi.fn()
-    render(<SalaryPanel app={baseApp} onClose={onClose} />)
+    render(<LanguageProvider><SalaryPanel app={baseApp} onClose={onClose} /></LanguageProvider>)
     await waitFor(() => expect(postMock).toHaveBeenCalled())
 
     const buttons = screen.getAllByRole('button')
@@ -72,7 +73,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
 
   it('si la postulación ya tiene salario_clp (de Evaluar Oferta), lo muestra directo sin llamar a la IA', () => {
     const appConEstimado: Application = { ...baseApp, salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)' }
-    render(<SalaryPanel app={appConEstimado} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={appConEstimado} onClose={() => {}} /></LanguageProvider>)
 
     expect(screen.getByText('$1.600.000 - $2.300.000 CLP mensual (estimado)')).toBeInTheDocument()
     expect(screen.getByText('Calculado al evaluar esta oferta.')).toBeInTheDocument()
@@ -85,7 +86,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
       data: { rango_min: 1900000, rango_max: 2500000, moneda: 'CLP', explicacion: 'Recalculado.', basadoEnAncla: false },
     })
     const appConEstimado: Application = { ...baseApp, salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)' }
-    render(<SalaryPanel app={appConEstimado} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={appConEstimado} onClose={() => {}} /></LanguageProvider>)
 
     fireEvent.click(screen.getByText('Recalcular con IA'))
 
@@ -99,7 +100,7 @@ describe('SalaryPanel — ¿cuánto pedir? por postulación', () => {
     postMock.mockResolvedValue({
       data: { salario_clp: '$1.600.000 - $2.300.000 CLP mensual (estimado)', fromCache: true, carrera: 'Ingeniero de Datos', pais: 'Chile' },
     })
-    render(<SalaryPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><SalaryPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
 
     await waitFor(() => expect(postMock).toHaveBeenCalledWith('/salary-recommendation', expect.objectContaining({ applicationId: 'app-1' })))
     expect(await screen.findByText('$1.600.000 - $2.300.000 CLP mensual (estimado)')).toBeInTheDocument()

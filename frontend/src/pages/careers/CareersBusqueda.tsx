@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { PortalsConfig } from '../../types/careers'
 import PerfilTabs from '../../components/careers/PerfilTabs'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 
 // ── Editable tag list ─────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ function TagList({
   placeholder: string
   colorClass: string
 }) {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
 
   const add = () => {
@@ -41,7 +43,7 @@ function TagList({
           </span>
         ))}
         {items.length === 0 && (
-          <span className="text-xs text-gray-600 italic">Sin items — agrega abajo</span>
+          <span className="text-xs text-[var(--text-faint)] italic">{t('careersBusqueda.noItems')}</span>
         )}
       </div>
       <div className="flex gap-2 min-w-0">
@@ -50,12 +52,12 @@ function TagList({
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
           placeholder={placeholder}
-          className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
+          className="flex-1 min-w-0 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-1.5 text-[var(--text-primary)] text-xs focus:outline-none focus:border-blue-500"
         />
         <button
           onClick={add}
           disabled={!input.trim()}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs disabled:opacity-40"
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-primary)] rounded-lg text-xs disabled:opacity-40"
         >
           <Plus size={13} />
         </button>
@@ -73,8 +75,9 @@ function QueryRow({
   onChange: (updated: typeof q) => void
   onRemove: () => void
 }) {
+  const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg p-2.5">
+    <div className="flex items-center gap-2 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg p-2.5">
       <button
         onClick={() => onChange({ ...q, enabled: !q.enabled })}
         className={`shrink-0 w-8 h-4 rounded-full transition-colors ${q.enabled ? 'bg-blue-600' : 'bg-gray-600'} relative`}
@@ -84,17 +87,17 @@ function QueryRow({
       <input
         value={q.name}
         onChange={e => onChange({ ...q, name: e.target.value })}
-        placeholder="Nombre"
-        className="w-28 bg-transparent text-xs text-gray-300 focus:outline-none"
+        placeholder={t('careersBusqueda.namePlaceholder')}
+        className="w-28 bg-transparent text-xs text-[var(--text-secondary)] focus:outline-none"
       />
-      <span className="text-gray-600 text-xs">→</span>
+      <span className="text-[var(--text-faint)] text-xs">→</span>
       <input
         value={q.query}
         onChange={e => onChange({ ...q, query: e.target.value })}
-        placeholder="consulta de búsqueda"
-        className="flex-1 bg-transparent text-xs text-gray-400 focus:outline-none focus:text-white"
+        placeholder={t('careersBusqueda.queryPlaceholder')}
+        className="flex-1 bg-transparent text-xs text-[var(--text-tertiary)] focus:outline-none focus:text-[var(--text-primary)]"
       />
-      <button onClick={onRemove} className="shrink-0 text-gray-600 hover:text-red-400">
+      <button onClick={onRemove} className="shrink-0 text-[var(--text-faint)] hover:text-red-400">
         <X size={13} />
       </button>
     </div>
@@ -104,6 +107,7 @@ function QueryRow({
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function CareersBusqueda() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
 
   // ── Cargar datos
@@ -193,7 +197,7 @@ export default function CareersBusqueda() {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       const msg = axiosErr?.response?.data?.error
-      setSuggestError(msg || 'Error al conectar con el servidor. Asegúrate de que el backend esté corriendo.')
+      setSuggestError(msg || t('careersBusqueda.suggestions.genericError'))
     }
     finally { setSuggesting(false) }
   }
@@ -240,7 +244,7 @@ export default function CareersBusqueda() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-[var(--text-muted)]">
         <Loader2 size={24} className="animate-spin" />
       </div>
     )
@@ -253,32 +257,32 @@ export default function CareersBusqueda() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Target size={22} className="text-blue-400" /> Mi Búsqueda
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <Target size={22} className="text-blue-400" /> {t('careersBusqueda.title')}
           </h2>
-          <p className="text-gray-400 mt-1 text-sm">
-            Configura los cargos y skills que buscas — el Escáner los usa para filtrar ofertas
+          <p className="text-[var(--text-tertiary)] mt-1 text-sm">
+            {t('careersBusqueda.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={suggest}
             disabled={suggesting}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-medium text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-[var(--text-primary)] rounded-xl font-medium text-sm"
           >
             {suggesting
-              ? <><Loader2 size={14} className="animate-spin" /> Analizando...</>
-              : <><Sparkles size={14} /> Analizar con IA</>
+              ? <><Loader2 size={14} className="animate-spin" /> {t('careersBusqueda.analyzing')}</>
+              : <><Sparkles size={14} /> {t('careersBusqueda.analyzeWithAi')}</>
             }
           </button>
           <button
             onClick={() => saveMut.mutate()}
             disabled={saveMut.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-[var(--text-primary)] rounded-xl font-medium text-sm"
           >
             {saveMut.isPending ? <Loader2 size={15} className="animate-spin" /> :
              saved ? <CheckCircle2 size={15} className="text-green-300" /> : <Save size={15} />}
-            {saveMut.isPending ? 'Guardando...' : saved ? '¡Guardado!' : 'Guardar Cambios'}
+            {saveMut.isPending ? t('careersBusqueda.saving') : saved ? t('careersBusqueda.saved') : t('careersBusqueda.saveChanges')}
           </button>
         </div>
       </div>
@@ -286,70 +290,70 @@ export default function CareersBusqueda() {
       {/* Grid principal */}
       <div className="grid gap-5 lg:grid-cols-2 min-w-0">
         {/* Cargos objetivo */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Search size={15} className="text-blue-400 shrink-0" />
-            <h3 className="text-white font-semibold text-sm truncate">Cargos Objetivo</h3>
-            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getTargetRoles().length} configurados</span>
+            <h3 className="text-[var(--text-primary)] font-semibold text-sm truncate">{t('careersBusqueda.targetRoles.title')}</h3>
+            <span className="ml-auto text-xs text-[var(--text-muted)] shrink-0 whitespace-nowrap pl-1">{t('careersBusqueda.targetRoles.configuredCount', { count: getTargetRoles().length })}</span>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
-            Títulos de cargo exactos que buscas — el escáner filtra portales con estas palabras
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            {t('careersBusqueda.targetRoles.desc')}
           </p>
           <TagList
             items={getTargetRoles()}
             onChange={setRoles}
-            placeholder="ej: Analista SQL, Data Analyst..."
+            placeholder={t('careersBusqueda.targetRoles.placeholder')}
             colorClass="bg-blue-900/40 text-blue-300 border border-blue-800/50"
           />
         </div>
 
         {/* Keywords positivas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Tag size={15} className="text-green-400 shrink-0" />
-            <h3 className="text-white font-semibold text-sm truncate">Skills / Keywords</h3>
-            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getKwPos().length} configuradas</span>
+            <h3 className="text-[var(--text-primary)] font-semibold text-sm truncate">{t('careersBusqueda.skills.title')}</h3>
+            <span className="ml-auto text-xs text-[var(--text-muted)] shrink-0 whitespace-nowrap pl-1">{t('careersBusqueda.skills.configuredCount', { count: getKwPos().length })}</span>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
-            Tecnologías y habilidades clave — si aparecen en el título de una oferta, tiene prioridad
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            {t('careersBusqueda.skills.desc')}
           </p>
           <TagList
             items={getKwPos()}
             onChange={setKwPos}
-            placeholder="ej: SQL Server, Python, Azure..."
+            placeholder={t('careersBusqueda.skills.placeholder')}
             colorClass="bg-green-900/40 text-green-300 border border-green-800/50"
           />
         </div>
 
         {/* Keywords negativas */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 min-w-0">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4 min-w-0">
             <Ban size={15} className="text-red-400 shrink-0" />
-            <h3 className="text-white font-semibold text-sm truncate">Excluir</h3>
-            <span className="ml-auto text-xs text-gray-500 shrink-0 whitespace-nowrap pl-1">{getKwNeg().length} configuradas</span>
+            <h3 className="text-[var(--text-primary)] font-semibold text-sm truncate">{t('careersBusqueda.exclude.title')}</h3>
+            <span className="ml-auto text-xs text-[var(--text-muted)] shrink-0 whitespace-nowrap pl-1">{t('careersBusqueda.exclude.configuredCount', { count: getKwNeg().length })}</span>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
-            Palabras que descartan una oferta automáticamente — call center, ventas, etc.
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            {t('careersBusqueda.exclude.desc')}
           </p>
           <TagList
             items={getKwNeg()}
             onChange={setKwNeg}
-            placeholder="ej: Call Center, Ventas, Cajero..."
+            placeholder={t('careersBusqueda.exclude.placeholder')}
             colorClass="bg-red-900/40 text-red-300 border border-red-800/50"
           />
         </div>
 
         {/* Consultas de búsqueda */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <ListFilter size={15} className="text-violet-400" />
-            <h3 className="text-white font-semibold text-sm">Consultas de Búsqueda</h3>
-            <span className="text-xs text-gray-500 ml-1">{getQueries().length} activas</span>
+            <h3 className="text-[var(--text-primary)] font-semibold text-sm">{t('careersBusqueda.queries.title')}</h3>
+            <span className="text-xs text-[var(--text-muted)] ml-1">{t('careersBusqueda.queries.activeCount', { count: getQueries().length })}</span>
             <button
               onClick={addEmptyQuery}
-              className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-white"
+              className="ml-auto flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             >
-              <Plus size={12} /> Agregar
+              <Plus size={12} /> {t('careersBusqueda.queries.add')}
             </button>
           </div>
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -366,8 +370,8 @@ export default function CareersBusqueda() {
               />
             ))}
             {getQueries().length === 0 && (
-              <p className="text-xs text-gray-600 text-center py-4">
-                Sin consultas — haz clic en "Agregar" o usa "Analizar con IA"
+              <p className="text-xs text-[var(--text-faint)] text-center py-4">
+                {t('careersBusqueda.queries.empty')}
               </p>
             )}
           </div>
@@ -376,28 +380,28 @@ export default function CareersBusqueda() {
 
       {/* Sugerencias IA (aparece al hacer clic en el botón del header) */}
       {(suggesting || suggestions || suggestError) && (
-      <div className="bg-gray-900 border border-amber-900/40 rounded-xl p-5">
+      <div className="bg-[var(--bg-surface)] border border-amber-900/40 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles size={15} className="text-amber-400" />
-          <h3 className="text-white font-semibold text-sm">Sugerencias con IA</h3>
+          <h3 className="text-[var(--text-primary)] font-semibold text-sm">{t('careersBusqueda.suggestions.title')}</h3>
         </div>
 
         {suggesting && (
           <div className="flex items-center gap-3 text-amber-400 text-sm">
             <Loader2 size={18} className="animate-spin shrink-0" />
-            Analizando tu CV y el mercado chileno... (~10 seg)
+            {t('careersBusqueda.suggestions.analyzing')}
           </div>
         )}
 
         {suggestError && !suggesting && (
           <div className="rounded-lg bg-red-950/40 border border-red-800/50 px-4 py-3 text-sm text-red-300 space-y-1">
-            <p className="font-medium">⚠️ No se pudo analizar con IA</p>
+            <p className="font-medium">{t('careersBusqueda.suggestions.errorTitle')}</p>
             <p className="text-red-400 text-xs">{suggestError}</p>
             <button
               onClick={suggest}
-              className="mt-2 text-xs text-red-300 hover:text-white underline"
+              className="mt-2 text-xs text-red-300 hover:text-[var(--text-primary)] underline"
             >
-              Reintentar
+              {t('careersBusqueda.suggestions.retry')}
             </button>
           </div>
         )}
@@ -405,7 +409,7 @@ export default function CareersBusqueda() {
         {suggestions && (
           <div className="space-y-4">
             {suggestions.razon && (
-              <p className="text-sm text-gray-300 italic border-l-2 border-amber-500 pl-3">
+              <p className="text-sm text-[var(--text-secondary)] italic border-l-2 border-amber-500 pl-3">
                 {suggestions.razon}
               </p>
             )}
@@ -414,8 +418,8 @@ export default function CareersBusqueda() {
               {/* Roles sugeridos */}
               {(suggestions.roles?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                    <Search size={11} className="text-blue-400" /> Cargos sugeridos
+                  <p className="text-xs text-[var(--text-tertiary)] mb-2 flex items-center gap-1">
+                    <Search size={11} className="text-blue-400" /> {t('careersBusqueda.suggestions.suggestedRoles')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {suggestions.roles!.map((r, i) => (
@@ -430,8 +434,8 @@ export default function CareersBusqueda() {
               {/* Keywords positivas */}
               {(suggestions.keywords_positivas?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                    <Tag size={11} className="text-green-400" /> Skills sugeridas
+                  <p className="text-xs text-[var(--text-tertiary)] mb-2 flex items-center gap-1">
+                    <Tag size={11} className="text-green-400" /> {t('careersBusqueda.suggestions.suggestedSkills')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {suggestions.keywords_positivas!.map((k, i) => (
@@ -446,14 +450,14 @@ export default function CareersBusqueda() {
               {/* Queries */}
               {(suggestions.queries?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                    <ListFilter size={11} className="text-violet-400" /> Búsquedas sugeridas
+                  <p className="text-xs text-[var(--text-tertiary)] mb-2 flex items-center gap-1">
+                    <ListFilter size={11} className="text-violet-400" /> {t('careersBusqueda.suggestions.suggestedQueries')}
                   </p>
                   <div className="space-y-1">
                     {suggestions.queries!.map((q, i) => (
-                      <div key={i} className="text-xs text-gray-400 bg-gray-800 rounded px-2 py-1">
-                        <span className="text-gray-300 font-medium">{q.nombre}</span>
-                        <span className="text-gray-600 mx-1">→</span>
+                      <div key={i} className="text-xs text-[var(--text-tertiary)] bg-[var(--bg-surface-alt)] rounded px-2 py-1">
+                        <span className="text-[var(--text-secondary)] font-medium">{q.nombre}</span>
+                        <span className="text-[var(--text-faint)] mx-1">→</span>
                         <span className="font-mono text-violet-300">{q.query}</span>
                       </div>
                     ))}
@@ -462,24 +466,24 @@ export default function CareersBusqueda() {
               )}
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-gray-800">
+            <div className="flex gap-2 pt-2 border-t border-[var(--border-default)]">
               <button
                 onClick={applyAllSuggestions}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
-                <CheckCircle2 size={13} /> Aplicar Todo
+                <CheckCircle2 size={13} /> {t('careersBusqueda.suggestions.applyAll')}
               </button>
               <button
                 onClick={suggest}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
               >
-                <RefreshCw size={13} /> Regenerar
+                <RefreshCw size={13} /> {t('careersBusqueda.suggestions.regenerate')}
               </button>
               <button
                 onClick={() => setSuggestions(null)}
-                className="text-xs text-gray-600 hover:text-gray-400 px-2"
+                className="text-xs text-[var(--text-faint)] hover:text-[var(--text-tertiary)] px-2"
               >
-                Descartar
+                {t('careersBusqueda.suggestions.discard')}
               </button>
             </div>
           </div>
@@ -489,9 +493,8 @@ export default function CareersBusqueda() {
 
       {/* Tip final */}
       <div className="p-4 bg-blue-950/30 border border-blue-900/40 rounded-xl text-xs text-blue-300">
-        <strong>💡 Tip:</strong> Guarda los cambios y luego ve al{' '}
-        <strong>Escáner</strong> para encontrar ofertas nuevas en los portales usando estos filtros.
-        El escáner usa tus keywords para detectar qué ofertas son relevantes para ti.
+        <strong>{t('careersBusqueda.finalTip.label')}</strong> {t('careersBusqueda.finalTip.part1')}{' '}
+        <strong>{t('careersBusqueda.finalTip.scanner')}</strong> {t('careersBusqueda.finalTip.part2')}
       </div>
     </div>
   )

@@ -6,8 +6,10 @@ import ApiKeySettingsModal from '../careers/ApiKeySettingsModal'
 import SubscriptionBanner from '../subscription/SubscriptionBanner'
 import { useSubscription } from '../../hooks/useSubscription'
 import { useIdleLogout } from '../../hooks/useIdleLogout'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 export default function Layout() {
+  const { t } = useTranslation()
   const [showApiModal, setShowApiModal] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const sub = useSubscription()
@@ -23,7 +25,7 @@ export default function Layout() {
   const blocked = !sub.loading && !sub.isActive && !isSubscriptionPage
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-app)]">
 
       {/* Overlay mobile */}
       {sidebarOpen && (
@@ -46,16 +48,16 @@ export default function Layout() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
         {/* Header mobile */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-800 bg-gray-900 lg:hidden shrink-0">
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-default)] bg-[var(--bg-surface)] lg:hidden shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors p-1"
-            aria-label="Abrir menú"
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-1"
+            aria-label={t('layout.openMenu')}
           >
             <Menu size={20} />
           </button>
           <img src="/logo.png" alt="Ergania" className="w-6 h-6 rounded-md object-contain" />
-          <span className="text-sm font-semibold text-white">Ergania</span>
+          <span className="text-sm font-semibold text-[var(--text-primary)]">Ergania</span>
         </header>
 
         <main className="flex-1 overflow-auto p-4 lg:p-6">

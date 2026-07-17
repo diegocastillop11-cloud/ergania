@@ -11,6 +11,7 @@ import {
   XCircle, Zap, Globe, ChevronDown, ChevronUp,
   Loader2, TrendingUp
 } from 'lucide-react'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -85,26 +86,28 @@ function MatchBar({ score }: { score: number }) {
       <div className="flex-1 bg-gray-700 rounded-full h-1.5">
         <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-gray-400 w-8 text-right">{pct}%</span>
+      <span className="text-xs text-[var(--text-tertiary)] w-8 text-right">{pct}%</span>
     </div>
   )
 }
 
 function UbicacionBadge({ ubicacion }: { ubicacion: string }) {
+  const { t } = useTranslation()
   const u = ubicacion?.toLowerCase() || ''
   if (u.includes('remoto') || u.includes('remote')) return (
-    <span className="text-xs bg-green-900/40 text-green-400 border border-green-800/40 px-2 py-0.5 rounded-full">Remoto</span>
+    <span className="text-xs bg-green-900/40 text-green-400 border border-green-800/40 px-2 py-0.5 rounded-full">{t('careersScanner.ubicacion.remote')}</span>
   )
   if (u.includes('híbrido') || u.includes('hybrid')) return (
-    <span className="text-xs bg-blue-900/40 text-blue-400 border border-blue-800/40 px-2 py-0.5 rounded-full">Híbrido</span>
+    <span className="text-xs bg-blue-900/40 text-blue-400 border border-blue-800/40 px-2 py-0.5 rounded-full">{t('careersScanner.ubicacion.hybrid')}</span>
   )
   if (u.includes('presencial')) return (
-    <span className="text-xs bg-orange-900/40 text-orange-400 border border-orange-800/40 px-2 py-0.5 rounded-full">Presencial</span>
+    <span className="text-xs bg-orange-900/40 text-orange-400 border border-orange-800/40 px-2 py-0.5 rounded-full">{t('careersScanner.ubicacion.onsite')}</span>
   )
-  return <span className="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">No especificado</span>
+  return <span className="text-xs bg-[var(--bg-surface-alt)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">{t('careersScanner.ubicacion.unspecified')}</span>
 }
 
 function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent; onEvaluar: (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => void; onExternalClick: (url: string) => void }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const isError = !!event.error
   const isDone = event.encontradas !== undefined
@@ -122,7 +125,7 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
   return (
     <div className={`border rounded-xl overflow-hidden transition-all ${
       isError ? 'border-red-900/50 bg-red-950/20' :
-      isDone  ? 'border-gray-700 bg-gray-900/50' :
+      isDone  ? 'border-[var(--border-alt)] bg-gray-900/50' :
                 'border-blue-900/50 bg-blue-950/10'
     }`}>
       <div
@@ -139,47 +142,47 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-medium">{event.nombre}</p>
+          <p className="text-[var(--text-primary)] text-sm font-medium">{event.nombre}</p>
           {isError && <p className="text-red-400 text-xs mt-0.5">{event.error}</p>}
           {isDone && (
-            <p className="text-gray-400 text-xs mt-0.5">
+            <p className="text-[var(--text-tertiary)] text-xs mt-0.5">
               {event.nota
                 ? <span className="text-yellow-600">{event.nota}</span>
                 : <>
-                    {event.encontradas} encontradas · {event.agregadas} al pipeline
-                    {event.omitidas ? ` · ${event.omitidas} ya postuladas` : ''}
+                    {t('careersScanner.matchesFound', { count: event.encontradas ?? 0, added: event.agregadas ?? 0 })}
+                    {event.omitidas ? t('careersScanner.alreadyAppliedSuffix', { count: event.omitidas }) : ''}
                   </>
               }
             </p>
           )}
           {!isError && !isDone && (
-            <p className="text-blue-400 text-xs mt-0.5 animate-pulse">Analizando con IA...</p>
+            <p className="text-blue-400 text-xs mt-0.5 animate-pulse">{t('careersScanner.analyzingWithAi')}</p>
           )}
         </div>
         {isDone && (event.ofertas?.length || 0) > 0 && (
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">
-              {event.encontradas} match{(event.encontradas || 0) !== 1 ? 'es' : ''}
+              {event.encontradas} {t('careersScanner.matchLabel', { plural: (event.encontradas || 0) !== 1 ? 'es' : '' })}
             </span>
-            {open ? <ChevronUp size={14} className="text-gray-500" /> : <ChevronDown size={14} className="text-gray-500" />}
+            {open ? <ChevronUp size={14} className="text-[var(--text-muted)]" /> : <ChevronDown size={14} className="text-[var(--text-muted)]" />}
           </div>
         )}
       </div>
 
       {open && isDone && sortedOffers.length > 0 && (
-        <div className="border-t border-gray-800 divide-y divide-gray-800/50">
+        <div className="border-t border-[var(--border-default)] divide-y divide-gray-800/50">
           {sortedOffers.map((oferta, i) => (
             <div key={i} className="p-4 hover:bg-gray-800/20 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-white text-sm font-medium">{oferta.titulo}</p>
+                    <p className="text-[var(--text-primary)] text-sm font-medium">{oferta.titulo}</p>
                     <UbicacionBadge ubicacion={oferta.ubicacion} />
                   </div>
                   {oferta.empresa && (
-                    <p className="text-gray-400 text-xs mt-0.5">{oferta.empresa}</p>
+                    <p className="text-[var(--text-tertiary)] text-xs mt-0.5">{oferta.empresa}</p>
                   )}
-                  <p className="text-gray-500 text-xs mt-1 italic">{oferta.razon}</p>
+                  <p className="text-[var(--text-muted)] text-xs mt-1 italic">{oferta.razon}</p>
                   <div className="mt-2 max-w-[200px]">
                     <MatchBar score={oferta.match_score} />
                   </div>
@@ -194,8 +197,8 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
                         e.stopPropagation()
                         onExternalClick(oferta.url)
                       }}
-                      className="p-1.5 text-gray-500 hover:text-blue-400 transition-colors"
-                      title="Ver oferta"
+                      className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 transition-colors"
+                      title={t('careersScanner.viewOfferTitle')}
                     >
                       <ExternalLink size={14} />
                     </a>
@@ -205,9 +208,9 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
                       e.stopPropagation()
                       onEvaluar(oferta.url, oferta.titulo, oferta.empresa || '', oferta.razon || '', oferta.ubicacion || '')
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all"
                   >
-                    <Zap size={12} /> Evaluar
+                    <Zap size={12} /> {t('careersScanner.evaluate')}
                   </button>
                 </div>
               </div>
@@ -220,6 +223,7 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
 }
 
 export default function CareersScanner() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [scanning, setScanning] = useState(false)
@@ -333,17 +337,17 @@ export default function CareersScanner() {
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        addLog('error', { error: (err as Error).message || 'Error de conexión' })
+        addLog('error', { error: (err as Error).message || t('careersScanner.log.connectionError') })
         setScanning(false)
       }
     }
-  }, [scanning, addLog, qc])
+  }, [scanning, addLog, qc, t])
 
   const stopScan = useCallback(() => {
     abortRef.current?.abort()
     setScanning(false)
-    addLog('error', { error: 'Escaneo detenido por el usuario' })
-  }, [addLog])
+    addLog('error', { error: t('careersScanner.log.stoppedByUser') })
+  }, [addLog, t])
 
   const evaluarOferta = useCallback(async (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => {
     setEvaluatingUrl(url)
@@ -397,28 +401,28 @@ export default function CareersScanner() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Radio size={22} className={scanning ? 'text-green-400 animate-pulse' : 'text-gray-500'} />
-            Escáner de Portales
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <Radio size={22} className={scanning ? 'text-green-400 animate-pulse' : 'text-[var(--text-muted)]'} />
+            {t('careersScanner.title')}
           </h2>
-          <p className="text-gray-400 mt-1">
-            Busca trabajos automáticamente en portales chilenos (incluye ofertas remotas) y los filtra por tu perfil
+          <p className="text-[var(--text-tertiary)] mt-1">
+            {t('careersScanner.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           {scanning ? (
             <button
               onClick={stopScan}
-              className="flex items-center gap-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/50 rounded-lg text-sm font-medium transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-[var(--text-primary)] border border-red-800/50 rounded-lg text-sm font-medium transition-all"
             >
-              <Square size={14} /> Detener
+              <Square size={14} /> {t('careersScanner.stop')}
             </button>
           ) : (
             <button
               onClick={startScan}
-              className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-[var(--text-primary)] rounded-lg text-sm font-medium transition-colors"
             >
-              <Play size={14} /> Iniciar Escaneo
+              <Play size={14} /> {t('careersScanner.start')}
             </button>
           )}
         </div>
@@ -429,25 +433,25 @@ export default function CareersScanner() {
         <div className="bg-green-900/20 border border-green-800/40 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <CheckCircle2 size={20} className="text-green-400" />
-            <h3 className="text-white font-semibold">Escaneo completado</h3>
+            <h3 className="text-[var(--text-primary)] font-semibold">{t('careersScanner.summary.completed')}</h3>
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-white">{summary.total}</p>
-              <p className="text-xs text-gray-400">Portales escaneados</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]">{summary.total}</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t('careersScanner.summary.portalsScanned')}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-blue-400">{summary.encontradas}</p>
-              <p className="text-xs text-gray-400">Ofertas encontradas</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t('careersScanner.summary.offersFound')}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-green-400">{summary.agregadas}</p>
-              <p className="text-xs text-gray-400">Agregadas al pipeline</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t('careersScanner.summary.addedToPipeline')}</p>
             </div>
           </div>
           {summary.agregadas > 0 && (
-            <p className="text-center text-sm text-gray-400 mt-3">
-              Ve a <strong className="text-white">Evaluar Oferta</strong> para analizar las ofertas encontradas con IA
+            <p className="text-center text-sm text-[var(--text-tertiary)] mt-3">
+              {t('careersScanner.summary.goEvaluateNote1')} <strong className="text-[var(--text-primary)]">{t('careersScanner.summary.goEvaluateNoteLink')}</strong> {t('careersScanner.summary.goEvaluateNote2')}
             </p>
           )}
         </div>
@@ -458,9 +462,9 @@ export default function CareersScanner() {
         <div className="bg-blue-900/20 border border-blue-800/40 rounded-xl p-4 flex items-center gap-4">
           <Zap size={18} className="text-blue-400 shrink-0" />
           <div className="flex-1">
-            <p className="text-white text-sm font-medium">{evalResult.titulo}</p>
-            <p className="text-gray-400 text-xs">
-              Score: <strong className="text-white">{evalResult.score}/5</strong> · {evalResult.recomendacion}
+            <p className="text-[var(--text-primary)] text-sm font-medium">{evalResult.titulo}</p>
+            <p className="text-[var(--text-tertiary)] text-xs">
+              {t('careersScanner.scoreLabel')} <strong className="text-[var(--text-primary)]">{evalResult.score}/5</strong> · {evalResult.recomendacion}
             </p>
           </div>
         </div>
@@ -468,24 +472,24 @@ export default function CareersScanner() {
 
       {confirmation && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4 py-8">
-          <div className="max-w-md w-full bg-gray-950 border border-blue-800 rounded-3xl p-6 shadow-2xl">
+          <div className="max-w-md w-full bg-[var(--bg-app)] border border-blue-800 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-start gap-4">
               <div className="rounded-2xl bg-blue-900/20 p-3 text-blue-300">
                 <Zap size={24} />
               </div>
               <div className="flex-1">
-                <p className="text-white text-lg font-semibold">Evaluación completada</p>
-                <p className="text-gray-400 text-sm mt-1">{confirmation.titulo}</p>
+                <p className="text-[var(--text-primary)] text-lg font-semibold">{t('careersScanner.confirmationModal.title')}</p>
+                <p className="text-[var(--text-tertiary)] text-sm mt-1">{confirmation.titulo}</p>
               </div>
             </div>
             <div className="mt-5 grid gap-3">
-              <div className="rounded-2xl bg-gray-900 border border-gray-800 p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-[0.2em]">Score</p>
-                <p className="text-3xl font-bold text-white mt-1">{confirmation.score}/5</p>
+              <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-default)] p-4">
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-[0.2em]">{t('careersScanner.confirmationModal.score')}</p>
+                <p className="text-3xl font-bold text-[var(--text-primary)] mt-1">{confirmation.score}/5</p>
               </div>
-              <div className="rounded-2xl bg-gray-900 border border-gray-800 p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-[0.2em]">Recomendación</p>
-                <p className="text-white mt-1 font-semibold">{confirmation.recomendacion}</p>
+              <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-default)] p-4">
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-[0.2em]">{t('careersScanner.confirmationModal.recommendation')}</p>
+                <p className="text-[var(--text-primary)] mt-1 font-semibold">{confirmation.recomendacion}</p>
               </div>
             </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -494,15 +498,15 @@ export default function CareersScanner() {
                   setConfirmation(null)
                   navigate('/tracker')
                 }}
-                className="w-full sm:w-auto px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                className="w-full sm:w-auto px-4 py-3 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-xl text-sm font-semibold transition-colors"
               >
-                Ir al tracker
+                {t('careersScanner.confirmationModal.goToTracker')}
               </button>
               <button
                 onClick={() => setConfirmation(null)}
-                className="w-full sm:w-auto px-4 py-3 border border-gray-700 text-gray-300 hover:text-white rounded-xl text-sm transition-colors"
+                className="w-full sm:w-auto px-4 py-3 border border-[var(--border-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl text-sm transition-colors"
               >
-                Cerrar
+                {t('careersScanner.confirmationModal.close')}
               </button>
             </div>
           </div>
@@ -511,10 +515,10 @@ export default function CareersScanner() {
 
       {/* Parámetros de búsqueda activos */}
       {searchInfo && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Buscando con estos parámetros</p>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4 space-y-2">
+          <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">{t('careersScanner.searchInfo.title')}</p>
           <div>
-            <p className="text-xs text-gray-400 mb-1.5">Consultas ({searchInfo.queries.length}):</p>
+            <p className="text-xs text-[var(--text-tertiary)] mb-1.5">{t('careersScanner.searchInfo.queriesLabel', { count: searchInfo.queries.length })}</p>
             <div className="flex flex-wrap gap-1.5">
               {searchInfo.queries.map(q => (
                 <span key={q} className="text-xs bg-blue-900/40 text-blue-300 border border-blue-800/50 px-2.5 py-1 rounded-lg font-medium">
@@ -525,7 +529,7 @@ export default function CareersScanner() {
           </div>
           {searchInfo.keywords_positivas.length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">Keywords de filtro:</p>
+              <p className="text-xs text-[var(--text-tertiary)] mb-1.5">{t('careersScanner.searchInfo.keywordsLabel')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {searchInfo.keywords_positivas.map(k => (
                   <span key={k} className="text-xs bg-green-900/30 text-green-400 border border-green-800/40 px-2 py-0.5 rounded-full">
@@ -540,15 +544,15 @@ export default function CareersScanner() {
 
       {/* Progress bar durante escaneo */}
       {scanning && totalPortals > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400 flex items-center gap-2">
+            <span className="text-sm text-[var(--text-tertiary)] flex items-center gap-2">
               <Loader2 size={14} className="animate-spin" />
-              Escaneando portales...
+              {t('careersScanner.scanningPortals')}
             </span>
-            <span className="text-sm text-gray-400">{doneCount}/{totalPortals}</span>
+            <span className="text-sm text-[var(--text-tertiary)]">{doneCount}/{totalPortals}</span>
           </div>
-          <div className="w-full bg-gray-800 rounded-full h-2">
+          <div className="w-full bg-[var(--bg-surface-alt)] rounded-full h-2">
             <div
               className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-green-500 transition-all duration-500"
               style={{ width: `${totalPortals > 0 ? (doneCount / totalPortals) * 100 : 0}%` }}
@@ -561,20 +565,20 @@ export default function CareersScanner() {
       {portalList.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="text-white font-semibold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-semibold flex items-center gap-2">
               <Globe size={16} className="text-blue-400" />
-              Portales ({portalList.length})
+              {t('careersScanner.portalsHeader', { count: portalList.length })}
             </h3>
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs">
               {([
-                { id: 'todos', label: 'Todos' },
-                { id: 'chile', label: 'Chile' },
-                { id: 'remoto', label: 'Remoto' },
+                { id: 'todos', label: t('careersScanner.regions.all') },
+                { id: 'chile', label: t('careersScanner.regions.chile') },
+                { id: 'remoto', label: t('careersScanner.regions.remote') },
               ] as const).map(opt => (
                 <button
                   key={opt.id}
                   onClick={() => setRegionFilter(opt.id)}
-                  className={`px-3 py-1.5 ${regionFilter === opt.id ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 ${regionFilter === opt.id ? 'bg-blue-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
                 >
                   {opt.label}
                 </button>
@@ -594,19 +598,19 @@ export default function CareersScanner() {
 
       {/* Log en tiempo real */}
       {log.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white text-sm font-semibold flex items-center gap-2">
-              <TrendingUp size={14} className="text-gray-400" />
-              Log en tiempo real
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
+            <h3 className="text-[var(--text-primary)] text-sm font-semibold flex items-center gap-2">
+              <TrendingUp size={14} className="text-[var(--text-tertiary)]" />
+              {t('careersScanner.log.title')}
             </h3>
-            <span className="text-xs text-gray-500">{log.length} eventos</span>
+            <span className="text-xs text-[var(--text-muted)]">{t('careersScanner.log.events', { count: log.length })}</span>
           </div>
           <div className="p-3 max-h-48 overflow-y-auto space-y-1 font-mono">
             {log.map((entry, i) => {
               const colors: Record<LogEntry['type'], string> = {
                 start: 'text-blue-400',
-                portal: 'text-gray-400',
+                portal: 'text-[var(--text-tertiary)]',
                 portal_done: 'text-green-400',
                 portal_error: 'text-red-400',
                 portal_warn: 'text-amber-400',
@@ -624,19 +628,20 @@ export default function CareersScanner() {
               }
               return (
                 <div key={i} className={`text-xs flex gap-2 ${colors[entry.type]}`}>
-                  <span className="shrink-0 text-gray-600">{entry.timestamp}</span>
+                  <span className="shrink-0 text-[var(--text-faint)]">{entry.timestamp}</span>
                   <span className="shrink-0">{icons[entry.type]}</span>
                   <span>
-                    {entry.type === 'portal' && `Escaneando: ${entry.data.nombre}`}
+                    {entry.type === 'portal' && t('careersScanner.log.scanning', { name: String(entry.data.nombre) })}
                     {entry.type === 'portal_done' && (entry.data.nota
                       ? `${entry.data.nombre}: ${entry.data.nota}`
-                      : `${entry.data.nombre}: ${entry.data.encontradas} encontradas, ${entry.data.agregadas} al pipeline${entry.data.omitidas ? `, ${entry.data.omitidas} omitidas (ya postuladas)` : ''}`
+                      : t('careersScanner.log.found', { name: String(entry.data.nombre), found: String(entry.data.encontradas), added: String(entry.data.agregadas) }) +
+                        (entry.data.omitidas ? t('careersScanner.log.alreadyAppliedSuffix', { count: String(entry.data.omitidas) }) : '')
                     )}
-                    {entry.type === 'portal_error' && `${entry.data.nombre}: ${entry.data.error}`}
-                    {entry.type === 'portal_warn' && `⚠ ${entry.data.nombre}: ${entry.data.nota}`}
-                    {entry.type === 'start' && `Iniciando escaneo de ${entry.data.total} portales...`}
-                    {entry.type === 'done' && `Completado — ${entry.data.agregadas_pipeline} ofertas relevantes agregadas`}
-                    {entry.type === 'error' && String(entry.data.error || 'Error desconocido')}
+                    {entry.type === 'portal_error' && t('careersScanner.log.portalError', { name: String(entry.data.nombre), error: String(entry.data.error) })}
+                    {entry.type === 'portal_warn' && t('careersScanner.log.portalWarn', { name: String(entry.data.nombre), note: String(entry.data.nota) })}
+                    {entry.type === 'start' && t('careersScanner.log.starting', { count: String(entry.data.total) })}
+                    {entry.type === 'done' && t('careersScanner.log.done', { count: String(entry.data.agregadas_pipeline) })}
+                    {entry.type === 'error' && String(entry.data.error || t('careersScanner.log.genericError'))}
                   </span>
                 </div>
               )
@@ -647,34 +652,34 @@ export default function CareersScanner() {
 
       {/* Estado vacío */}
       {!scanning && portalList.length === 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center mx-auto">
-            <Radio size={32} className="text-gray-600" />
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-10 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-surface-alt)] flex items-center justify-center mx-auto">
+            <Radio size={32} className="text-[var(--text-faint)]" />
           </div>
           <div>
-            <h3 className="text-white font-semibold mb-1">Escáner listo</h3>
-            <p className="text-gray-400 text-sm max-w-md mx-auto">
-              Busca en portales chilenos (incluye ofertas remotas) usando tus cargos y keywords. Para mejores resultados configura primero tus cargos objetivo.
+            <h3 className="text-[var(--text-primary)] font-semibold mb-1">{t('careersScanner.emptyState.title')}</h3>
+            <p className="text-[var(--text-tertiary)] text-sm max-w-md mx-auto">
+              {t('careersScanner.emptyState.desc')}
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-md mx-auto text-xs">
-            <div className="bg-gray-800 rounded-lg p-2.5 text-left">
+            <div className="bg-[var(--bg-surface-alt)] rounded-lg p-2.5 text-left">
               <p className="text-green-400 font-medium">✓ GetOnBoard</p>
-              <p className="text-gray-500 mt-0.5">API pública · resultados reales</p>
+              <p className="text-[var(--text-muted)] mt-0.5">{t('careersScanner.emptyState.getOnBoardDesc')}</p>
             </div>
-            <div className="bg-gray-800 rounded-lg p-2.5 text-left">
+            <div className="bg-[var(--bg-surface-alt)] rounded-lg p-2.5 text-left">
               <p className="text-green-400 font-medium">✓ Indeed Chile</p>
-              <p className="text-gray-500 mt-0.5">RSS feed · actualizaciones diarias</p>
+              <p className="text-[var(--text-muted)] mt-0.5">{t('careersScanner.emptyState.indeedDesc')}</p>
             </div>
-            <div className="bg-gray-800 rounded-lg p-2.5 text-left">
-              <p className="text-blue-400 font-medium">◌ Otros portales</p>
-              <p className="text-gray-500 mt-0.5">Búsqueda + extracción IA</p>
+            <div className="bg-[var(--bg-surface-alt)] rounded-lg p-2.5 text-left">
+              <p className="text-blue-400 font-medium">◌ {t('careersScanner.emptyState.othersLabel')}</p>
+              <p className="text-[var(--text-muted)] mt-0.5">{t('careersScanner.emptyState.othersDesc')}</p>
             </div>
           </div>
-          <p className="text-xs text-gray-600">
-            ¿0 resultados? Ve a{' '}
-            <strong className="text-gray-400">Mi Búsqueda</strong>{' '}
-            y configura tus cargos objetivo y keywords primero.
+          <p className="text-xs text-[var(--text-faint)]">
+            {t('careersScanner.emptyState.zeroResultsNote1')}{' '}
+            <strong className="text-[var(--text-tertiary)]">{t('careersScanner.emptyState.zeroResultsNoteLink')}</strong>{' '}
+            {t('careersScanner.emptyState.zeroResultsNote2')}
           </p>
         </div>
       )}
@@ -682,11 +687,11 @@ export default function CareersScanner() {
       {/* Loading overlay para evaluación */}
       {evaluatingUrl && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 flex items-center gap-4 max-w-sm mx-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-xl p-6 flex items-center gap-4 max-w-sm mx-4">
             <Loader2 size={24} className="animate-spin text-blue-400 shrink-0" />
             <div>
-              <p className="text-white font-medium">Evaluando oferta con IA...</p>
-              <p className="text-gray-400 text-sm mt-0.5">Analizando bloques A-G completos</p>
+              <p className="text-[var(--text-primary)] font-medium">{t('careersScanner.evaluatingOverlay.title')}</p>
+              <p className="text-[var(--text-tertiary)] text-sm mt-0.5">{t('careersScanner.evaluatingOverlay.subtitle')}</p>
             </div>
           </div>
         </div>

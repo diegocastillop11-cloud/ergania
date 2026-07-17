@@ -19,13 +19,16 @@ vi.mock('../lib/supabase', () => ({
 
 import Login from '../pages/Login'
 import { AuthProvider } from '../lib/AuthContext'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 function renderLogin() {
   return render(
     <MemoryRouter initialEntries={['/login']}>
-      <AuthProvider>
-        <Login />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <Login />
+        </AuthProvider>
+      </LanguageProvider>
     </MemoryRouter>
   )
 }

@@ -10,6 +10,7 @@ import {
   Pencil, Save, Check, MessagesSquare,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 async function downloadPdf(appId: string, filename: string) {
   const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
@@ -62,7 +63,7 @@ function renderInterviewPrep(prep: string) {
       const level = headingMatch[1].length
       const content = headingMatch[2]
       const Tag = `h${Math.min(level, 3)}` as keyof JSX.IntrinsicElements
-      elements.push(React.createElement(Tag, { key: `h-${index}`, className: 'text-white font-semibold mt-4 mb-2' }, content))
+      elements.push(React.createElement(Tag, { key: `h-${index}`, className: 'text-[var(--text-primary)] font-semibold mt-4 mb-2' }, content))
       return
     }
 
@@ -86,7 +87,7 @@ function renderInterviewPrep(prep: string) {
     }
 
     flushList()
-    elements.push(<p key={`p-${index}`} className="text-gray-300 leading-7">{trimmed}</p>)
+    elements.push(<p key={`p-${index}`} className="text-[var(--text-secondary)] leading-7">{trimmed}</p>)
   })
 
   flushList()
@@ -97,7 +98,7 @@ function renderInterviewPrep(prep: string) {
 
 function EstadoBadge({ estado }: { estado: string }) {
   const cfg = ESTADO_CONFIG[estado]
-  if (!cfg) return <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-800">{estado}</span>
+  if (!cfg) return <span className="text-xs text-[var(--text-muted)] px-2 py-0.5 rounded-full bg-[var(--bg-surface-alt)]">{estado}</span>
   return (
     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
       {cfg.label}
@@ -108,6 +109,7 @@ function EstadoBadge({ estado }: { estado: string }) {
 // ── Modal Nueva Postulación ───────────────────────────────────────────────────
 
 function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClose: () => void; onCreated: () => void; offerWithoutLink: boolean }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ empresa: '', rol: '', url: '', jd: '' })
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [loading, setLoading] = useState(false)
@@ -115,10 +117,10 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
   const [error, setError] = useState('')
 
   const steps = [
-    '📄 Leyendo tu CV y perfil...',
-    '🤖 Generando CV personalizado con IA...',
-    '🖨️ Convirtiendo a PDF...',
-    '💾 Guardando postulación...',
+    t('careersPostulaciones.newModal.steps.reading'),
+    t('careersPostulaciones.newModal.steps.generating'),
+    t('careersPostulaciones.newModal.steps.converting'),
+    t('careersPostulaciones.newModal.steps.saving'),
   ]
 
   const handleSubmit = async () => {
@@ -137,7 +139,7 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
       onClose()
     } catch (err: unknown) {
       clearInterval(interval)
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al crear postulación')
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.newModal.genericError'))
     } finally {
       setLoading(false)
       setStep('')
@@ -146,68 +148,68 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--border-default)]">
           <div>
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-              <Plus size={18} className="text-blue-400" /> {offerWithoutLink ? 'Oferta sin link' : 'Nueva Postulación'}
+            <h3 className="text-[var(--text-primary)] font-bold text-lg flex items-center gap-2">
+              <Plus size={18} className="text-blue-400" /> {offerWithoutLink ? t('careersPostulaciones.newModal.titleOfferNoLink') : t('careersPostulaciones.newModal.titleNew')}
             </h3>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-[var(--text-tertiary)] mt-1">
               {offerWithoutLink
-                ? 'Pega la descripción de la oferta recibida. La IA usará el contenido para generar el CV, preparar entrevista y guardar la postulación.'
-                : 'Puedes pegar el link de la oferta o dejarlo vacío si solo tienes la descripción del cargo.'}
+                ? t('careersPostulaciones.newModal.descOfferNoLink')
+                : t('careersPostulaciones.newModal.descNew')}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Empresa *</label>
+              <label className="text-xs text-[var(--text-tertiary)] block mb-1">{t('careersPostulaciones.newModal.company')}</label>
               <input
                 value={form.empresa}
                 onChange={e => setForm(f => ({ ...f, empresa: e.target.value }))}
-                placeholder="Ej: Falabella, Bci, Cornershop..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                placeholder={t('careersPostulaciones.newModal.companyPlaceholder')}
+                className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Cargo *</label>
+              <label className="text-xs text-[var(--text-tertiary)] block mb-1">{t('careersPostulaciones.newModal.role')}</label>
               <input
                 value={form.rol}
                 onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
-                placeholder="Ej: Data Analyst, Frontend Developer..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                placeholder={t('careersPostulaciones.newModal.rolePlaceholder')}
+                className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-gray-400 block mb-1">URL de la oferta (opcional)</label>
+            <label className="text-xs text-[var(--text-tertiary)] block mb-1">{t('careersPostulaciones.newModal.urlLabel')}</label>
             <input
               value={form.url}
               onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
-              placeholder="https://getOnBoard.com/jobs/..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+              placeholder={t('careersPostulaciones.newModal.urlPlaceholder')}
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-blue-500"
             />
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-[var(--text-muted)] text-xs mt-1">
               {offerWithoutLink
-                ? 'Este modo está pensado para ofertas sin link. Deja esto vacío y pega la descripción completa del cargo.'
-                : 'Si no tienes URL, deja esto vacío y pega la descripción completa del puesto en el campo de abajo.'}
+                ? t('careersPostulaciones.newModal.urlNoteOfferNoLink')
+                : t('careersPostulaciones.newModal.urlNoteNew')}
             </p>
           </div>
 
           <div>
-            <label className="text-xs text-gray-400 block mb-1">
-              Descripción de la oferta / tareas del puesto * <span className="text-gray-600">({form.jd.length} chars — mín 100)</span>
+            <label className="text-xs text-[var(--text-tertiary)] block mb-1">
+              {t('careersPostulaciones.newModal.jdLabel')} <span className="text-[var(--text-faint)]">{t('careersPostulaciones.newModal.jdCharCount', { count: form.jd.length })}</span>
             </label>
             <textarea
               value={form.jd}
               onChange={e => setForm(f => ({ ...f, jd: e.target.value }))}
-              placeholder="Pega aquí la descripción completa de lo que te ofrecieron: responsabilidades, objetivos, tareas, resultados esperados, herramientas, etc."
+              placeholder={t('careersPostulaciones.newModal.jdPlaceholder')}
               rows={10}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-y font-mono"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-blue-500 resize-y font-mono"
             />
           </div>
 
@@ -221,25 +223,25 @@ function NuevaPostulacionModal({ onClose, onCreated, offerWithoutLink }: { onClo
                 <Loader2 size={18} className="animate-spin shrink-0" />
                 <div>
                   <p className="font-medium">{step}</p>
-                  <p className="text-xs text-blue-500 mt-0.5">La IA está armando tu CV personalizado — esto tarda ~30 segundos</p>
+                  <p className="text-xs text-blue-500 mt-0.5">{t('careersPostulaciones.newModal.aiWorkingNote')}</p>
                 </div>
               </div>
-              <div className="mt-3 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div className="mt-3 h-1.5 bg-[var(--bg-surface-alt)] rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-blue-600 to-violet-600 rounded-full animate-pulse w-3/4" />
               </div>
             </div>
           )}
         </div>
 
-        <div className="p-5 border-t border-gray-800 flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-gray-400 hover:text-white text-sm">Cancelar</button>
+        <div className="p-5 border-t border-[var(--border-default)] flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-sm">{t('careersPostulaciones.newModal.cancel')}</button>
           <button
             onClick={handleSubmit}
             disabled={loading || !form.empresa.trim() || !form.rol.trim() || form.jd.trim().length < 100}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-            {loading ? 'Generando CV...' : 'Generar CV y Guardar'}
+            {loading ? t('careersPostulaciones.newModal.generating') : t('careersPostulaciones.newModal.submit')}
           </button>
         </div>
       </div>
@@ -254,6 +256,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   onClose: () => void
   onRegenerated?: (updatedApp: Application) => void
 }) {
+  const { t } = useTranslation()
   const [app, setApp] = useState(initialApp)
   const [copied, setCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
@@ -299,7 +302,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
       setApp(a => ({ ...a, cvHtml: editedHtml }))
       setEditing(false)
     } catch (err: unknown) {
-      setSaveCvError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al guardar')
+      setSaveCvError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.cvPreview.genericErrorSave'))
       doc.designMode = 'on' // seguimos editando si falló el guardado
     } finally {
       setSavingCv(false)
@@ -320,7 +323,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
       setApp(full)
       onRegenerated?.(full)
     } catch (err: unknown) {
-      setRegenError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al regenerar')
+      setRegenError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.cvPreview.genericErrorRegen'))
     } finally {
       setRegenerating(false)
     }
@@ -328,28 +331,28 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <FileText size={16} className="text-blue-400" />
-              CV — {app.rol} en {app.empresa}
+              {t('careersPostulaciones.cvPreview.titlePrefix')} {app.rol} {t('careersPostulaciones.cvPreview.in')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Generado con IA y personalizado para esta oferta · {(app.idioma || 'es') === 'en' ? 'English' : 'Español'}
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {t('careersPostulaciones.cvPreview.generatedNote')} {(app.idioma || 'es') === 'en' ? 'English' : 'Español'}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma del CV">
+            <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs" title="Idioma del CV">
               <button
                 onClick={() => setLang('es')}
-                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 ES
               </button>
               <button
                 onClick={() => setLang('en')}
-                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 EN
               </button>
@@ -357,19 +360,19 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             <button
               onClick={() => regenerate()}
               disabled={regenerating || editing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-              title="Genera una nueva versión del CV en el idioma seleccionado, aplicando tus Instrucciones de Redacción del Perfil"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+              title={t('careersPostulaciones.cvPreview.regenerateTitle')}
             >
               {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
-              {regenerating ? 'Regenerando...' : 'Regenerar CV'}
+              {regenerating ? t('careersPostulaciones.cvPreview.regenerating') : t('careersPostulaciones.cvPreview.regenerate')}
             </button>
             {app.cvHtml && !editing && (
               <button
                 onClick={startEditing}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-xs font-medium"
-                title="Edita el texto del CV directamente sobre la vista previa"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+                title={t('careersPostulaciones.cvPreview.editCvTitle')}
               >
-                <Pencil size={13} /> Editar CV
+                <Pencil size={13} /> {t('careersPostulaciones.cvPreview.editCv')}
               </button>
             )}
             {editing && (
@@ -377,17 +380,17 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
                 <button
                   onClick={saveEditedCv}
                   disabled={savingCv}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 >
                   {savingCv ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                  {savingCv ? 'Guardando...' : 'Guardar cambios'}
+                  {savingCv ? t('careersPostulaciones.cvPreview.saving') : t('careersPostulaciones.cvPreview.saveChanges')}
                 </button>
                 <button
                   onClick={cancelEditing}
                   disabled={savingCv}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-[var(--text-secondary)] rounded-lg text-xs"
                 >
-                  Cancelar
+                  {t('careersPostulaciones.cvPreview.cancel')}
                 </button>
               </>
             )}
@@ -395,9 +398,9 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
               <button
                 onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
                 disabled={editing}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
-                <Download size={13} /> PDF
+                <Download size={13} /> {t('careersPostulaciones.cvPreview.pdf')}
               </button>
             )}
             {app.cvTex && (
@@ -409,20 +412,20 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
                   a.download = `cv-${app.empresa}-${app.rol}.tex`.replace(/\s+/g, '-').toLowerCase()
                   a.click()
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-white rounded-lg text-xs font-medium"
-                title="Descargar fuente LaTeX"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+                title={t('careersPostulaciones.cvPreview.downloadTexTitle')}
               >
                 <Download size={13} /> .tex
               </button>
             )}
             <button
               onClick={copyHtml}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
             >
               {copied ? <CheckCircle2 size={13} className="text-green-400" /> : <Copy size={13} />}
-              {copied ? 'Copiado' : 'Copiar HTML'}
+              {copied ? t('careersPostulaciones.cvPreview.copied') : t('careersPostulaciones.cvPreview.copyHtml')}
             </button>
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white">
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
               <X size={18} />
             </button>
           </div>
@@ -434,7 +437,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
           )}
           {editing && (
             <p className="text-blue-400 text-xs mt-1 flex items-center gap-1">
-              <Check size={12} /> Modo edición activo — haz click en el texto del CV para modificarlo
+              <Check size={12} /> {t('careersPostulaciones.cvPreview.editModeActive')}
             </p>
           )}
         </div>
@@ -448,8 +451,8 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
               title="CV Preview"
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              No hay HTML disponible
+            <div className="flex items-center justify-center h-full text-[var(--text-muted)]">
+              {t('careersPostulaciones.cvPreview.noHtml')}
             </div>
           )}
         </div>
@@ -461,6 +464,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
 // ── Panel Prep Entrevista ─────────────────────────────────────────────────────
 
 function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; onClose: () => void; onGenerated: (prep: string) => void }) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [prep, setPrep] = useState(app.interviewPrep || '')
   const [error, setError] = useState('')
@@ -484,7 +488,7 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
         || (err as Error)?.message
-        || 'Error al generar la guía de entrevista'
+        || t('careersPostulaciones.interviewPrep.genericError')
       setError(msg)
       console.error(err)
     } finally {
@@ -496,26 +500,26 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <Brain size={16} className="text-violet-400" />
-              Prep. Entrevista — {app.empresa}
+              {t('careersPostulaciones.interviewPrep.titlePrefix')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Guía personalizada basada en tu CV y la oferta</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersPostulaciones.interviewPrep.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma de la guía">
+            <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs" title="Idioma de la guía">
               <button
                 onClick={() => setLang('es')}
-                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 ES
               </button>
               <button
                 onClick={() => setLang('en')}
-                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 EN
               </button>
@@ -525,16 +529,16 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
                 <button
                   onClick={() => generate()}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white rounded-lg text-xs"
-                  title="Regenera la guía en el idioma seleccionado"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs"
+                  title={t('careersPostulaciones.interviewPrep.regenerateTitle')}
                 >
-                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />} Regenerar
+                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />} {t('careersPostulaciones.interviewPrep.regenerate')}
                 </button>
                 <button
                   onClick={copyPrep}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
                 >
-                  <Copy size={13} /> Copiar
+                  <Copy size={13} /> {t('careersPostulaciones.interviewPrep.copy')}
                 </button>
                 <button
                   onClick={async () => {
@@ -542,17 +546,17 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
                     try {
                       await downloadInterviewPrepPdf(app.id, app.empresa, app.rol)
                     } catch (err: unknown) {
-                      setError('Error al descargar el PDF. Intenta de nuevo.')
+                      setError(t('careersPostulaciones.interviewPrep.downloadError'))
                       console.error(err)
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs"
                 >
-                  <Download size={13} /> Descargar PDF
+                  <Download size={13} /> {t('careersPostulaciones.interviewPrep.downloadPdf')}
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
           </div>
         </div>
 
@@ -569,16 +573,16 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
                 <Brain size={28} className="text-violet-400" />
               </div>
               <div>
-                <p className="text-white font-semibold">¿Listo para la entrevista?</p>
-                <p className="text-gray-400 text-sm mt-1 max-w-sm">
-                  La IA analizará la oferta y tu CV para generar preguntas probables, cómo responderlas y estrategias para brechas de experiencia.
+                <p className="text-[var(--text-primary)] font-semibold">{t('careersPostulaciones.interviewPrep.readyTitle')}</p>
+                <p className="text-[var(--text-tertiary)] text-sm mt-1 max-w-sm">
+                  {t('careersPostulaciones.interviewPrep.readyDesc')}
                 </p>
               </div>
               <button
                 onClick={() => generate()}
-                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium"
+                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-[var(--text-primary)] rounded-xl font-medium"
               >
-                <Brain size={16} /> Generar Guía de Entrevista
+                <Brain size={16} /> {t('careersPostulaciones.interviewPrep.generateButton')}
               </button>
             </div>
           )}
@@ -586,7 +590,7 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-4">
               <Loader2 size={32} className="text-violet-400 animate-spin" />
-              <p className="text-gray-400 text-sm">Analizando oferta y preparando tu guía...</p>
+              <p className="text-[var(--text-tertiary)] text-sm">{t('careersPostulaciones.interviewPrep.loadingNote')}</p>
             </div>
           )}
 
@@ -606,6 +610,7 @@ function InterviewPrepPanel({ app, onClose, onGenerated }: { app: Application; o
 // ── Panel Responder Preguntas ─────────────────────────────────────────────────
 
 function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const { t, tList } = useTranslation()
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [loading, setLoading] = useState(false)
@@ -631,7 +636,7 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
         || (err as Error)?.message
-        || 'Error al generar la respuesta'
+        || t('careersPostulaciones.qna.genericError')
       setError(msg)
       console.error(err)
     } finally {
@@ -645,56 +650,50 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const EJEMPLOS = [
-    '¿Por qué quieres trabajar con nosotros?',
-    '¿Cuál es tu mayor fortaleza?',
-    '¿Qué experiencia tienes con [tecnología de la oferta]?',
-    'Cuéntanos sobre un proyecto desafiante que hayas enfrentado.',
-    '¿Por qué debería contratarte para este cargo?',
-  ]
+  const EJEMPLOS = tList('careersPostulaciones.qna.examples')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <MessageSquare size={16} className="text-green-400" />
-              Responder Preguntas — {app.empresa}
+              {t('careersPostulaciones.qna.titlePrefix')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">La IA responde de forma humanizada basándose en tu CV</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersPostulaciones.qna.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs">
               <button
                 onClick={() => setLang('es')}
-                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
-                title="Respuestas en español"
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                title={t('careersPostulaciones.qna.langEsTitle')}
               >
                 ES
               </button>
               <button
                 onClick={() => setLang('en')}
-                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
-                title="Respuestas en inglés"
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                title={t('careersPostulaciones.qna.langEnTitle')}
               >
                 EN
               </button>
             </div>
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           {/* Ejemplos rápidos */}
           <div>
-            <p className="text-xs text-gray-500 mb-2">Preguntas frecuentes:</p>
+            <p className="text-xs text-[var(--text-muted)] mb-2">{t('careersPostulaciones.qna.commonQuestions')}</p>
             <div className="flex flex-wrap gap-2">
               {EJEMPLOS.map(ej => (
                 <button
                   key={ej}
                   onClick={() => setQuestion(ej)}
-                  className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1.5 rounded-lg transition-colors text-left"
+                  className="text-xs bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-[var(--text-secondary)] px-2.5 py-1.5 rounded-lg transition-colors text-left"
                 >
                   {ej}
                 </button>
@@ -704,21 +703,21 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
 
           {/* Input pregunta */}
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Pregunta del formulario o entrevistador:</label>
+            <label className="text-xs text-[var(--text-tertiary)] block mb-1">{t('careersPostulaciones.qna.questionLabel')}</label>
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="Escribe la pregunta exacta que te hacen..."
+              placeholder={t('careersPostulaciones.qna.questionPlaceholder')}
               rows={3}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500 resize-none"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-green-500 resize-none"
             />
             <button
               onClick={generate}
               disabled={!question.trim() || loading}
-              className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-[var(--text-primary)] rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {loading ? 'Generando...' : 'Generar Respuesta'}
+              {loading ? t('careersPostulaciones.qna.generating') : t('careersPostulaciones.qna.generateButton')}
             </button>
           </div>
 
@@ -726,7 +725,7 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
           {loading && (
             <div className="flex items-center gap-3 p-4 bg-green-900/20 border border-green-800/50 rounded-xl text-green-400 text-sm">
               <Loader2 size={16} className="animate-spin shrink-0" />
-              Redactando respuesta profesional y humanizada...
+              {t('careersPostulaciones.qna.generatingNote')}
             </div>
           )}
 
@@ -738,17 +737,17 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
           )}
 
           {answer && !loading && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                  <CheckCircle2 size={12} className="text-green-400" /> Respuesta generada
+                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                  <CheckCircle2 size={12} className="text-green-400" /> {t('careersPostulaciones.qna.answerGenerated')}
                 </p>
                 <button
                   onClick={copyAnswer}
-                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white"
+                  className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 >
                   {copied ? <CheckCircle2 size={12} className="text-green-400" /> : <Copy size={12} />}
-                  {copied ? 'Copiado' : 'Copiar'}
+                  {copied ? t('careersPostulaciones.qna.copied') : t('careersPostulaciones.qna.copy')}
                 </button>
               </div>
               <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{answer}</p>
@@ -765,6 +764,7 @@ function QnAPanel({ app, onClose }: { app: Application; onClose: () => void }) {
 interface SimTurn { pregunta: string; respuesta: string; feedback: string }
 
 function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const { t } = useTranslation()
   const [lang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [preguntas, setPreguntas] = useState<string[]>([])
@@ -787,7 +787,7 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
         })
         setPreguntas(data.preguntas || [])
       } catch (err: unknown) {
-        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar las preguntas')
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.simulator.questionsError'))
       } finally {
         setLoadingPreguntas(false)
       }
@@ -813,7 +813,7 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
       setRespuesta('')
       setIdx(i => i + 1) // avanza sola a la siguiente pregunta
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar el feedback')
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.simulator.feedbackError'))
     } finally {
       setLoadingFeedback(false)
     }
@@ -823,25 +823,25 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <MessagesSquare size={16} className="text-indigo-400" />
-              Simulador de Entrevista — {app.empresa}
+              {t('careersPostulaciones.simulator.titlePrefix')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {loadingPreguntas ? 'Generando preguntas...' : `Pregunta ${Math.min(idx + 1, preguntas.length)}/${preguntas.length}`}
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {loadingPreguntas ? t('careersPostulaciones.simulator.generatingQuestions') : t('careersPostulaciones.simulator.questionCounter', { current: Math.min(idx + 1, preguntas.length), total: preguntas.length })}
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           {loadingPreguntas && (
             <div className="flex items-center gap-3 p-4 bg-indigo-900/20 border border-indigo-800/50 rounded-xl text-indigo-300 text-sm">
               <Loader2 size={16} className="animate-spin shrink-0" />
-              Preparando preguntas realistas para {app.rol}...
+              {t('careersPostulaciones.simulator.preparingQuestions', { role: app.rol })}
             </div>
           )}
 
@@ -855,16 +855,16 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
           {history.map((turn, i) => (
             <div key={i} className="space-y-2">
               <div className="bg-indigo-900/20 border border-indigo-800/40 rounded-xl p-3">
-                <p className="text-xs text-indigo-400 font-medium mb-1">Entrevistador</p>
+                <p className="text-xs text-indigo-400 font-medium mb-1">{t('careersPostulaciones.simulator.interviewer')}</p>
                 <p className="text-gray-200 text-sm">{turn.pregunta}</p>
               </div>
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 ml-4">
-                <p className="text-xs text-gray-500 font-medium mb-1">Tu respuesta</p>
-                <p className="text-gray-300 text-sm whitespace-pre-wrap">{turn.respuesta}</p>
+              <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-3 ml-4">
+                <p className="text-xs text-[var(--text-muted)] font-medium mb-1">{t('careersPostulaciones.simulator.yourAnswer')}</p>
+                <p className="text-[var(--text-secondary)] text-sm whitespace-pre-wrap">{turn.respuesta}</p>
               </div>
               <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-xl p-3 ml-4">
-                <p className="text-xs text-emerald-400 font-medium mb-1">Feedback</p>
-                <p className="text-gray-300 text-sm whitespace-pre-wrap">{turn.feedback}</p>
+                <p className="text-xs text-emerald-400 font-medium mb-1">{t('careersPostulaciones.simulator.feedback')}</p>
+                <p className="text-[var(--text-secondary)] text-sm whitespace-pre-wrap">{turn.feedback}</p>
               </div>
             </div>
           ))}
@@ -872,7 +872,7 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
           {/* Pregunta activa */}
           {!loadingPreguntas && !done && (
             <div className="bg-indigo-900/20 border border-indigo-800/40 rounded-xl p-3">
-              <p className="text-xs text-indigo-400 font-medium mb-1">Entrevistador</p>
+              <p className="text-xs text-indigo-400 font-medium mb-1">{t('careersPostulaciones.simulator.interviewer')}</p>
               <p className="text-gray-200 text-sm">{preguntas[idx]}</p>
             </div>
           )}
@@ -880,29 +880,29 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
           {done && !loadingPreguntas && (
             <div className="flex items-center gap-3 p-4 bg-emerald-900/20 border border-emerald-800/50 rounded-xl text-emerald-300 text-sm">
               <CheckCircle2 size={16} className="shrink-0" />
-              Completaste la simulación — {history.length} preguntas respondidas.
+              {t('careersPostulaciones.simulator.completed', { count: history.length })}
             </div>
           )}
         </div>
 
         {!loadingPreguntas && !done && (
-          <div className="p-4 border-t border-gray-800 shrink-0 space-y-2">
+          <div className="p-4 border-t border-[var(--border-default)] shrink-0 space-y-2">
             <textarea
               value={respuesta}
               onChange={e => setRespuesta(e.target.value)}
-              placeholder="Escribe tu respuesta como si estuvieras en la entrevista..."
+              placeholder={t('careersPostulaciones.simulator.answerPlaceholder')}
               rows={3}
               disabled={loadingFeedback}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500 resize-none disabled:opacity-60"
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-indigo-500 resize-none disabled:opacity-60"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={submitRespuesta}
                 disabled={!respuesta.trim() || loadingFeedback}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-[var(--text-primary)] rounded-lg text-sm font-medium disabled:opacity-50"
               >
                 {loadingFeedback ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                {loadingFeedback ? 'Evaluando...' : 'Enviar respuesta'}
+                {loadingFeedback ? t('careersPostulaciones.simulator.evaluating') : t('careersPostulaciones.simulator.sendAnswer')}
               </button>
             </div>
           </div>
@@ -917,6 +917,7 @@ function InterviewSimulatorPanel({ app, onClose }: { app: Application; onClose: 
 interface ApplyKitItem { pregunta: string; respuesta: string; tip?: string }
 
 function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [kit, setKit] = useState<ApplyKitItem[]>([])
   const [formularioDetectado, setFormularioDetectado] = useState(false)
@@ -941,7 +942,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
       setKit(data.kit?.preguntas || [])
       setFormularioDetectado(data.formulario_detectado ?? false)
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error generando kit')
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.applyKit.genericError'))
     } finally {
       setLoading(false)
     }
@@ -961,7 +962,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
       })
       setCarta(data.coverLetter)
     } catch (err: unknown) {
-      setCartaError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error generando la carta')
+      setCartaError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.applyKit.genericLetterError'))
     } finally {
       setCartaLoading(false)
     }
@@ -985,35 +986,35 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <Rocket size={16} className="text-orange-400" />
-              Kit de Postulación — {app.empresa}
+              {t('careersPostulaciones.applyKit.titlePrefix')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Respuestas humanizadas listas para copiar al formulario</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersPostulaciones.applyKit.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             {app.id && (
               <button
                 onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
-                title="Descarga el CV para adjuntarlo en la postulación"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
+                title={t('careersPostulaciones.applyKit.downloadCvTitle')}
               >
-                <Download size={12} /> Descargar CV
+                <Download size={12} /> {t('careersPostulaciones.applyKit.downloadCv')}
               </button>
             )}
             {app.url && (
               <button
                 onClick={openJob}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
-                <ExternalLink size={12} /> Abrir Oferta
+                <ExternalLink size={12} /> {t('careersPostulaciones.applyKit.openOffer')}
               </button>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
           </div>
         </div>
 
@@ -1025,24 +1026,24 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
                 <Rocket size={28} className="text-orange-400" />
               </div>
               <div>
-                <p className="text-white font-semibold">¿Listo para postular?</p>
-                <p className="text-gray-400 text-sm mt-1 max-w-sm">
-                  La IA analiza el formulario de {app.empresa} y genera respuestas humanizadas para cada pregunta — listas para copiar y pegar.
+                <p className="text-[var(--text-primary)] font-semibold">{t('careersPostulaciones.applyKit.readyTitle')}</p>
+                <p className="text-[var(--text-tertiary)] text-sm mt-1 max-w-sm">
+                  {t('careersPostulaciones.applyKit.readyDesc', { company: app.empresa })}
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 flex-wrap justify-center">
                 <button
                   onClick={generate}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-[var(--text-primary)] rounded-xl font-medium"
                 >
-                  <Rocket size={16} /> Generar Respuestas
+                  <Rocket size={16} /> {t('careersPostulaciones.applyKit.generateAnswers')}
                 </button>
                 {app.id && (
                   <button
                     onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-green-700 hover:bg-green-600 text-white rounded-xl font-medium"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-xl font-medium"
                   >
-                    <Download size={16} /> Descargar CV
+                    <Download size={16} /> {t('careersPostulaciones.applyKit.downloadCv')}
                   </button>
                 )}
                 {app.url && (
@@ -1050,7 +1051,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
                     onClick={openJob}
                     className="flex items-center gap-2 px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-xl font-medium"
                   >
-                    <ExternalLink size={16} /> Abrir Formulario
+                    <ExternalLink size={16} /> {t('careersPostulaciones.applyKit.openForm')}
                   </button>
                 )}
               </div>
@@ -1062,8 +1063,8 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
             <div className="flex flex-col items-center justify-center h-full gap-4">
               <Loader2 size={32} className="text-orange-400 animate-spin" />
               <div className="text-center">
-                <p className="text-gray-300 font-medium">Analizando oferta y preparando respuestas...</p>
-                <p className="text-gray-500 text-sm mt-1">Esto tarda ~15 segundos</p>
+                <p className="text-[var(--text-secondary)] font-medium">{t('careersPostulaciones.applyKit.loadingTitle')}</p>
+                <p className="text-[var(--text-muted)] text-sm mt-1">{t('careersPostulaciones.applyKit.loadingNote')}</p>
               </div>
             </div>
           )}
@@ -1072,7 +1073,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
           {error && (
             <div className="p-4 bg-red-900/30 border border-red-800 rounded-xl text-red-400 text-sm">
               {error}
-              <button onClick={generate} className="ml-3 underline hover:no-underline">Reintentar</button>
+              <button onClick={generate} className="ml-3 underline hover:no-underline">{t('careersPostulaciones.applyKit.retry')}</button>
             </div>
           )}
 
@@ -1080,26 +1081,26 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
           {kit.length > 0 && !loading && (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-400 flex items-center gap-2">
-                  <span className="text-white font-medium">{kit.length}</span> respuestas generadas
+                <p className="text-sm text-[var(--text-tertiary)] flex items-center gap-2">
+                  <span className="text-[var(--text-primary)] font-medium">{kit.length}</span> {t('careersPostulaciones.applyKit.answersGenerated')}
                   {formularioDetectado
-                    ? <span className="text-[10px] bg-green-900/40 text-green-400 border border-green-800/50 px-2 py-0.5 rounded-full">✓ Formulario detectado</span>
-                    : <span className="text-[10px] bg-gray-800 text-gray-500 border border-gray-700 px-2 py-0.5 rounded-full">Preguntas comunes del cargo</span>
+                    ? <span className="text-[10px] bg-green-900/40 text-green-400 border border-green-800/50 px-2 py-0.5 rounded-full">{t('careersPostulaciones.applyKit.formDetected')}</span>
+                    : <span className="text-[10px] bg-[var(--bg-surface-alt)] text-[var(--text-muted)] border border-[var(--border-alt)] px-2 py-0.5 rounded-full">{t('careersPostulaciones.applyKit.commonQuestions')}</span>
                   }
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={generate}
-                    className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1"
                   >
-                    <Rocket size={11} /> Regenerar
+                    <Rocket size={11} /> {t('careersPostulaciones.applyKit.regenerate')}
                   </button>
                   {app.url && (
                     <button
                       onClick={openJob}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                     >
-                      <ExternalLink size={11} /> Abrir Formulario
+                      <ExternalLink size={11} /> {t('careersPostulaciones.applyKit.openForm')}
                     </button>
                   )}
                 </div>
@@ -1107,22 +1108,22 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
 
               <div className="space-y-3">
                 {kit.map((item, idx) => (
-                  <div key={idx} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                  <div key={idx} className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <p className="text-sm font-medium text-orange-300">{item.pregunta}</p>
                       <button
                         onClick={() => copyItem(idx, item.respuesta)}
-                        className="shrink-0 flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                        className="shrink-0 flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                       >
                         {copied === idx
-                          ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</>
-                          : <><Copy size={12} /> Copiar</>
+                          ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersPostulaciones.applyKit.copied')}</>
+                          : <><Copy size={12} /> {t('careersPostulaciones.applyKit.copy')}</>
                         }
                       </button>
                     </div>
                     <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{item.respuesta}</p>
                     {item.tip && (
-                      <p className="mt-2 text-xs text-gray-500 italic border-t border-gray-700 pt-2">
+                      <p className="mt-2 text-xs text-[var(--text-muted)] italic border-t border-[var(--border-alt)] pt-2">
                         💡 {item.tip}
                       </p>
                     )}
@@ -1134,37 +1135,37 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
 
           {/* Carta de presentación integrada al kit */}
           {!loading && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-4">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <p className="text-sm font-medium text-orange-300 flex items-center gap-2">
-                  <Mail size={13} /> Carta de Presentación
+                  <Mail size={13} /> {t('careersPostulaciones.applyKit.coverLetterTitle')}
                 </p>
                 {carta ? (
                   <button
                     onClick={copyCarta}
-                    className="shrink-0 flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                    className="shrink-0 flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                   >
                     {cartaCopied
-                      ? <><CheckCircle2 size={12} className="text-green-400" /> Copiado</>
-                      : <><Copy size={12} /> Copiar</>
+                      ? <><CheckCircle2 size={12} className="text-green-400" /> {t('careersPostulaciones.applyKit.copied')}</>
+                      : <><Copy size={12} /> {t('careersPostulaciones.applyKit.copy')}</>
                     }
                   </button>
                 ) : (
                   <button
                     onClick={generateCarta}
                     disabled={cartaLoading}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white rounded-lg text-xs font-medium"
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                   >
                     {cartaLoading
-                      ? <><Loader2 size={12} className="animate-spin" /> Generando...</>
-                      : <><Mail size={12} /> Generar carta</>
+                      ? <><Loader2 size={12} className="animate-spin" /> {t('careersPostulaciones.applyKit.generatingLetter')}</>
+                      : <><Mail size={12} /> {t('careersPostulaciones.applyKit.generateLetter')}</>
                     }
                   </button>
                 )}
               </div>
               {carta
                 ? <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{carta}</p>
-                : !cartaLoading && <p className="text-gray-500 text-xs">Genera una carta adaptada a esta oferta, lista para copiar al formulario o al correo.</p>
+                : !cartaLoading && <p className="text-[var(--text-muted)] text-xs">{t('careersPostulaciones.applyKit.noLetterNote')}</p>
               }
               {cartaError && <p className="text-xs text-red-400 mt-2">{cartaError}</p>}
             </div>
@@ -1178,6 +1179,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
 // ── Panel Carta de Presentación ───────────────────────────────────────────────
 
 function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onGenerated: (letter: string) => void; onClose: () => void }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
@@ -1210,7 +1212,7 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
         || (err as Error)?.message
-        || 'Error al generar la carta'
+        || t('careersPostulaciones.coverLetter.genericError')
       setGenError(msg)
     } finally {
       setGenerating(false)
@@ -1219,34 +1221,34 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <Mail size={16} className="text-teal-400" />
-              Carta de Presentación — {app.empresa}
+              {t('careersPostulaciones.coverLetter.titlePrefix')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Generada con IA basada en tu CV y la oferta</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersPostulaciones.coverLetter.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             {letter && (
               <button
                 onClick={copy}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
               >
-                {copied ? <><CheckCircle2 size={13} className="text-green-400" /> Copiado</> : <><Copy size={13} /> Copiar</>}
+                {copied ? <><CheckCircle2 size={13} className="text-green-400" /> {t('careersPostulaciones.coverLetter.copied')}</> : <><Copy size={13} /> {t('careersPostulaciones.coverLetter.copy')}</>}
               </button>
             )}
-            <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs" title="Idioma de la carta">
+            <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs" title="Idioma de la carta">
               <button
                 onClick={() => setLang('es')}
-                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 ES
               </button>
               <button
                 onClick={() => setLang('en')}
-                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-2.5 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
               >
                 EN
               </button>
@@ -1255,32 +1257,32 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
               <button
                 onClick={() => generate()}
                 disabled={generating}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs disabled:opacity-50"
-                title="Regenera la carta en el idioma seleccionado"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-[var(--text-primary)] rounded-lg text-xs disabled:opacity-50"
+                title={t('careersPostulaciones.coverLetter.regenerateTitle')}
               >
                 {generating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                Regenerar
+                {t('careersPostulaciones.coverLetter.regenerate')}
               </button>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
           {letter ? (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <div className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl p-5">
               <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{letter}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-48 gap-4 text-center">
-              <Mail size={32} className="text-gray-600" />
-              <p className="text-gray-400 text-sm">Esta postulación no tiene carta de presentación aún.</p>
+              <Mail size={32} className="text-[var(--text-faint)]" />
+              <p className="text-[var(--text-tertiary)] text-sm">{t('careersPostulaciones.coverLetter.emptyNote')}</p>
               <button
                 onClick={() => generate()}
                 disabled={generating}
-                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-sm font-medium disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-[var(--text-primary)] rounded-xl text-sm font-medium disabled:opacity-50"
               >
                 {generating ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
-                {generating ? 'Generando carta...' : 'Generar Carta de Presentación'}
+                {generating ? t('careersPostulaciones.coverLetter.generating') : t('careersPostulaciones.coverLetter.generateButton')}
               </button>
             </div>
           )}
@@ -1299,6 +1301,7 @@ function CoverLetterPanel({ app, onGenerated, onClose }: { app: Application; onG
 // ── Panel Renta a Pedir ────────────────────────────────────────────────────────
 
 export function SalaryPanel({ app, onClose }: { app: Application; onClose: () => void }) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [rec, setRec] = useState<{ rango_min: number; rango_max: number; moneda: string; explicacion: string; basadoEnAncla: boolean } | null>(null)
@@ -1325,7 +1328,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
         setExistingEstimate('')
       }
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al generar la recomendación')
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersPostulaciones.salary.genericError'))
     } finally {
       setLoading(false)
     }
@@ -1338,52 +1341,52 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <DollarSign size={16} className="text-emerald-400" />
-              Pretensión de Renta — {app.rol} en {app.empresa}
+              {t('careersPostulaciones.salary.titlePrefix')} {app.rol} {t('careersPostulaciones.salary.in')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Estimación de renta líquida para esta postulación específica</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersPostulaciones.salary.subtitle')}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
         </div>
         <div className="p-5">
           {existingEstimate && (
             <div>
-              <p className="text-2xl font-bold text-white">{existingEstimate}</p>
-              <p className="text-xs text-gray-500 mt-1">Calculado al evaluar esta oferta.</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]">{existingEstimate}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">{t('careersPostulaciones.salary.calculatedNote')}</p>
               <button
                 onClick={() => generate(true)}
                 disabled={loading}
                 className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
               >
                 {loading ? <Loader2 size={12} className="animate-spin" /> : null}
-                {loading ? 'Recalculando...' : 'Recalcular con IA'}
+                {loading ? t('careersPostulaciones.salary.recalculating') : t('careersPostulaciones.salary.recalculate')}
               </button>
             </div>
           )}
           {!existingEstimate && loading && (
-            <div className="flex items-center justify-center py-8 text-gray-400 gap-2 text-sm">
-              <Loader2 size={18} className="animate-spin" /> Calculando...
+            <div className="flex items-center justify-center py-8 text-[var(--text-tertiary)] gap-2 text-sm">
+              <Loader2 size={18} className="animate-spin" /> {t('careersPostulaciones.salary.calculating')}
             </div>
           )}
           {!existingEstimate && !loading && error && (
             <div className="text-sm">
               <p className="text-red-400">{error}</p>
-              <button onClick={() => generate()} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">Reintentar</button>
+              <button onClick={() => generate()} className="mt-2 text-blue-400 hover:text-blue-300 underline text-xs">{t('careersPostulaciones.salary.retry')}</button>
             </div>
           )}
           {!existingEstimate && !loading && rec && (
             <div>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-[var(--text-primary)]">
                 {rec.rango_min.toLocaleString('es-CL')} - {rec.rango_max.toLocaleString('es-CL')} {rec.moneda}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {rec.basadoEnAncla ? 'Con referencia interna curada' : 'Estimación general del mercado'} · mensual líquido
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                {rec.basadoEnAncla ? t('careersPostulaciones.salary.basedOnAnchor') : t('careersPostulaciones.salary.generalEstimate')} · {t('careersPostulaciones.salary.monthlyNet')}
               </p>
-              <p className="text-gray-400 text-sm mt-3 leading-relaxed">{rec.explicacion}</p>
+              <p className="text-[var(--text-tertiary)] text-sm mt-3 leading-relaxed">{rec.explicacion}</p>
             </div>
           )}
         </div>
@@ -1395,6 +1398,7 @@ export function SalaryPanel({ app, onClose }: { app: Application; onClose: () =>
 // ── Application Card ──────────────────────────────────────────────────────────
 
 function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'> }) {
+  const { t } = useTranslation()
   const [fullApp, setFullApp] = useState<Application | null>(null)
   const [showCv, setShowCv] = useState(false)
   const [showPrep, setShowPrep] = useState(false)
@@ -1433,21 +1437,21 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
 
   return (
     <>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden hover:border-[var(--border-alt)] transition-colors">
         {/* Header */}
         <div className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-white font-semibold truncate">{appSummary.empresa}</h3>
+                <h3 className="text-[var(--text-primary)] font-semibold truncate">{appSummary.empresa}</h3>
                 {appSummary.url && (
                   <a href={appSummary.url} target="_blank" rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-blue-400">
+                    className="text-[var(--text-muted)] hover:text-blue-400">
                     <ExternalLink size={12} />
                   </a>
                 )}
               </div>
-              <p className="text-gray-400 text-sm">{appSummary.rol}</p>
+              <p className="text-[var(--text-tertiary)] text-sm">{appSummary.rol}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <EstadoBadge estado={appSummary.estado} />
                 {appSummary.score != null && (
@@ -1457,13 +1461,13 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
                   }`}>
                     <Star size={11} fill="currentColor" /> {appSummary.score}
                     {appSummary.score < 3.5 && (
-                      <span title="Score bajo — puede ser difícil pasar filtros. Evalúa si vale la pena el esfuerzo.">
+                      <span title={t('careersPostulaciones.card.lowScoreTitle')}>
                         <AlertTriangle size={11} className="ml-0.5" />
                       </span>
                     )}
                   </span>
                 )}
-                <span className="text-xs text-gray-600">{appSummary.fecha}</span>
+                <span className="text-xs text-[var(--text-faint)]">{appSummary.fecha}</span>
               </div>
             </div>
 
@@ -1471,12 +1475,12 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               {appSummary.cvPdfFilename && (
                 <span className="text-[10px] text-green-400 flex items-center gap-1">
-                  <CheckCircle2 size={10} /> PDF listo
+                  <CheckCircle2 size={10} /> {t('careersPostulaciones.card.pdfReady')}
                 </span>
               )}
               {appSummary.interviewPrep && (
                 <span className="text-[10px] text-violet-400 flex items-center gap-1">
-                  <Brain size={10} /> Prep lista
+                  <Brain size={10} /> {t('careersPostulaciones.card.prepReady')}
                 </span>
               )}
             </div>
@@ -1490,68 +1494,68 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-800/50 text-blue-300 rounded-lg text-xs font-medium transition-colors"
             >
               {loadingFull ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />}
-              Ver CV
+              {t('careersPostulaciones.card.viewCv')}
             </button>
             <button
               onClick={openPrep}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-900/40 hover:bg-violet-800/60 border border-violet-800/50 text-violet-300 rounded-lg text-xs font-medium transition-colors"
             >
               <Brain size={11} />
-              {appSummary.interviewPrep ? 'Ver Prep. Entrevista' : 'Preparar Entrevista'}
+              {appSummary.interviewPrep ? t('careersPostulaciones.card.viewPrep') : t('careersPostulaciones.card.preparePrep')}
             </button>
             <button
               onClick={openQnA}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/40 hover:bg-green-800/60 border border-green-800/50 text-green-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <MessageSquare size={11} /> Responder Preguntas
+              <MessageSquare size={11} /> {t('careersPostulaciones.card.answerQuestions')}
             </button>
             <button
               onClick={openSimulator}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-800/50 text-indigo-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <MessagesSquare size={11} /> Simular Entrevista
+              <MessagesSquare size={11} /> {t('careersPostulaciones.card.simulateInterview')}
             </button>
             <button
               onClick={openApply}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-800/50 text-orange-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <Rocket size={11} /> Kit de Postulación
+              <Rocket size={11} /> {t('careersPostulaciones.card.applyKit')}
             </button>
             <button
               onClick={openCoverLetter}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-900/40 hover:bg-teal-800/60 border border-teal-800/50 text-teal-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <Mail size={11} /> Carta
+              <Mail size={11} /> {t('careersPostulaciones.card.coverLetter')}
             </button>
             <button
               onClick={openSalary}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 text-emerald-300 rounded-lg text-xs font-medium transition-colors"
             >
-              <DollarSign size={11} /> Pretensión de Renta
+              <DollarSign size={11} /> {t('careersPostulaciones.card.salaryRequest')}
             </button>
             <button
               onClick={() => setExpanded(e => !e)}
-              className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
+              className="ml-auto flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             >
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              {expanded ? 'Menos' : 'Más'}
+              {expanded ? t('careersPostulaciones.card.less') : t('careersPostulaciones.card.more')}
             </button>
           </div>
         </div>
 
         {/* Expandible: cambiar estado + notas */}
         {expanded && (
-          <div className="border-t border-gray-800 p-4 bg-gray-800/30">
+          <div className="border-t border-[var(--border-default)] p-4 bg-gray-800/30">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-gray-500">Cambiar estado:</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('careersPostulaciones.card.changeStatus')}</p>
               {APLICACION_ESTADOS.map(estado => (
                 <button
                   key={estado}
                   onClick={() => statusMut.mutate(estado)}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                     appSummary.estado === estado
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300'
+                      ? 'bg-blue-600 border-blue-500 text-[var(--text-primary)]'
+                      : 'border-[var(--border-alt)] text-[var(--text-tertiary)] hover:border-gray-500 hover:text-[var(--text-secondary)]'
                   }`}
                 >
                   {estado}
@@ -1603,6 +1607,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
 // ── Página Principal ──────────────────────────────────────────────────────────
 
 export default function CareersPostulaciones() {
+  const { t } = useTranslation()
   const [showModal, setShowModal] = useState(false)
   const [offerWithoutLink, setOfferWithoutLink] = useState(false)
   const qc = useQueryClient()
@@ -1622,23 +1627,23 @@ export default function CareersPostulaciones() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">Mis Postulaciones</h2>
-          <p className="text-gray-400 mt-1 text-sm">
-            CV personalizado por oferta · Prep. entrevista · Respuesta de preguntas
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t('careersPostulaciones.title')}</h2>
+          <p className="text-[var(--text-tertiary)] mt-1 text-sm">
+            {t('careersPostulaciones.subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => { setOfferWithoutLink(false); setShowModal(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-xl font-medium text-sm"
           >
-            <Plus size={16} /> Nueva Postulación
+            <Plus size={16} /> {t('careersPostulaciones.newApplication')}
           </button>
           <button
             onClick={() => { setOfferWithoutLink(true); setShowModal(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-medium text-sm border border-gray-700"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[var(--bg-surface-alt)] hover:bg-gray-700 text-gray-200 rounded-xl font-medium text-sm border border-[var(--border-alt)]"
           >
-            <FileText size={16} /> Oferta sin link
+            <FileText size={16} /> {t('careersPostulaciones.offerWithoutLink')}
           </button>
         </div>
       </div>
@@ -1647,9 +1652,9 @@ export default function CareersPostulaciones() {
       {apps.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {Object.entries(byEstado).map(([estado, count]) => (
-            <div key={estado} className="flex items-center gap-1.5 bg-gray-800 border border-gray-700 px-3 py-1.5 rounded-lg">
+            <div key={estado} className="flex items-center gap-1.5 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] px-3 py-1.5 rounded-lg">
               <EstadoBadge estado={estado} />
-              <span className="text-gray-400 text-xs font-medium">{count}</span>
+              <span className="text-[var(--text-tertiary)] text-xs font-medium">{count}</span>
             </div>
           ))}
         </div>
@@ -1657,25 +1662,25 @@ export default function CareersPostulaciones() {
 
       {/* Lista */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-gray-500">
+        <div className="flex items-center justify-center h-48 text-[var(--text-muted)]">
           <Loader2 size={24} className="animate-spin" />
         </div>
       ) : apps.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center">
-            <FileText size={28} className="text-gray-600" />
+          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-surface-alt)] flex items-center justify-center">
+            <FileText size={28} className="text-[var(--text-faint)]" />
           </div>
           <div>
-            <p className="text-white font-semibold">Sin postulaciones aún</p>
-            <p className="text-gray-400 text-sm mt-1">
-              Crea tu primera postulación — la IA arma el CV personalizado para la oferta
+            <p className="text-[var(--text-primary)] font-semibold">{t('careersPostulaciones.emptyTitle')}</p>
+            <p className="text-[var(--text-tertiary)] text-sm mt-1">
+              {t('careersPostulaciones.emptyDesc')}
             </p>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-xl font-medium"
           >
-            <Plus size={16} /> Crear Primera Postulación
+            <Plus size={16} /> {t('careersPostulaciones.createFirst')}
           </button>
         </div>
       ) : (

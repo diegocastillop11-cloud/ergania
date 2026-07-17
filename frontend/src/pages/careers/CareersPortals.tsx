@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { PortalsConfig, Portal } from '../../types/careers'
 import PerfilTabs from '../../components/careers/PerfilTabs'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 
 // Portales chilenos preconfigurados
@@ -399,10 +400,10 @@ function PortalCard({
   return (
     <div className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
       portal.enabled
-        ? 'bg-gray-800/50 border-gray-700'
-        : 'bg-gray-900/30 border-gray-800 opacity-60'
+        ? 'bg-gray-800/50 border-[var(--border-alt)]'
+        : 'bg-gray-900/30 border-[var(--border-default)] opacity-60'
     }`}>
-      <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-[var(--bg-surface-alt)] flex items-center justify-center shrink-0">
         {isChile ? (
           <Flag size={16} className="text-red-400" />
         ) : (
@@ -411,7 +412,7 @@ function PortalCard({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-white text-sm font-medium truncate">{portal.name}</p>
+          <p className="text-[var(--text-primary)] text-sm font-medium truncate">{portal.name}</p>
           {portal.country && (
             <span className={`text-xs px-1.5 py-0.5 rounded border ${
               isChile
@@ -431,7 +432,7 @@ function PortalCard({
           href={portal.careers_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1 truncate"
+          className="text-xs text-[var(--text-muted)] hover:text-blue-400 transition-colors flex items-center gap-1 truncate"
         >
           <ExternalLink size={10} />
           {portal.careers_url}
@@ -450,7 +451,7 @@ function PortalCard({
         </button>
         <button
           onClick={onDelete}
-          className="p-1.5 text-gray-600 hover:text-red-400 transition-colors"
+          className="p-1.5 text-[var(--text-faint)] hover:text-red-400 transition-colors"
         >
           <Trash2 size={14} />
         </button>
@@ -461,6 +462,7 @@ function PortalCard({
 
 export default function CareersPortals() {
   const qc = useQueryClient()
+  const { t } = useTranslation()
   const [newPortal, setNewPortal] = useState({ name: '', careers_url: '', country: '' })
   const [showAdd, setShowAdd] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -544,15 +546,15 @@ export default function CareersPortals() {
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">Portales de Empleo</h2>
-          <p className="text-gray-400 mt-1">
-            {enabledCount} activos de {companies.length} · {distinctCountries.length} países/regiones ({chileCount} chilenos)
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t('careersPortals.title')}</h2>
+          <p className="text-[var(--text-tertiary)] mt-1">
+            {t('careersPortals.subtitle', { enabled: enabledCount, total: companies.length, countries: distinctCountries.length, chile: chileCount })}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {saved && (
             <span className="flex items-center gap-1 text-green-400 text-sm">
-              <Check size={14} /> Guardado
+              <Check size={14} /> {t('careersPortals.saved')}
             </span>
           )}
           {saveMut.isPending && (
@@ -560,67 +562,65 @@ export default function CareersPortals() {
           )}
           {/* Acciones masivas */}
           {companies.length > 0 && (
-            <div className="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg p-1">
               <button
                 onClick={() => bulkToggle('all-on')}
                 disabled={saveMut.isPending}
-                title="Activar todos"
+                title={t('careersPortals.bulkAllOnTitle')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-green-400 hover:bg-green-900/30 transition-colors disabled:opacity-40"
               >
-                <ToggleRight size={14} /> Todos
+                <ToggleRight size={14} /> {t('careersPortals.bulkAllOn')}
               </button>
               <button
                 onClick={() => bulkToggle('chile-only')}
                 disabled={saveMut.isPending}
-                title="Activar solo portales de Chile"
+                title={t('careersPortals.bulkChileOnlyTitle')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-40"
               >
-                🇨🇱 Solo Chile
+                🇨🇱 {t('careersPortals.bulkChileOnly')}
               </button>
               <button
                 onClick={() => bulkToggle('all-off')}
                 disabled={saveMut.isPending}
-                title="Desactivar todos"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-400 hover:bg-gray-700 transition-colors disabled:opacity-40"
+                title={t('careersPortals.bulkAllOffTitle')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-[var(--text-tertiary)] hover:bg-gray-700 transition-colors disabled:opacity-40"
               >
-                <ToggleLeft size={14} /> Ninguno
+                <ToggleLeft size={14} /> {t('careersPortals.bulkAllOff')}
               </button>
             </div>
           )}
           <button
             onClick={() => setShowMorePortals(!showMorePortals)}
-            className="flex items-center gap-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] hover:bg-gray-700 text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Search size={15} />
-            Más Portales
+            {t('careersPortals.morePortals')}
           </button>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={15} />
-            Agregar Portal
+            {t('careersPortals.addPortal')}
           </button>
         </div>
       </div>
 
       {/* Catálogo extendido de portales sugeridos */}
       {showMorePortals && (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-5">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-xl p-5">
           <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <h3 className="text-white font-semibold">Más Portales ({MORE_PORTALS.length})</h3>
+            <h3 className="text-[var(--text-primary)] font-semibold">{t('careersPortals.morePortalsTitle', { count: MORE_PORTALS.length })}</h3>
             <input
               autoFocus
               value={morePortalsSearch}
               onChange={e => setMorePortalsSearch(e.target.value)}
-              placeholder="Buscar portal o agencia..."
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-full sm:w-64"
+              placeholder={t('careersPortals.morePortalsSearchPlaceholder')}
+              className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 w-full sm:w-64"
             />
           </div>
-          <p className="text-gray-500 text-xs mb-4">
-            Catálogo extendido de portales y agencias de reclutamiento internacionales/LATAM.
-            Algunos no tienen sitio propio confirmado — en esos casos el enlace abre una búsqueda
-            en Google en vez de arriesgar una URL incorrecta.
+          <p className="text-[var(--text-muted)] text-xs mb-4">
+            {t('careersPortals.morePortalsDesc')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto pr-1">
             {MORE_PORTALS
@@ -635,13 +635,13 @@ export default function CareersPortals() {
                     className={`flex items-center justify-between gap-2 p-2.5 rounded-lg text-sm font-medium transition-all border text-left ${
                       alreadyAdded
                         ? 'bg-green-900/20 border-green-800/40 text-green-400 cursor-default'
-                        : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white'
+                        : 'bg-gray-800/60 border-[var(--border-alt)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-alt)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate">{portal.name}</span>
                       {portal.country && (
-                        <span className="block text-xs text-gray-500 truncate">{portal.country}</span>
+                        <span className="block text-xs text-[var(--text-muted)] truncate">{portal.country}</span>
                       )}
                     </span>
                     {alreadyAdded
@@ -656,10 +656,10 @@ export default function CareersPortals() {
       )}
 
       {/* Portales sugeridos por región */}
-      <div className="bg-gradient-to-r from-gray-800/40 to-gray-900 border border-gray-800 rounded-xl p-5">
+      <div className="bg-gradient-to-r from-gray-800/40 to-gray-900 border border-[var(--border-default)] rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Globe size={16} className="text-blue-400" />
-          <h3 className="text-white font-semibold">Portales Recomendados</h3>
+          <h3 className="text-[var(--text-primary)] font-semibold">{t('careersPortals.recommendedPortals')}</h3>
         </div>
         <div className="flex gap-1.5 flex-wrap mb-4">
           {PORTAL_REGIONS.map(region => (
@@ -668,11 +668,11 @@ export default function CareersPortals() {
               onClick={() => setActiveRegion(region.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 activeRegion === region.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 border border-gray-700 text-gray-400 hover:text-white'
+                  ? 'bg-blue-600 text-[var(--text-primary)]'
+                  : 'bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {region.emoji} {region.label}
+              {region.emoji} {t(`careersPortals.regions.${region.id}`)}
             </button>
           ))}
         </div>
@@ -687,7 +687,7 @@ export default function CareersPortals() {
                 className={`flex items-center justify-between gap-2 p-2.5 rounded-lg text-sm font-medium transition-all border ${
                   alreadyAdded
                     ? 'bg-green-900/20 border-green-800/40 text-green-400 cursor-default'
-                    : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white'
+                    : 'bg-gray-800/60 border-[var(--border-alt)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-alt)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span className="truncate">{portal.name}</span>
@@ -703,40 +703,40 @@ export default function CareersPortals() {
 
       {/* Add custom portal */}
       {showAdd && (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-4">Agregar Portal Personalizado</h3>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-xl p-5">
+          <h3 className="text-[var(--text-primary)] font-semibold mb-4">{t('careersPortals.addCustomTitle')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input
               value={newPortal.name}
               onChange={e => setNewPortal(p => ({ ...p, name: e.target.value }))}
-              placeholder="Nombre (ej: Empresa XYZ)"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder={t('careersPortals.namePlaceholder')}
+              className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
             <input
               value={newPortal.careers_url}
               onChange={e => setNewPortal(p => ({ ...p, careers_url: e.target.value }))}
-              placeholder="URL de empleos (https://...)"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder={t('careersPortals.urlPlaceholder')}
+              className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
             <input
               value={newPortal.country}
               onChange={e => setNewPortal(p => ({ ...p, country: e.target.value }))}
-              placeholder="País (ej: Chile)"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder={t('careersPortals.countryPlaceholder')}
+              className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
           <div className="flex gap-2 mt-3">
             <button
               onClick={addCustomPortal}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] rounded-lg text-sm font-medium transition-colors"
             >
-              <Save size={14} /> Agregar
+              <Save size={14} /> {t('careersPortals.add')}
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="px-4 py-2 bg-gray-800 text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
+              className="px-4 py-2 bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg text-sm transition-colors"
             >
-              Cancelar
+              {t('careersPortals.cancel')}
             </button>
           </div>
         </div>
@@ -748,11 +748,11 @@ export default function CareersPortals() {
           onClick={() => setFilterCountry('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             filterCountry === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white'
+              ? 'bg-blue-600 text-[var(--text-primary)]'
+              : 'bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
           }`}
         >
-          Todos
+          {t('careersPortals.filterAll')}
         </button>
         {distinctCountries.map(country => (
           <button
@@ -760,8 +760,8 @@ export default function CareersPortals() {
             onClick={() => setFilterCountry(country)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filterCountry === country
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white'
+                ? 'bg-blue-600 text-[var(--text-primary)]'
+                : 'bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
             }`}
           >
             {country}
@@ -772,10 +772,10 @@ export default function CareersPortals() {
       {/* Portal list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center text-gray-500">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-8 text-center text-[var(--text-muted)]">
             <Globe size={32} className="mx-auto mb-3 text-gray-700" />
-            <p>No hay portales en esta categoría.</p>
-            <p className="text-sm mt-1">Agrega portales sugeridos usando los botones de arriba.</p>
+            <p>{t('careersPortals.emptyState1')}</p>
+            <p className="text-sm mt-1">{t('careersPortals.emptyState2')}</p>
           </div>
         ) : (
           filtered.map((portal) => {
@@ -793,18 +793,18 @@ export default function CareersPortals() {
       </div>
 
       {/* Filtros de keywords */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
+        <h3 className="text-[var(--text-primary)] font-semibold mb-3 flex items-center gap-2">
           <Search size={16} className="text-blue-400" />
-          Filtros de Búsqueda
+          {t('careersPortals.searchFilters.title')}
         </h3>
-        <p className="text-gray-400 text-sm mb-4">
-          Estas palabras clave determinan qué ofertas son relevantes. Solo se muestran ofertas que contienen al menos 1 positiva y ninguna negativa.
+        <p className="text-[var(--text-tertiary)] text-sm mb-4">
+          {t('careersPortals.searchFilters.desc')}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-green-400 font-medium uppercase tracking-wider mb-2 block">
-              Keywords Positivas ({config.title_filter?.positive?.length ?? 0})
+              {t('careersPortals.searchFilters.positiveLabel', { count: config.title_filter?.positive?.length ?? 0 })}
             </label>
             <div className="flex flex-wrap gap-1.5 p-3 bg-gray-800/50 rounded-lg min-h-[60px]">
               {(config.title_filter?.positive ?? []).slice(0, 20).map(kw => (
@@ -813,13 +813,13 @@ export default function CareersPortals() {
                 </span>
               ))}
               {(config.title_filter?.positive?.length ?? 0) > 20 && (
-                <span className="text-xs text-gray-500">+{(config.title_filter?.positive?.length ?? 0) - 20} más</span>
+                <span className="text-xs text-[var(--text-muted)]">{t('careersPortals.searchFilters.more', { count: (config.title_filter?.positive?.length ?? 0) - 20 })}</span>
               )}
             </div>
           </div>
           <div>
             <label className="text-xs text-red-400 font-medium uppercase tracking-wider mb-2 block">
-              Keywords Excluidas ({config.title_filter?.negative?.length ?? 0})
+              {t('careersPortals.searchFilters.negativeLabel', { count: config.title_filter?.negative?.length ?? 0 })}
             </label>
             <div className="flex flex-wrap gap-1.5 p-3 bg-gray-800/50 rounded-lg min-h-[60px]">
               {(config.title_filter?.negative ?? []).slice(0, 20).map(kw => (
@@ -828,13 +828,13 @@ export default function CareersPortals() {
                 </span>
               ))}
               {(config.title_filter?.negative?.length ?? 0) > 20 && (
-                <span className="text-xs text-gray-500">+{(config.title_filter?.negative?.length ?? 0) - 20} más</span>
+                <span className="text-xs text-[var(--text-muted)]">{t('careersPortals.searchFilters.more', { count: (config.title_filter?.negative?.length ?? 0) - 20 })}</span>
               )}
             </div>
           </div>
         </div>
-        <p className="text-xs text-gray-600 mt-3">
-          Para editar los filtros, ve a <code className="text-gray-400">Mi Búsqueda</code>.
+        <p className="text-xs text-[var(--text-faint)] mt-3">
+          {t('careersPortals.searchFilters.editNote')} <code className="text-[var(--text-tertiary)]">{t('sidebar.nav.busqueda')}</code>.
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
+import { useTranslation } from '../lib/i18n/LanguageContext'
 
 const ADSENSE_CLIENT = 'ca-pub-2632840688699034'
 
@@ -20,6 +21,7 @@ const sans   = "'Source Sans Pro', sans-serif"
 
 export default function Landing() {
   const { user, loading } = useAuth()
+  const { t, language, setLanguage } = useTranslation()
 
   useEffect(() => {
     if (loading || user) return
@@ -94,15 +96,41 @@ export default function Landing() {
         <nav style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <img src="/logo.png" alt="Ergania" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
           <div className="lp-hide-sm" style={{ display: 'flex', gap: 32 }}>
-            <a href="#como-funciona" className="lp-nav-link">Funciones</a>
-            <a href="#precios"       className="lp-nav-link">Precios</a>
+            <a href="#como-funciona" className="lp-nav-link">{t('landing.nav.features')}</a>
+            <a href="#precios"       className="lp-nav-link">{t('landing.nav.pricing')}</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, border: `1px solid rgba(46,21,8,.15)`, borderRadius: 8, padding: 2 }}>
+              <button
+                onClick={() => setLanguage('es')}
+                aria-label="Español"
+                style={{
+                  fontFamily: sans, fontSize: 12, fontWeight: 700, padding: '4px 9px', borderRadius: 6,
+                  border: 'none', cursor: 'pointer', transition: 'background .2s, color .2s',
+                  background: language === 'es' ? C.terra : 'transparent',
+                  color: language === 'es' ? C.white : C.brownSec,
+                }}
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                aria-label="English"
+                style={{
+                  fontFamily: sans, fontSize: 12, fontWeight: 700, padding: '4px 9px', borderRadius: 6,
+                  border: 'none', cursor: 'pointer', transition: 'background .2s, color .2s',
+                  background: language === 'en' ? C.terra : 'transparent',
+                  color: language === 'en' ? C.white : C.brownSec,
+                }}
+              >
+                EN
+              </button>
+            </div>
             <Link to="/login" style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.brownSec, textDecoration: 'none' }}>
-              Iniciar sesión
+              {t('landing.nav.login')}
             </Link>
             <Link to="/login?tab=registro" className="lp-btn-primary" style={{ padding: '9px 20px', fontSize: 14, borderRadius: 8 }}>
-              Probar ahora
+              {t('landing.nav.tryNow')}
             </Link>
           </div>
         </nav>
@@ -116,23 +144,22 @@ export default function Landing() {
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto' }}>
           <span style={{ display: 'inline-block', fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '1.4px', textTransform: 'uppercase', color: C.terra, background: 'rgba(196,99,58,.10)', borderRadius: 100, padding: '5px 14px', marginBottom: 24 }}>
-            IA para tu búsqueda laboral · Chile
+            {t('landing.hero.badge')}
           </span>
 
           <h1 className="lp-hero-h1" style={{ fontFamily: serif, fontSize: 56, fontWeight: 700, lineHeight: 1.13, color: C.brown, letterSpacing: -1, marginBottom: 22 }}>
-            Encuentra tu trabajo ideal,<br />deja que la IA te ayude
+            {t('landing.hero.title1')}<br />{t('landing.hero.title2')}
           </h1>
 
           <p style={{ fontFamily: sans, fontSize: 18, fontWeight: 400, lineHeight: 1.65, color: C.brownSec, maxWidth: 520, margin: '0 auto 36px' }}>
-            Ergania adapta tu CV a cada oferta, evalúa si conviene postular,
-            y te prepara para la entrevista.
+            {t('landing.hero.subtitle')}
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 44 }}>
             <Link to="/login?tab=registro" className="lp-btn-primary" style={{ fontSize: 17, padding: '13px 32px', borderRadius: 10 }}>
-              Probar gratis 3 días →
+              {t('landing.hero.ctaPrimary')}
             </Link>
-            <a href="#como-funciona" className="lp-btn-ghost">Ver cómo funciona</a>
+            <a href="#como-funciona" className="lp-btn-ghost">{t('landing.hero.ctaGhost')}</a>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -144,7 +171,7 @@ export default function Landing() {
               ))}
             </div>
             <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.brownSec }}>
-              <strong style={{ color: C.brown }}>+2.400 personas</strong> buscando trabajo
+              <strong style={{ color: C.brown }}>+2.400</strong> {t('landing.hero.socialProof')}
             </p>
           </div>
         </div>
@@ -153,15 +180,15 @@ export default function Landing() {
       {/* ── CÓMO FUNCIONA ── */}
       <section id="como-funciona" className="lp-section" style={{ background: C.creamAlt, padding: '88px 48px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>Cómo funciona</p>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>{t('landing.howItWorks.kicker')}</p>
           <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, letterSpacing: -0.5, lineHeight: 1.2, marginBottom: 52 }}>
-            Tres pasos hacia tu próxima oportunidad
+            {t('landing.howItWorks.title')}
           </h2>
           <div className="lp-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 36 }}>
             {[
-              { n: '1', title: 'Sube tu CV', desc: 'Carga tu currículum en PDF o Word. Lo analizamos para entender tu perfil al máximo.' },
-              { n: '2', title: 'Pega la oferta', desc: 'Copia la descripción del cargo que te interesa. Evaluamos la compatibilidad con tu perfil al instante.' },
-              { n: '3', title: 'Recibe tu postulación lista', desc: 'Obtienes tu CV adaptado, una carta de presentación y una guía para la entrevista.' },
+              { n: '1', title: t('landing.howItWorks.step1title'), desc: t('landing.howItWorks.step1desc') },
+              { n: '2', title: t('landing.howItWorks.step2title'), desc: t('landing.howItWorks.step2desc') },
+              { n: '3', title: t('landing.howItWorks.step3title'), desc: t('landing.howItWorks.step3desc') },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ width: 42, height: 42, borderRadius: '50%', background: C.terra, color: C.white, fontFamily: serif, fontWeight: 700, fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.n}</div>
@@ -176,13 +203,13 @@ export default function Landing() {
       {/* ── FEATURES ── */}
       <section className="lp-section" style={{ background: C.cream, padding: '88px 48px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>Funciones</p>
-          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 44 }}>Herramientas pensadas para ti</h2>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>{t('landing.features.kicker')}</p>
+          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 44 }}>{t('landing.features.title')}</h2>
           <div className="lp-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 20 }}>
             {[
-              { title: 'CV Adaptado con IA',           desc: 'Ajusta automáticamente tu CV para cada cargo, resaltando lo que importa al reclutador.' },
-              { title: 'Evaluación de Ofertas',        desc: 'Score de compatibilidad: sueldo, stack, cultura y distancia. Sabe si conviene postular antes de gastar tiempo.' },
-              { title: 'Preparación para entrevistas', desc: 'Preguntas frecuentes del rol, respuestas guiadas y consejos específicos para esa empresa.' },
+              { title: t('landing.features.f1title'), desc: t('landing.features.f1desc') },
+              { title: t('landing.features.f2title'), desc: t('landing.features.f2desc') },
+              { title: t('landing.features.f3title'), desc: t('landing.features.f3desc') },
             ].map(f => (
               <div key={f.title} className="lp-feature-card">
                 <h3 style={{ fontFamily: serif, fontSize: 19, fontWeight: 700, color: C.brown, marginBottom: 10 }}>{f.title}</h3>
@@ -196,22 +223,22 @@ export default function Landing() {
       {/* ── TESTIMONIOS ── */}
       <section className="lp-section" style={{ background: C.creamAlt, padding: '88px 48px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>Testimonios</p>
-          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 44 }}>Personas que ya encontraron su próximo trabajo</h2>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>{t('landing.testimonials.kicker')}</p>
+          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 44 }}>{t('landing.testimonials.title')}</h2>
           <div className="lp-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
             {[
-              { initial: 'M', bg: '#A0604A', name: 'María José', role: 'Diseñadora UX',        quote: '"Postulé a 12 empresas en una semana. Antes me demoraba días en preparar cada postulación."' },
-              { initial: 'R', bg: '#5C7E8F', name: 'Rodrigo',    role: 'Analista de Datos',   quote: '"El score de compatibilidad me salvó de postular a trabajos que no encajaban. Ahorré semanas."' },
-              { initial: 'C', bg: '#7A8F6B', name: 'Camila',     role: 'Marketing Digital',   quote: '"La preparación para entrevistas fue más útil que cualquier curso que había tomado."' },
-            ].map(t => (
-              <div key={t.name} className="lp-testimonial-card">
+              { initial: 'M', bg: '#A0604A', name: 'María José', role: t('landing.testimonials.t1role'), quote: t('landing.testimonials.t1quote') },
+              { initial: 'R', bg: '#5C7E8F', name: 'Rodrigo',    role: t('landing.testimonials.t2role'), quote: t('landing.testimonials.t2quote') },
+              { initial: 'C', bg: '#7A8F6B', name: 'Camila',     role: t('landing.testimonials.t3role'), quote: t('landing.testimonials.t3quote') },
+            ].map(item => (
+              <div key={item.name} className="lp-testimonial-card">
                 <p style={{ color: C.terra, fontSize: 13, letterSpacing: 2 }}>★★★★★</p>
-                <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 16, lineHeight: 1.65, color: C.brown, flex: 1 }}>{t.quote}</p>
+                <p style={{ fontFamily: serif, fontStyle: 'italic', fontSize: 16, lineHeight: 1.65, color: C.brown, flex: 1 }}>{item.quote}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: t.bg, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{t.initial}</div>
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: item.bg, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{item.initial}</div>
                   <div>
-                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: C.brown }}>{t.name}</p>
-                    <p style={{ fontFamily: sans, fontSize: 12, color: C.muted }}>{t.role}</p>
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: C.brown }}>{item.name}</p>
+                    <p style={{ fontFamily: sans, fontSize: 12, color: C.muted }}>{item.role}</p>
                   </div>
                 </div>
               </div>
@@ -223,52 +250,50 @@ export default function Landing() {
       {/* ── PRECIOS ── */}
       <section id="precios" className="lp-section" style={{ background: C.cream, padding: '88px 48px', textAlign: 'center' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>Precios</p>
-          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 10 }}>Simple y directo</h2>
-          <p style={{ fontFamily: sans, fontSize: 17, color: C.brownSec, marginBottom: 52 }}>3 días gratis, luego $9.990/mes. Cancela cuando quieras.</p>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 14 }}>{t('landing.pricing.kicker')}</p>
+          <h2 style={{ fontFamily: serif, fontSize: 38, fontWeight: 700, color: C.brown, marginBottom: 10 }}>{t('landing.pricing.title')}</h2>
+          <p style={{ fontFamily: sans, fontSize: 17, color: C.brownSec, marginBottom: 52 }}>{t('landing.pricing.subtitle')}</p>
 
           <div className="lp-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 24, maxWidth: 800, margin: '0 auto 28px' }}>
             {/* Gratis */}
             <div className="lp-plan-card" style={{ textAlign: 'left' }}>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.muted, marginBottom: 12 }}>Prueba gratis</p>
-              <div style={{ fontFamily: serif, fontSize: 42, fontWeight: 700, color: C.brown, lineHeight: 1, marginBottom: 4 }}>$0</div>
-              <p style={{ fontFamily: sans, fontSize: 13, color: C.muted, marginBottom: 28 }}>durante 3 días</p>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.muted, marginBottom: 12 }}>{t('landing.pricing.freeLabel')}</p>
+              <div style={{ fontFamily: serif, fontSize: 42, fontWeight: 700, color: C.brown, lineHeight: 1, marginBottom: 4 }}>{t('landing.pricing.freePrice')}</div>
+              <p style={{ fontFamily: sans, fontSize: 13, color: C.muted, marginBottom: 28 }}>{t('landing.pricing.freePeriod')}</p>
               <div style={{ flex: 1, marginBottom: 28 }}>
-                {['CV adaptado con IA', 'Evaluación de ofertas', 'Prep de entrevistas'].map(f => (
+                {[t('landing.pricing.freeF1'), t('landing.pricing.freeF2'), t('landing.pricing.freeF3')].map(f => (
                   <div key={f} style={{ fontFamily: sans, fontSize: 14, color: C.brownSec, padding: '7px 0', borderBottom: `1px solid rgba(46,21,8,.07)`, display: 'flex', alignItems: 'center' }}>
                     <span className="lp-check-sage">✓</span>{f}
                   </div>
                 ))}
               </div>
               <Link to="/login?tab=registro" style={{ display: 'block', textAlign: 'center', border: `1.5px solid ${C.terra}`, color: C.terra, fontFamily: sans, fontSize: 15, fontWeight: 700, padding: '12px 0', borderRadius: 8, textDecoration: 'none' }}>
-                Comenzar gratis
+                {t('landing.pricing.freeCta')}
               </Link>
             </div>
 
             {/* Pro */}
             <div className="lp-plan-card popular" style={{ textAlign: 'left' }}>
               <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: C.terra, color: C.cream, fontFamily: sans, fontSize: 10, fontWeight: 700, letterSpacing: '1px', padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                MÁS POPULAR
+                {t('landing.pricing.proBadge')}
               </div>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 12 }}>Plan mensual</p>
-              <div style={{ fontFamily: serif, fontSize: 42, fontWeight: 700, color: C.brown, lineHeight: 1, marginBottom: 4 }}>$9.990</div>
-              <p style={{ fontFamily: sans, fontSize: 13, color: C.muted, marginBottom: 28 }}>por mes · cancela cuando quieras</p>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.terra, marginBottom: 12 }}>{t('landing.pricing.proLabel')}</p>
+              <div style={{ fontFamily: serif, fontSize: 42, fontWeight: 700, color: C.brown, lineHeight: 1, marginBottom: 4 }}>{t('landing.pricing.proPrice')}</div>
+              <p style={{ fontFamily: sans, fontSize: 13, color: C.muted, marginBottom: 28 }}>{t('landing.pricing.proPeriod')}</p>
               <div style={{ flex: 1, marginBottom: 28 }}>
-                {['Todo lo del plan gratis', 'Postulaciones ilimitadas', 'Escáner de portales Chile', 'Soporte prioritario'].map(f => (
+                {[t('landing.pricing.proF1'), t('landing.pricing.proF2'), t('landing.pricing.proF3'), t('landing.pricing.proF4')].map(f => (
                   <div key={f} style={{ fontFamily: sans, fontSize: 14, color: C.brownSec, padding: '7px 0', borderBottom: `1px solid rgba(46,21,8,.07)`, display: 'flex', alignItems: 'center' }}>
                     <span className="lp-check-terra">✓</span>{f}
                   </div>
                 ))}
               </div>
               <Link to="/login?tab=registro" className="lp-btn-primary" style={{ display: 'block', textAlign: 'center', padding: '13px 0', borderRadius: 8, fontSize: 15 }}>
-                Probar 3 días gratis →
+                {t('landing.pricing.proCta')}
               </Link>
             </div>
           </div>
 
-          <p style={{ fontFamily: sans, fontSize: 13, color: C.muted }}>
-            Pago seguro con <strong style={{ color: C.brownSec }}>MercadoPago</strong> · Sin permanencia · Cancela desde tu cuenta
-          </p>
+          <p style={{ fontFamily: sans, fontSize: 13, color: C.muted }} dangerouslySetInnerHTML={{ __html: t('landing.pricing.footnote') }} />
         </div>
       </section>
 
@@ -278,9 +303,9 @@ export default function Landing() {
         <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,.05)', bottom: -80, right: 60, pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 600, margin: '0 auto' }}>
           <h2 style={{ fontFamily: serif, fontSize: 44, fontWeight: 700, color: C.white, letterSpacing: -0.5, lineHeight: 1.15, marginBottom: 16 }}>
-            Empieza tu búsqueda hoy.
+            {t('landing.finalCta.title')}
           </h2>
-          <Link to="/login?tab=registro" className="lp-btn-outline" style={{ marginTop: 24 }}>Probar Ergania gratis →</Link>
+          <Link to="/login?tab=registro" className="lp-btn-outline" style={{ marginTop: 24 }}>{t('landing.finalCta.cta')}</Link>
         </div>
       </section>
 
@@ -289,12 +314,12 @@ export default function Landing() {
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
           <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 26, color: C.cream }}>ergania</span>
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <a href="#como-funciona" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Funciones</a>
-            <a href="#precios" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Precios</a>
-            <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>Privacidad</Link>
+            <a href="#como-funciona" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>{t('landing.nav.features')}</a>
+            <a href="#precios" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>{t('landing.nav.pricing')}</a>
+            <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: 'rgba(250,247,242,.50)', textDecoration: 'none' }}>{t('landing.footer.privacy')}</Link>
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(250,247,242,.30)' }}>
-            Hecho en Chile · 2026
+            {t('landing.footer.madeIn')}
           </p>
         </div>
       </footer>

@@ -9,6 +9,7 @@ import {
   Copy, Download, Trash2, ArrowUpRight,
 } from 'lucide-react'
 import { TrackerEntry, EstadoJob, ESTADO_CONFIG, SCORE_COLOR, Application } from '../../types/careers'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 async function downloadPdf(appId: string, filename: string) {
   const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
@@ -26,7 +27,7 @@ const ESTADOS: EstadoJob[] = [
 ]
 
 function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-gray-600">—</span>
+  if (score === null) return <span className="text-[var(--text-faint)]">—</span>
   return (
     <div className="flex items-center gap-1">
       <Star size={11} className={SCORE_COLOR(score)} fill="currentColor" />
@@ -45,6 +46,7 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 function ReportModal({ slug, onClose }: { slug: string; onClose: () => void }) {
+  const { t } = useTranslation()
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['report', slug],
     queryFn: () => api.get(`/reports/${encodeURIComponent(slug)}`).then(r => r.data.content as string),
@@ -53,22 +55,22 @@ function ReportModal({ slug, onClose }: { slug: string; onClose: () => void }) {
   })
 
   const errMsg = isError
-    ? ((error as { response?: { data?: { error?: string } } })?.response?.data?.error || (error as Error)?.message || 'Error al cargar el reporte')
+    ? ((error as { response?: { data?: { error?: string } } })?.response?.data?.error || (error as Error)?.message || t('careersTracker.reportModal.genericError'))
     : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
-        className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+        className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h3 className="text-white font-semibold flex items-center gap-2">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
+          <h3 className="text-[var(--text-primary)] font-semibold flex items-center gap-2">
             <FileText size={16} className="text-blue-400" />
-            Reporte de Evaluación
-            <span className="text-xs text-gray-600 font-normal ml-1">{slug}</span>
+            {t('careersTracker.reportModal.title')}
+            <span className="text-xs text-[var(--text-faint)] font-normal ml-1">{slug}</span>
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <button onClick={onClose} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
             <X size={20} />
           </button>
         </div>
@@ -79,18 +81,18 @@ function ReportModal({ slug, onClose }: { slug: string; onClose: () => void }) {
             </div>
           ) : errMsg ? (
             <div className="flex flex-col items-center justify-center h-32 gap-3 text-center">
-              <p className="text-red-400 text-sm font-medium">No se pudo cargar el reporte</p>
-              <p className="text-gray-500 text-xs max-w-md">{errMsg}</p>
-              <p className="text-gray-600 text-xs">Slug: {slug}</p>
+              <p className="text-red-400 text-sm font-medium">{t('careersTracker.reportModal.loadError')}</p>
+              <p className="text-[var(--text-muted)] text-xs max-w-md">{errMsg}</p>
+              <p className="text-[var(--text-faint)] text-xs">{t('careersTracker.reportModal.slugLabel')} {slug}</p>
             </div>
           ) : !data ? (
             <div className="flex flex-col items-center justify-center h-32 gap-2 text-center">
-              <p className="text-gray-500 text-sm">El reporte no tiene contenido o no fue encontrado.</p>
-              <p className="text-gray-600 text-xs">Puede que fue generado antes de conectar la base de datos.</p>
-              <p className="text-gray-600 text-xs">Slug: {slug}</p>
+              <p className="text-[var(--text-muted)] text-sm">{t('careersTracker.reportModal.noContent')}</p>
+              <p className="text-[var(--text-faint)] text-xs">{t('careersTracker.reportModal.noContentNote')}</p>
+              <p className="text-[var(--text-faint)] text-xs">{t('careersTracker.reportModal.slugLabel')} {slug}</p>
             </div>
           ) : (
-            <pre className="text-gray-300 text-xs whitespace-pre-wrap font-mono leading-relaxed">{data}</pre>
+            <pre className="text-[var(--text-secondary)] text-xs whitespace-pre-wrap font-mono leading-relaxed">{data}</pre>
           )}
         </div>
       </div>
@@ -101,46 +103,47 @@ function ReportModal({ slug, onClose }: { slug: string; onClose: () => void }) {
 // ── CV Preview Modal ──────────────────────────────────────────────────────────
 
 function CvModal({ app, onClose }: { app: Application; onClose: () => void }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <div
-        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col"
+        className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
               <FileText size={16} className="text-blue-400" />
-              CV — {app.rol} en {app.empresa}
+              {t('careersTracker.cvModal.titlePrefix')} {app.rol} {t('careersTracker.cvModal.in')} {app.empresa}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">Generado con IA para esta oferta</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('careersTracker.cvModal.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             {app.id && (
               <button
                 onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
-                <Download size={13} /> Descargar PDF
+                <Download size={13} /> {t('careersTracker.cvModal.downloadPdf')}
               </button>
             )}
             {app.cvHtml && (
               <button
                 onClick={() => { navigator.clipboard.writeText(app.cvHtml!); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
               >
                 {copied ? <CheckCircle2 size={13} className="text-green-400" /> : <Copy size={13} />}
-                {copied ? 'Copiado' : 'Copiar HTML'}
+                {copied ? t('careersTracker.cvModal.copied') : t('careersTracker.cvModal.copyHtml')}
               </button>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
           </div>
         </div>
         <div className="flex-1 overflow-hidden rounded-b-2xl">
           {app.cvHtml
             ? <iframe srcDoc={app.cvHtml} className="w-full h-full bg-white" title="CV Preview" />
-            : <div className="flex items-center justify-center h-full text-gray-500 text-sm">HTML no disponible</div>
+            : <div className="flex items-center justify-center h-full text-[var(--text-muted)] text-sm">{t('careersTracker.cvModal.noHtml')}</div>
           }
         </div>
       </div>
@@ -158,14 +161,14 @@ interface ApplyState {
   app: Application | null
 }
 
-const POSTULAR_STEPS = [
-  '📄 Leyendo reporte de evaluación...',
-  '🤖 Generando CV personalizado con IA...',
-  '🖨️ Convirtiendo a PDF...',
-  '💾 Guardando en Postulaciones...',
-]
-
 export default function CareersTracker() {
+  const { t } = useTranslation()
+  const POSTULAR_STEPS = [
+    t('careersTracker.steps.reading'),
+    t('careersTracker.steps.generating'),
+    t('careersTracker.steps.converting'),
+    t('careersTracker.steps.saving'),
+  ]
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -215,7 +218,7 @@ export default function CareersTracker() {
   })
 
   const handleDelete = (entry: TrackerEntry) => {
-    if (!window.confirm(`¿Eliminar "${entry.empresa || '—'} — ${entry.rol || '—'}" del tracker?`)) return
+    if (!window.confirm(t('careersTracker.deleteConfirm', { empresa: entry.empresa || '—', rol: entry.rol || '—' }))) return
     deleteMut.mutate(entry.id)
   }
 
@@ -225,7 +228,7 @@ export default function CareersTracker() {
   }
 
   const SortIcon = ({ field }: { field: keyof TrackerEntry }) => {
-    if (sortField !== field) return <ChevronDown size={12} className="text-gray-600" />
+    if (sortField !== field) return <ChevronDown size={12} className="text-[var(--text-faint)]" />
     return sortDir === 'asc'
       ? <ChevronUp size={12} className="text-blue-400" />
       : <ChevronDown size={12} className="text-blue-400" />
@@ -277,7 +280,7 @@ export default function CareersTracker() {
       qc.invalidateQueries({ queryKey: ['applications'] })
     } catch (err: unknown) {
       clearInterval(interval)
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Error al postular'
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('careersTracker.genericError')
       setApplyStates(p => ({ ...p, [entry.id]: { loading: false, done: false, step: '', error: msg, app: null } }))
     }
   }
@@ -292,7 +295,7 @@ export default function CareersTracker() {
         setCvModal(full)
       } else {
         // CV fue generado antes del módulo Postulaciones — ofrecer generar ahora
-        const ok = window.confirm(`No hay CV guardado para ${entry.empresa}. ¿Generar uno con IA ahora?`)
+        const ok = window.confirm(t('careersTracker.noCvConfirm', { empresa: entry.empresa }))
         if (ok) handlePostular(entry)
       }
     } finally {
@@ -303,7 +306,7 @@ export default function CareersTracker() {
   const ThCell = ({ field, label }: { field: keyof TrackerEntry; label: string }) => (
     <th
       onClick={() => handleSort(field)}
-      className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+      className="text-left px-4 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
     >
       <span className="flex items-center gap-1">
         {label}
@@ -323,38 +326,38 @@ export default function CareersTracker() {
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">Tracker</h2>
-          <p className="text-gray-400 mt-1">
-            {filtered.length} de {tracker.length} ofertas
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t('careersTracker.title')}</h2>
+          <p className="text-[var(--text-tertiary)] mt-1">
+            {t('careersTracker.subtitle', { filtered: filtered.length, total: tracker.length })}
           </p>
         </div>
       </div>
 
       {trackerError && (
         <div className="rounded-2xl border border-red-700 bg-red-900/20 p-4 text-sm text-red-200">
-          <strong>Error al cargar el tracker:</strong> {formatQueryError(trackerErrorObj)}
+          <strong>{t('careersTracker.errorLoading')}</strong> {formatQueryError(trackerErrorObj)}
         </div>
       )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar empresa o rol..."
-            className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            placeholder={t('careersTracker.searchPlaceholder')}
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div className="relative">
-          <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <select
             value={filterEstado}
             onChange={e => setFilterEstado(e.target.value)}
-            className="bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+            className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
           >
-            <option value="all">Todos los estados</option>
+            <option value="all">{t('careersTracker.allStatuses')}</option>
             {ESTADOS.map(e => (
               <option key={e} value={e}>{ESTADO_CONFIG[e]?.label ?? e}</option>
             ))}
@@ -363,28 +366,28 @@ export default function CareersTracker() {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 size={24} className="animate-spin text-blue-400" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-500 text-sm gap-2">
-            No hay ofertas que coincidan con los filtros.
+          <div className="flex flex-col items-center justify-center h-32 text-[var(--text-muted)] text-sm gap-2">
+            {t('careersTracker.noResults')}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50 border-b border-gray-800">
+              <thead className="bg-gray-800/50 border-b border-[var(--border-default)]">
                 <tr>
-                  <ThCell field="id" label="ID" />
-                  <ThCell field="fecha" label="Fecha" />
-                  <ThCell field="empresa" label="Empresa" />
-                  <ThCell field="rol" label="Rol" />
-                  <ThCell field="score" label="Score" />
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Renta</th>
-                  <ThCell field="estado" label="Estado" />
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Acciones</th>
+                  <ThCell field="id" label={t('careersTracker.columns.id')} />
+                  <ThCell field="fecha" label={t('careersTracker.columns.date')} />
+                  <ThCell field="empresa" label={t('careersTracker.columns.company')} />
+                  <ThCell field="rol" label={t('careersTracker.columns.role')} />
+                  <ThCell field="score" label={t('careersTracker.columns.score')} />
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">{t('careersTracker.columns.salary')}</th>
+                  <ThCell field="estado" label={t('careersTracker.columns.status')} />
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">{t('careersTracker.columns.actions')}</th>
                   <th className="w-8" />
                 </tr>
               </thead>
@@ -395,29 +398,29 @@ export default function CareersTracker() {
 
                   return (
                     <tr key={entry.id} className="hover:bg-gray-800/30 transition-colors group">
-                      <td className="px-4 py-3.5 text-gray-500 text-sm font-mono">
+                      <td className="px-4 py-3.5 text-[var(--text-muted)] text-sm font-mono">
                         <span title={entry.id}>
                           #{entry.id.length > 12 ? entry.id.slice(0, 8) + '…' : entry.id}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-gray-400 text-sm whitespace-nowrap">{entry.fecha}</td>
+                      <td className="px-4 py-3.5 text-[var(--text-tertiary)] text-sm whitespace-nowrap">{entry.fecha}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-white text-sm font-medium">{entry.empresa}</span>
+                          <span className="text-[var(--text-primary)] text-sm font-medium">{entry.empresa}</span>
                           {entry.url && (
                             <a href={entry.url} target="_blank" rel="noopener noreferrer"
-                              className="text-gray-600 hover:text-blue-400 transition-colors">
+                              className="text-[var(--text-faint)] hover:text-blue-400 transition-colors">
                               <ExternalLink size={11} />
                             </a>
                           )}
                         </div>
                         {entry.perfil_nombre && (
-                          <span className="inline-block mt-1 text-[10px] text-gray-500 bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded" title="Perfil con el que se evaluó/postuló">
+                          <span className="inline-block mt-1 text-[10px] text-[var(--text-muted)] bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] px-1.5 py-0.5 rounded" title="Perfil con el que se evaluó/postuló">
                             {entry.perfil_nombre}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-gray-300 text-sm max-w-[200px]">
+                      <td className="px-4 py-3.5 text-[var(--text-secondary)] text-sm max-w-[200px]">
                         <span className="truncate block">{entry.rol}</span>
                       </td>
                       <td className="px-4 py-3.5">
@@ -426,7 +429,7 @@ export default function CareersTracker() {
                       <td className="px-4 py-3.5 text-sm">
                         {entry.salario_clp
                           ? <span className="text-emerald-400 font-medium">{entry.salario_clp}</span>
-                          : <span className="text-gray-600">—</span>}
+                          : <span className="text-[var(--text-faint)]">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
                         {isEditing ? (
@@ -434,7 +437,7 @@ export default function CareersTracker() {
                             <select
                               value={editEstado}
                               onChange={e => setEditEstado(e.target.value as EstadoJob)}
-                              className="bg-gray-800 border border-gray-700 rounded text-xs text-white px-2 py-1 focus:outline-none"
+                              className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded text-xs text-[var(--text-primary)] px-2 py-1 focus:outline-none"
                             >
                               {ESTADOS.map(e => (
                                 <option key={e} value={e}>{ESTADO_CONFIG[e]?.label ?? e}</option>
@@ -446,7 +449,7 @@ export default function CareersTracker() {
                             >
                               <CheckCircle2 size={14} />
                             </button>
-                            <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-300">
+                            <button onClick={() => setEditingId(null)} className="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
                               <X size={14} />
                             </button>
                           </div>
@@ -454,7 +457,7 @@ export default function CareersTracker() {
                           <div
                             onClick={() => { setEditingId(entry.id); setEditEstado(entry.estado as EstadoJob) }}
                             className="cursor-pointer inline-flex"
-                            title="Click para cambiar estado"
+                            title={t('careersTracker.changeStatusTitle')}
                           >
                             <EstadoBadge estado={entry.estado} />
                           </div>
@@ -467,7 +470,7 @@ export default function CareersTracker() {
                               <Loader2 size={11} className="animate-spin shrink-0" />
                               <span className="truncate max-w-[150px]">{applyState.step}</span>
                             </div>
-                            <div className="h-1 bg-gray-800 rounded-full overflow-hidden w-36">
+                            <div className="h-1 bg-[var(--bg-surface-alt)] rounded-full overflow-hidden w-36">
                               <div
                                 className="h-full bg-gradient-to-r from-blue-600 to-violet-600 rounded-full transition-all duration-700"
                                 style={{ width: `${((postularStepIdx[entry.id] ?? 0) + 1) * 25}%` }}
@@ -480,8 +483,8 @@ export default function CareersTracker() {
                             {entry.reportSlug && (
                               <button
                                 onClick={() => setReportModal(entry.reportSlug!)}
-                                className="p-1.5 text-gray-600 hover:text-blue-400 transition-colors rounded"
-                                title="Ver reporte de evaluación"
+                                className="p-1.5 text-[var(--text-faint)] hover:text-blue-400 transition-colors rounded"
+                                title={t('careersTracker.viewReportTitle')}
                               >
                                 <FileText size={13} />
                               </button>
@@ -496,10 +499,10 @@ export default function CareersTracker() {
                                     handleVerCvExistente(entry)
                                   }}
                                   disabled={cvLoadStates[entry.id]}
-                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all disabled:opacity-50"
                                 >
                                   {cvLoadStates[entry.id] ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />}
-                                  Ver CV
+                                  {t('careersTracker.viewCv')}
                                 </button>
 
                                 {entry.url && (
@@ -508,10 +511,10 @@ export default function CareersTracker() {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => setJustClickedApply(p => ({ ...p, [entry.id]: true }))}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold transition-all"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-600 hover:bg-green-500 text-[var(--text-primary)] rounded-lg text-xs font-bold transition-all"
                                   >
                                     <ArrowUpRight size={11} />
-                                    Ir a postular
+                                    {t('careersTracker.goApply')}
                                   </a>
                                 )}
 
@@ -521,40 +524,40 @@ export default function CareersTracker() {
                                 {justClickedApply[entry.id] && entry.estado !== 'Postulada' && (
                                   <button
                                     onClick={() => { updateMut.mutate({ id: entry.id, estado: 'Postulada' }); setJustClickedApply(p => ({ ...p, [entry.id]: false })) }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-xs font-medium transition-all animate-pulse"
-                                    title="Confirma que ya completaste la postulación en el sitio externo"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all animate-pulse"
+                                    title={t('careersTracker.alreadyAppliedTitle')}
                                   >
                                     <CheckCircle2 size={11} />
-                                    Ya postulé
+                                    {t('careersTracker.alreadyApplied')}
                                   </button>
                                 )}
 
                                 <button
                                   onClick={() => navigate('/postulaciones')}
-                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600/20 hover:bg-violet-600 text-violet-400 hover:text-white rounded-lg text-xs font-medium transition-all"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600/20 hover:bg-violet-600 text-violet-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all"
                                 >
                                   <Send size={11} />
-                                  Postulaciones
+                                  {t('careersTracker.applications')}
                                 </button>
 
                                 <button
                                   onClick={() => handlePostular(entry)}
-                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg text-xs font-medium transition-all"
-                                  title="Regenerar CV con IA"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all"
+                                  title={t('careersTracker.regenerateTitle')}
                                 >
                                   <Send size={11} />
-                                  Regenerar
+                                  {t('careersTracker.regenerate')}
                                 </button>
                               </>
                             ) : (
                               /* Sin CV aún — generar */
                               <button
                                 onClick={() => handlePostular(entry)}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all"
-                                title="Genera CV personalizado con IA y guarda en Postulaciones"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all"
+                                title={t('careersTracker.preparePostulationTitle')}
                               >
                                 <Send size={11} />
-                                Preparar postulación
+                                {t('careersTracker.preparePostulation')}
                               </button>
                             )}
                           </div>
@@ -569,8 +572,8 @@ export default function CareersTracker() {
                         <button
                           onClick={() => handleDelete(entry)}
                           disabled={deleteMut.isPending}
-                          className="p-1.5 text-gray-600 hover:text-red-400 transition-colors"
-                          title="Eliminar entrada"
+                          className="p-1.5 text-[var(--text-faint)] hover:text-red-400 transition-colors"
+                          title={t('careersTracker.deleteTitle')}
                         >
                           <Trash2 size={13} />
                         </button>

@@ -7,6 +7,11 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import SubscriptionBanner from '../components/subscription/SubscriptionBanner'
 import type { SubscriptionState } from '../hooks/useSubscription'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
+
+function renderBanner(sub: SubscriptionState) {
+  return render(<LanguageProvider><SubscriptionBanner sub={sub} /></LanguageProvider>)
+}
 
 const base: SubscriptionState = {
   loading: false,
@@ -22,28 +27,28 @@ const base: SubscriptionState = {
 
 describe('SubscriptionBanner — plan activo', () => {
   it('no muestra nada con plan activo lejos de vencer', () => {
-    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 20 }} />)
+    const { container } = renderBanner({ ...base, daysLeft: 20 })
     expect(container.firstChild).toBeNull()
   })
 
   it('no muestra nada con plan activo sin fecha de vencimiento', () => {
-    const { container } = render(<SubscriptionBanner sub={base} />)
+    const { container } = renderBanner(base)
     expect(container.firstChild).toBeNull()
   })
 
   it('muestra recordatorio con botón Renovar cuando MP vence en ≤3 días', () => {
-    render(<SubscriptionBanner sub={{ ...base, daysLeft: 2, paymentProvider: 'mercadopago' }} />)
+    renderBanner({ ...base, daysLeft: 2, paymentProvider: 'mercadopago' })
     expect(screen.getByText(/vence en 2 días/)).toBeInTheDocument()
     expect(screen.getByText(/Renovar/)).toBeInTheDocument()
   })
 
   it('NO muestra recordatorio de renovación si el proveedor es PayPal (cobra solo)', () => {
-    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 2, paymentProvider: 'paypal' }} />)
+    const { container } = renderBanner({ ...base, daysLeft: 2, paymentProvider: 'paypal' })
     expect(container.firstChild).toBeNull()
   })
 
   it('el recordatorio de MP es descartable', () => {
-    const { container } = render(<SubscriptionBanner sub={{ ...base, daysLeft: 3, paymentProvider: 'mercadopago' }} />)
+    const { container } = renderBanner({ ...base, daysLeft: 3, paymentProvider: 'mercadopago' })
     fireEvent.click(container.querySelector('button:last-child')!)
     expect(container.firstChild).toBeNull()
   })
@@ -51,18 +56,18 @@ describe('SubscriptionBanner — plan activo', () => {
 
 describe('SubscriptionBanner — trial', () => {
   it('trial que termina el mismo día dice "termina hoy", no "0 días restantes"', () => {
-    render(<SubscriptionBanner sub={{ ...base, status: 'trial', daysLeft: 0 }} />)
+    renderBanner({ ...base, status: 'trial', daysLeft: 0 })
     expect(screen.getByText(/termina hoy/)).toBeInTheDocument()
   })
 
   it('muestra los dos botones de pago (Mercado Pago y PayPal)', () => {
-    render(<SubscriptionBanner sub={{ ...base, status: 'trial', daysLeft: 2 }} />)
+    renderBanner({ ...base, status: 'trial', daysLeft: 2 })
     expect(screen.getByText(/Suscribirse \$9.990\/mes/)).toBeInTheDocument()
     expect(screen.getByText(/Pay with PayPal/)).toBeInTheDocument()
   })
 
   it('el banner de trial es descartable', () => {
-    const { container } = render(<SubscriptionBanner sub={{ ...base, status: 'trial', daysLeft: 3 }} />)
+    const { container } = renderBanner({ ...base, status: 'trial', daysLeft: 3 })
     fireEvent.click(container.querySelector('button:last-child')!)
     expect(container.firstChild).toBeNull()
   })
@@ -72,13 +77,13 @@ describe('SubscriptionBanner — plan vencido', () => {
   it('plan vencido muestra banner bloqueante con copy neutro (sirve para trial Y plan pagado)', () => {
     // Regresión: el backend marca 'expired' tanto al trial como al plan pagado que
     // terminó su mes; el copy no debe hablar de "prueba" porque el usuario pudo haber pagado.
-    render(<SubscriptionBanner sub={{ ...base, status: 'expired', isActive: false, daysLeft: 0 }} />)
+    renderBanner({ ...base, status: 'expired', isActive: false, daysLeft: 0 })
     expect(screen.getByText('Tu plan venció')).toBeInTheDocument()
     expect(screen.queryByText(/prueba/i)).not.toBeInTheDocument()
   })
 
   it('ofrece ambos proveedores para reactivar', () => {
-    render(<SubscriptionBanner sub={{ ...base, status: 'expired', isActive: false, daysLeft: 0 }} />)
+    renderBanner({ ...base, status: 'expired', isActive: false, daysLeft: 0 })
     expect(screen.getByText(/Mercado Pago — \$9.990\/mes/)).toBeInTheDocument()
     expect(screen.getByText(/PayPal — \$12.99\/mo/)).toBeInTheDocument()
   })

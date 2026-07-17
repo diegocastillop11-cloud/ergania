@@ -11,6 +11,7 @@ import GuideModal from '../../components/GuideModal'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
 import { CareerStats, TrackerEntry, ESTADO_CONFIG, SCORE_COLOR } from '../../types/careers'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 
 function StatCard({ label, value, icon: Icon, color, sub }: {
@@ -18,19 +19,19 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
   color: string; sub?: string
 }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-gray-400 text-sm">{label}</span>
+        <span className="text-[var(--text-tertiary)] text-sm">{label}</span>
         <Icon size={18} className={color} />
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+      <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
+      {sub && <p className="text-xs text-[var(--text-muted)] mt-1">{sub}</p>}
     </div>
   )
 }
 
 function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-gray-600 text-sm">—</span>
+  if (score === null) return <span className="text-[var(--text-faint)] text-sm">—</span>
   return (
     <span className={`text-sm font-bold ${SCORE_COLOR(score)}`}>
       {score.toFixed(1)}
@@ -50,6 +51,7 @@ const PROVIDERS: Array<{
 
 export default function CareersDashboard() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [restoreMsg, setRestoreMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [llmProvider, setLlmProvider] = useState<LlmProvider>(() => loadLlmProvider())
@@ -128,42 +130,42 @@ export default function CareersDashboard() {
 
   const statCards = [
     {
-      label: 'Total Evaluadas',
+      label: t('dashboard.stats.totalEvaluated'),
       value: stats?.total ?? 0,
       icon: Briefcase,
       color: 'text-blue-400',
-      sub: `${activas.length} activas`,
+      sub: t('dashboard.stats.activeSuffix', { count: activas.length }),
     },
     {
-      label: 'En Pipeline',
+      label: t('dashboard.stats.inPipeline'),
       value: pipeline,
       icon: Clock,
       color: 'text-orange-400',
-      sub: 'pendientes de evaluación',
+      sub: t('dashboard.stats.pendingEvaluation'),
     },
     {
-      label: 'Postuladas',
+      label: t('dashboard.stats.applied'),
       value: stats?.byStatus?.['Postulada'] ?? 0,
       icon: Send,
       color: 'text-yellow-400',
-      sub: `${stats?.byStatus?.['Entrevista'] ?? 0} en entrevista`,
+      sub: t('dashboard.stats.interviewSuffix', { count: stats?.byStatus?.['Entrevista'] ?? 0 }),
     },
     {
-      label: 'Score Promedio',
+      label: t('dashboard.stats.avgScore'),
       value: stats?.avgScore ? `${stats.avgScore}/5` : '—',
       icon: Star,
       color: 'text-purple-400',
-      sub: `${stats?.pdfs ?? 0} CVs generados`,
+      sub: t('dashboard.stats.cvsGeneratedSuffix', { count: stats?.pdfs ?? 0 }),
     },
   ]
 
   // Pipeline visual (kanban-light)
   const statusFlow: Array<{ key: string; label: string }> = [
-    { key: 'Evaluada', label: 'Evaluada' },
-    { key: 'CV Generado', label: 'CV Listo' },
-    { key: 'Postulada', label: 'Postulada' },
-    { key: 'Entrevista', label: 'Entrevista' },
-    { key: 'Oferta', label: 'Oferta' },
+    { key: 'Evaluada', label: t('dashboard.funnelLabels.Evaluada') },
+    { key: 'CV Generado', label: t('dashboard.funnelLabels.CV Generado') },
+    { key: 'Postulada', label: t('dashboard.funnelLabels.Postulada') },
+    { key: 'Entrevista', label: t('dashboard.funnelLabels.Entrevista') },
+    { key: 'Oferta', label: t('dashboard.funnelLabels.Oferta') },
   ]
 
   return (
@@ -173,38 +175,38 @@ export default function CareersDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-white">Ergania</h2>
-          <p className="text-gray-400 mt-1">Centro de comando para búsqueda de trabajo con IA</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Ergania</h2>
+          <p className="text-[var(--text-tertiary)] mt-1">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
           <button
             onClick={() => setShowGuide(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-700"
+            className="flex items-center gap-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-[var(--border-alt)]"
           >
             <BookOpen size={15} />
-            Aprende a usar Ergania
+            {t('dashboard.learnToUse')}
           </button>
           <button
             onClick={() => navigate('/pipeline')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
           >
             <Zap size={16} />
-            Evaluar Oferta
+            {t('dashboard.evaluateOffer')}
           </button>
         </div>
       </div>
 
       {/* Configuración de IA — temporalmente oculta, el servidor provee la key */}
-      {false && <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      {false && <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
         <div className="flex items-center gap-2 mb-5">
           <Bot size={18} className="text-blue-400" />
-          <h3 className="text-white font-semibold">Configuración de IA</h3>
-          <span className="text-xs text-gray-500 ml-1">— elige tu proveedor y agrega tu API key</span>
+          <h3 className="text-[var(--text-primary)] font-semibold">Configuración de IA</h3>
+          <span className="text-xs text-[var(--text-muted)] ml-1">— elige tu proveedor y agrega tu API key</span>
         </div>
 
         {/* Provider selector */}
         <div className="mb-5">
-          <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Proveedor activo</p>
+          <p className="text-xs text-[var(--text-tertiary)] mb-2 font-medium uppercase tracking-wider">Proveedor activo</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {PROVIDERS.map(p => (
               <button
@@ -213,15 +215,15 @@ export default function CareersDashboard() {
                 className={`flex flex-col items-start gap-1 p-3 rounded-lg border transition-all text-left ${
                   llmProvider === p.id
                     ? 'border-blue-500 bg-blue-950/40'
-                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    : 'border-[var(--border-alt)] bg-gray-800/50 hover:border-gray-600'
                 }`}
               >
                 <div className="flex items-center gap-2 w-full">
-                  <span className="text-sm font-medium text-white">{p.label}</span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{p.label}</span>
                   {llmProvider === p.id && <CheckCircle2 size={13} className="text-blue-400 ml-auto" />}
                 </div>
                 <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${p.badgeColor}`}>{p.badge}</span>
-                <span className="text-xs text-gray-500">{p.hint}</span>
+                <span className="text-xs text-[var(--text-muted)]">{p.hint}</span>
               </button>
             ))}
           </div>
@@ -229,14 +231,14 @@ export default function CareersDashboard() {
 
         {/* API Keys */}
         <div>
-          <p className="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wider">API Keys (guardadas solo en tu navegador)</p>
+          <p className="text-xs text-[var(--text-tertiary)] mb-3 font-medium uppercase tracking-wider">API Keys (guardadas solo en tu navegador)</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {PROVIDERS.map(p => (
               <div key={p.id} className={`rounded-lg border p-3 transition-colors ${
-                llmProvider === p.id ? 'border-blue-700 bg-blue-950/20' : 'border-gray-800 bg-gray-800/30'
+                llmProvider === p.id ? 'border-blue-700 bg-blue-950/20' : 'border-[var(--border-default)] bg-gray-800/30'
               }`}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-gray-300">{p.label}</span>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">{p.label}</span>
                   <a href={p.link} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
                     <ExternalLink size={10} /> {p.linkLabel}
@@ -248,10 +250,10 @@ export default function CareersDashboard() {
                     value={apiKeys[p.id] || ''}
                     onChange={e => handleKeyChange(p.id, e.target.value)}
                     placeholder={apiKeys[p.id] ? '••••••••••••••••' : p.placeholder}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-md px-2.5 py-1.5 pr-8 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-md px-2.5 py-1.5 pr-8 text-xs text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:border-blue-500 font-mono"
                   />
                   <button type="button" onClick={() => setShowKey(s => ({ ...s, [p.id]: !s[p.id] }))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
                     {showKey[p.id] ? <EyeOff size={12} /> : <Eye size={12} />}
                   </button>
                 </div>
@@ -267,7 +269,7 @@ export default function CareersDashboard() {
                     type="button"
                     onClick={() => handleTestAi(p.id)}
                     disabled={testResults[p.id] === 'loading'}
-                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] disabled:opacity-50 transition-colors"
                   >
                     {testResults[p.id] === 'loading'
                       ? <><Loader2 size={10} className="animate-spin" /> Probando...</>
@@ -290,13 +292,13 @@ export default function CareersDashboard() {
             ))}
           </div>
           <div className="flex items-center justify-between mt-4">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[var(--text-muted)]">
               Deja vacío para usar la key del servidor. Tu propia key tiene prioridad.
             </p>
             <button
               onClick={handleSaveKeys}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                keysSaved ? 'bg-green-700 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'
+                keysSaved ? 'bg-green-700 text-[var(--text-primary)]' : 'bg-blue-600 hover:bg-blue-500 text-[var(--text-primary)]'
               }`}
             >
               {keysSaved ? '✓ Guardado' : 'Guardar Keys'}
@@ -307,7 +309,7 @@ export default function CareersDashboard() {
 
       {(statsError || trackerError) && (
         <div className="rounded-2xl border border-red-700 bg-red-900/20 p-4 text-sm text-red-200">
-          <strong>Error al cargar datos:</strong> {statsError ? formatQueryError(statsErrorObj) : formatQueryError(trackerErrorObj)}
+          <strong>{t('dashboard.errorLoading')}</strong> {statsError ? formatQueryError(statsErrorObj) : formatQueryError(trackerErrorObj)}
         </div>
       )}
 
@@ -319,10 +321,10 @@ export default function CareersDashboard() {
       </div>
 
       {/* Pipeline visual */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold">Funnel de Postulaciones</h3>
-          <TrendingUp size={16} className="text-gray-500" />
+          <h3 className="text-[var(--text-primary)] font-semibold">{t('dashboard.funnel')}</h3>
+          <TrendingUp size={16} className="text-[var(--text-muted)]" />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2">
           {statusFlow.map(({ key, label }) => {
@@ -331,11 +333,11 @@ export default function CareersDashboard() {
             return (
               <div
                 key={key}
-                className={`flex-1 min-w-[100px] rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 ${cfg?.bg ?? 'bg-gray-800'}`}
+                className={`flex-1 min-w-[100px] rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 ${cfg?.bg ?? 'bg-[var(--bg-surface-alt)]'}`}
                 onClick={() => navigate('/tracker')}
               >
-                <p className={`text-2xl font-bold ${cfg?.color ?? 'text-white'}`}>{count}</p>
-                <p className="text-xs text-gray-400 mt-1">{label}</p>
+                <p className={`text-2xl font-bold ${cfg?.color ?? 'text-[var(--text-primary)]'}`}>{count}</p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">{label}</p>
               </div>
             )
           })}
@@ -344,23 +346,23 @@ export default function CareersDashboard() {
 
       {/* Recent evaluations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-semibold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-semibold flex items-center gap-2">
               <FileText size={16} className="text-blue-400" />
-              Evaluaciones Recientes
+              {t('dashboard.recentEvaluations')}
             </h3>
             <button
               onClick={() => navigate('/tracker')}
               className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
             >
-              Ver todas <ChevronRight size={12} />
+              {t('dashboard.seeAll')} <ChevronRight size={12} />
             </button>
           </div>
           {recent.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-gray-500 text-sm gap-2">
-              <Briefcase size={24} className="text-gray-700" />
-              Aún no hay evaluaciones. ¡Agrega una oferta!
+            <div className="flex flex-col items-center justify-center h-32 text-[var(--text-muted)] text-sm gap-2">
+              <Briefcase size={24} className="text-[var(--text-faint)]" />
+              {t('dashboard.noEvaluations')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -369,12 +371,12 @@ export default function CareersDashboard() {
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-3 bg-[var(--bg-surface-alt)]/50 rounded-lg hover:bg-[var(--bg-surface-alt)] transition-colors cursor-pointer"
                     onClick={() => navigate('/tracker')}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-white text-sm font-medium truncate">{entry.empresa}</p>
-                      <p className="text-gray-400 text-xs truncate">{entry.rol}</p>
+                      <p className="text-[var(--text-primary)] text-sm font-medium truncate">{entry.empresa}</p>
+                      <p className="text-[var(--text-tertiary)] text-xs truncate">{entry.rol}</p>
                     </div>
                     <div className="flex items-center gap-3 ml-3 shrink-0">
                       <ScoreBadge score={entry.score} />
@@ -390,37 +392,37 @@ export default function CareersDashboard() {
         </div>
 
         {/* Quick actions */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
+          <h3 className="text-[var(--text-primary)] font-semibold mb-4 flex items-center gap-2">
             <Award size={16} className="text-purple-400" />
-            Acciones Rápidas
+            {t('dashboard.quickActions.title')}
           </h3>
           <div className="space-y-2">
             {[
               {
-                label: 'Evaluar nueva oferta',
-                desc: 'Pega un JD o URL para evaluación IA',
+                label: t('dashboard.quickActions.evaluateLabel'),
+                desc: t('dashboard.quickActions.evaluateDesc'),
                 icon: Search,
                 color: 'text-blue-400',
                 to: '/careers/pipeline',
               },
               {
-                label: 'Ver tracker completo',
-                desc: 'Todas las ofertas y sus estados',
+                label: t('dashboard.quickActions.trackerLabel'),
+                desc: t('dashboard.quickActions.trackerDesc'),
                 icon: Briefcase,
                 color: 'text-green-400',
                 to: '/careers/tracker',
               },
               {
-                label: 'Configurar portales',
-                desc: 'Activa portales chilenos e internacionales',
+                label: t('dashboard.quickActions.portalsLabel'),
+                desc: t('dashboard.quickActions.portalsDesc'),
                 icon: TrendingUp,
                 color: 'text-orange-400',
                 to: '/careers/portals',
               },
               {
-                label: 'Editar perfil / CV',
-                desc: 'Actualiza tus datos y experiencia',
+                label: t('dashboard.quickActions.profileLabel'),
+                desc: t('dashboard.quickActions.profileDesc'),
                 icon: FileText,
                 color: 'text-purple-400',
                 to: '/careers/profile',
@@ -429,14 +431,14 @@ export default function CareersDashboard() {
               <button
                 key={label}
                 onClick={() => navigate(to)}
-                className="w-full flex items-center gap-3 p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-left transition-colors group"
+                className="w-full flex items-center gap-3 p-3 bg-[var(--bg-surface-alt)]/50 hover:bg-[var(--bg-surface-alt)] rounded-lg text-left transition-colors group"
               >
                 <Icon size={18} className={color} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">{label}</p>
-                  <p className="text-xs text-gray-500">{desc}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{desc}</p>
                 </div>
-                <ChevronRight size={14} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+                <ChevronRight size={14} className="text-[var(--text-faint)] group-hover:text-[var(--text-tertiary)] transition-colors" />
               </button>
             ))}
           </div>
@@ -444,14 +446,14 @@ export default function CareersDashboard() {
       </div>
 
       {/* Backup / Persistencia */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3">
-            <HardDrive size={18} className="text-gray-400 mt-0.5 shrink-0" />
+            <HardDrive size={18} className="text-[var(--text-tertiary)] mt-0.5 shrink-0" />
             <div>
-              <h3 className="text-white font-semibold text-sm">Respalda tu perfil</h3>
-              <p className="text-gray-400 text-xs mt-1 max-w-lg">
-                Descarga una copia de tus datos para no perderlos o para continuar en otro dispositivo.
+              <h3 className="text-[var(--text-primary)] font-semibold text-sm">{t('dashboard.backup.title')}</h3>
+              <p className="text-[var(--text-tertiary)] text-xs mt-1 max-w-lg">
+                {t('dashboard.backup.desc')}
               </p>
               {restoreMsg && (
                 <div className={`flex items-center gap-2 mt-2 text-xs ${restoreMsg.ok ? 'text-green-400' : 'text-red-400'}`}>
@@ -479,19 +481,19 @@ export default function CareersDashboard() {
                   link.remove()
                   URL.revokeObjectURL(url)
                 } catch (err: unknown) {
-                  setRestoreMsg({ ok: false, text: `Error al descargar backup: ${(err as Error)?.message || 'Error desconocido'}` })
+                  setRestoreMsg({ ok: false, text: `${t('dashboard.backup.downloadError')} ${(err as Error)?.message || ''}` })
                   setTimeout(() => setRestoreMsg(null), 5000)
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--border-alt)] hover:bg-[var(--text-faint)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
             >
-              <Download size={13} /> Descargar Backup
+              <Download size={13} /> {t('dashboard.backup.download')}
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--border-alt)] hover:bg-[var(--text-faint)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
             >
-              <Upload size={13} /> Restaurar Backup
+              <Upload size={13} /> {t('dashboard.backup.restore')}
             </button>
             <input
               ref={fileInputRef}
@@ -505,9 +507,9 @@ export default function CareersDashboard() {
                   const text = await file.text()
                   const json = JSON.parse(text)
                   await api.post('/restore', json)
-                  setRestoreMsg({ ok: true, text: '¡Backup restaurado! Recarga la página.' })
+                  setRestoreMsg({ ok: true, text: t('dashboard.backup.restoreSuccess') })
                 } catch {
-                  setRestoreMsg({ ok: false, text: 'Error al restaurar — asegúrate que es un backup válido.' })
+                  setRestoreMsg({ ok: false, text: t('dashboard.backup.restoreError') })
                 }
                 e.target.value = ''
                 setTimeout(() => setRestoreMsg(null), 5000)

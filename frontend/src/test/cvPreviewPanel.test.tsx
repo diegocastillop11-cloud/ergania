@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { Application } from '../types/careers'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 const patchMock = vi.fn()
 const postMock = vi.fn()
@@ -50,12 +51,12 @@ describe('CvPreviewPanel — edición WYSIWYG del CV', () => {
   })
 
   it('muestra el botón "Editar CV" cuando hay cvHtml', () => {
-    render(<CvPreviewPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><CvPreviewPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     expect(screen.getByRole('button', { name: /Editar CV/ })).toBeInTheDocument()
   })
 
   it('al hacer click en Editar CV, activa designMode y muestra Guardar/Cancelar', () => {
-    render(<CvPreviewPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><CvPreviewPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     const fakeDoc = stubIframeDoc(baseApp.cvHtml!)
 
     fireEvent.click(screen.getByRole('button', { name: /Editar CV/ }))
@@ -67,7 +68,7 @@ describe('CvPreviewPanel — edición WYSIWYG del CV', () => {
   })
 
   it('Guardar cambios llama a PATCH /applications/:id/cv con el HTML editado', async () => {
-    render(<CvPreviewPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><CvPreviewPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     const editedHtml = '<html><body><h1>Diego Castillo (editado)</h1></body></html>'
     const fakeDoc = stubIframeDoc(editedHtml)
 
@@ -84,7 +85,7 @@ describe('CvPreviewPanel — edición WYSIWYG del CV', () => {
   })
 
   it('Cancelar descarta la edición y vuelve al modo lectura sin llamar a PATCH', () => {
-    render(<CvPreviewPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><CvPreviewPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     stubIframeDoc(baseApp.cvHtml!)
 
     fireEvent.click(screen.getByRole('button', { name: /Editar CV/ }))
@@ -96,7 +97,7 @@ describe('CvPreviewPanel — edición WYSIWYG del CV', () => {
 
   it('si el guardado falla, muestra el error y reactiva el modo edición', async () => {
     patchMock.mockRejectedValue({ response: { data: { error: 'Error del servidor' } } })
-    render(<CvPreviewPanel app={baseApp} onClose={() => {}} />)
+    render(<LanguageProvider><CvPreviewPanel app={baseApp} onClose={() => {}} /></LanguageProvider>)
     const fakeDoc = stubIframeDoc(baseApp.cvHtml!)
 
     fireEvent.click(screen.getByRole('button', { name: /Editar CV/ }))

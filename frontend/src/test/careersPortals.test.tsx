@@ -21,6 +21,7 @@ vi.mock('../components/careers/PerfilTabs', () => ({
 }))
 
 import CareersPortals from '../pages/careers/CareersPortals'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 const emptyConfig: PortalsConfig = {
   title_filter: { positive: [], negative: [], seniority_boost: [] },
@@ -31,9 +32,11 @@ const emptyConfig: PortalsConfig = {
 function renderPortals() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={qc}>
-      <CareersPortals />
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={qc}>
+        <CareersPortals />
+      </QueryClientProvider>
+    </LanguageProvider>
   )
 }
 
