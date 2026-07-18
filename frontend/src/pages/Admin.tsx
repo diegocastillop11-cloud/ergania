@@ -7,6 +7,11 @@ import {
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
 } from 'lucide-react'
 
+// Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
+// que necesita su propio prefijo de baseURL para la app Android — en la web
+// queda vacío (relativo, mismo origen que hoy).
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
 interface SalaryAnchor {
   id: string
   carrera: string
@@ -30,7 +35,7 @@ function SalaryAnchorsTab({ token }: { token: string }) {
 
   const load = () => {
     setLoading(true)
-    fetch('/api/admin/salary-anchors', { headers: authHeaders })
+    fetch(`${API_BASE}/api/admin/salary-anchors`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => { setAnchors(d.anchors || []); setLoading(false) })
       .catch(() => setLoading(false))
@@ -78,7 +83,7 @@ function SalaryAnchorsTab({ token }: { token: string }) {
 
   const remove = async (id: string) => {
     if (!window.confirm('¿Eliminar esta ancla salarial?')) return
-    await fetch(`/api/admin/salary-anchors/${id}`, { method: 'DELETE', headers: authHeaders })
+    await fetch(`${API_BASE}/api/admin/salary-anchors/${id}`, { method: 'DELETE', headers: authHeaders })
     load()
   }
 
@@ -188,7 +193,7 @@ function ReportCard({ report, token, onChanged }: { report: Report; token: strin
   const downloadPdf = async () => {
     setDownloading(true)
     try {
-      const res = await fetch(`/api/admin/reports/${report.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`${API_BASE}/api/admin/reports/${report.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error('Error al generar el PDF')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -209,7 +214,7 @@ function ReportCard({ report, token, onChanged }: { report: Report; token: strin
   const save = async () => {
     setSaving(true)
     try {
-      await fetch(`/api/admin/reports/${report.id}`, {
+      await fetch(`${API_BASE}/api/admin/reports/${report.id}`, {
         method: 'PUT', headers: authHeaders,
         body: JSON.stringify({ ...report, checklist, observaciones }),
       })
@@ -221,7 +226,7 @@ function ReportCard({ report, token, onChanged }: { report: Report; token: strin
 
   const remove = async () => {
     if (!window.confirm(`¿Eliminar el reporte "${report.titulo}"?`)) return
-    await fetch(`/api/admin/reports/${report.id}`, { method: 'DELETE', headers: authHeaders })
+    await fetch(`${API_BASE}/api/admin/reports/${report.id}`, { method: 'DELETE', headers: authHeaders })
     onChanged()
   }
 
@@ -335,7 +340,7 @@ function ReportsTab({ token }: { token: string }) {
 
   const load = () => {
     setLoading(true)
-    fetch('/api/admin/reports', { headers: authHeaders })
+    fetch(`${API_BASE}/api/admin/reports`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => { setReports(d.reports || []); setLoading(false) })
       .catch(() => setLoading(false))
@@ -349,7 +354,7 @@ function ReportsTab({ token }: { token: string }) {
     const checklist = form.checklistText.split('\n').map(t => t.trim()).filter(Boolean)
       .map(texto => ({ texto, marcado: false, nota: '' }))
     try {
-      const res = await fetch('/api/admin/reports', {
+      const res = await fetch(`${API_BASE}/api/admin/reports`, {
         method: 'POST', headers: authHeaders,
         body: JSON.stringify({ ...form, checklist }),
       })
@@ -487,9 +492,9 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
   const loadAux = () => {
     setLoadingAux(true)
     Promise.all([
-      fetch(`/api/admin/bulk-emails/${email.id}/preview`, { headers: authHeaders }).then(r => r.json()),
-      fetch(`/api/admin/bulk-emails/${email.id}/sent`, { headers: authHeaders }).then(r => r.json()),
-      fetch(`/api/admin/bulk-emails/${email.id}/scheduled`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}/preview`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}/sent`, { headers: authHeaders }).then(r => r.json()),
+      fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}/scheduled`, { headers: authHeaders }).then(r => r.json()),
     ]).then(([previewData, sentData, scheduledData]) => {
       setPreview(previewData)
       setSentEmails(new Set((sentData.sent || []).map((r: any) => r.email)))
@@ -540,7 +545,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
     if (!form.titulo.trim() || !form.asunto.trim()) { setSaveError('Título y asunto son requeridos'); return }
     setSaving(true)
     try {
-      const res = await fetch(`/api/admin/bulk-emails/${email.id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}`, {
         method: 'PUT', headers: authHeaders, body: JSON.stringify(form),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
@@ -556,7 +561,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 
   const remove = async () => {
     if (!window.confirm(`¿Eliminar el correo "${email.titulo}"? Esta acción no se puede deshacer.`)) return
-    await fetch(`/api/admin/bulk-emails/${email.id}`, { method: 'DELETE', headers: authHeaders })
+    await fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}`, { method: 'DELETE', headers: authHeaders })
     onDeleted()
   }
 
@@ -567,7 +572,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
     setSendError('')
     setSendResult(null)
     try {
-      const res = await fetch(`/api/admin/bulk-emails/${email.id}/send`, {
+      const res = await fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}/send`, {
         method: 'POST', headers: authHeaders, body: JSON.stringify({ emails: Array.from(selected) }),
       })
       const data = await res.json()
@@ -586,7 +591,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
     if (!scheduleDate) { setScheduleError('Elige una fecha'); return }
     setScheduling(true)
     try {
-      const res = await fetch(`/api/admin/bulk-emails/${email.id}/scheduled`, {
+      const res = await fetch(`${API_BASE}/api/admin/bulk-emails/${email.id}/scheduled`, {
         method: 'POST', headers: authHeaders,
         body: JSON.stringify({ send_date: scheduleDate, max_evals: scheduleMaxEvals }),
       })
@@ -603,7 +608,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 
   const cancelScheduled = async (id: string) => {
     if (!window.confirm('¿Cancelar este envío programado?')) return
-    await fetch(`/api/admin/scheduled/${id}`, { method: 'DELETE', headers: authHeaders })
+    await fetch(`${API_BASE}/api/admin/scheduled/${id}`, { method: 'DELETE', headers: authHeaders })
     setScheduled(prev => prev.filter(s => s.id !== id))
   }
 
@@ -816,7 +821,7 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
 
   const load = () => {
     setLoading(true)
-    fetch('/api/admin/bulk-emails', { headers: authHeaders })
+    fetch(`${API_BASE}/api/admin/bulk-emails`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => { setEmails(d.emails || []); setLoading(false) })
       .catch(() => setLoading(false))
@@ -843,7 +848,7 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
     if (!draft.titulo.trim() || !draft.asunto.trim()) { setDraftError('Título y asunto son requeridos'); return }
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/bulk-emails', {
+      const res = await fetch(`${API_BASE}/api/admin/bulk-emails`, {
         method: 'POST', headers: authHeaders, body: JSON.stringify(draft),
       })
       const data = await res.json()
@@ -957,7 +962,7 @@ export default function Admin() {
 
   const loadStats = () => {
     if (!session) return
-    fetch('/api/admin/stats', {
+    fetch(`${API_BASE}/api/admin/stats`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
       .then(r => r.json())
@@ -1003,7 +1008,7 @@ export default function Admin() {
 
   const toggleTestFlag = async (u: { id: string; sub: any }) => {
     if (!session) return
-    await fetch(`/api/admin/users/${u.id}/test`, {
+    await fetch(`${API_BASE}/api/admin/users/${u.id}/test`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ isTest: !u.sub?.is_test }),
@@ -1014,7 +1019,7 @@ export default function Admin() {
   const deleteUserAccount = async (u: { id: string; email: string }) => {
     if (!session) return
     if (!window.confirm(`¿Eliminar la cuenta de ${u.email}? Esta acción no se puede deshacer.`)) return
-    await fetch(`/api/admin/users/${u.id}`, {
+    await fetch(`${API_BASE}/api/admin/users/${u.id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
@@ -1036,7 +1041,7 @@ export default function Admin() {
     setSendingReplyId(m.id)
     setReplyErrors(errs => ({ ...errs, [m.id]: '' }))
     try {
-      const res = await fetch(`/api/admin/messages/${m.id}/reply`, {
+      const res = await fetch(`${API_BASE}/api/admin/messages/${m.id}/reply`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ reply: text }),
@@ -1273,7 +1278,7 @@ export default function Admin() {
                       <td className="px-5 py-3">
                         <button
                           onClick={async () => {
-                            const res = await fetch(`/api/admin/receipts/${p.receiptId}/pdf`, {
+                            const res = await fetch(`${API_BASE}/api/admin/receipts/${p.receiptId}/pdf`, {
                               headers: { Authorization: `Bearer ${session?.access_token}` },
                             })
                             if (!res.ok) return
