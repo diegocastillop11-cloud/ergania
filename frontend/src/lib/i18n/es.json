@@ -59,6 +59,10 @@
   "dashboard": {
     "subtitle": "Centro de comando para búsqueda de trabajo con IA",
     "learnToUse": "Aprende a usar Ergania",
+    "androidBanner": {
+      "text": "¿Tienes Android? Descarga la app de Ergania.",
+      "cta": "Descargar"
+    },
     "evaluateOffer": "Evaluar Oferta",
     "errorLoading": "Error al cargar datos:",
     "stats": {
@@ -112,7 +116,8 @@
       "subtitle": "Ergania adapta tu CV a cada oferta, evalúa si conviene postular, y te prepara para la entrevista.",
       "ctaPrimary": "Probar gratis 3 días →",
       "ctaGhost": "Ver cómo funciona",
-      "socialProof": "buscando trabajo"
+      "socialProof": "buscando trabajo",
+      "androidCta": "¿Tienes Android? Descarga la app →"
     },
     "howItWorks": {
       "kicker": "Cómo funciona",

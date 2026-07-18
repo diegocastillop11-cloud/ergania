@@ -9,6 +9,7 @@ import {
   HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
+import AndroidAppBanner from '../../components/AndroidAppBanner'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
 import { CareerStats, TrackerEntry, ESTADO_CONFIG, SCORE_COLOR } from '../../types/careers'
@@ -172,6 +173,8 @@ export default function CareersDashboard() {
   return (
     <div className="space-y-6">
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+
+      <AndroidAppBanner />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">

@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Smartphone } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
@@ -161,6 +162,15 @@ export default function Landing() {
             </Link>
             <a href="#como-funciona" className="lp-btn-ghost">{t('landing.hero.ctaGhost')}</a>
           </div>
+
+          <a
+            href="/ergania.apk"
+            download
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.sage, textDecoration: 'none', marginBottom: 36 }}
+          >
+            <Smartphone size={16} />
+            {t('landing.hero.androidCta')}
+          </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             <div style={{ display: 'flex' }}>
