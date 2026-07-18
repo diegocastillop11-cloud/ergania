@@ -301,7 +301,7 @@ export default function CareersScanner() {
     }
 
     try {
-      const response = await fetch(`/api/careers/scan?${params.toString()}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/careers/scan?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       })
