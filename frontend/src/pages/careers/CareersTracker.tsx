@@ -1,4 +1,5 @@
 import { api } from '../../lib/api'
+import { saveBlob } from '../../lib/downloadFile'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -13,12 +14,7 @@ import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 async function downloadPdf(appId: string, filename: string) {
   const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  await saveBlob(data, filename)
 }
 
 const ESTADOS: EstadoJob[] = [

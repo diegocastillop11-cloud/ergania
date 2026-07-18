@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 import { translateAuthError } from './authErrors'
+import { signInWithGoogleNative } from './nativeAuth'
 
 interface AuthContextType {
   user:    User | null
@@ -66,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGoogle = async () => {
+    if (Capacitor.isNativePlatform()) {
+      const { error } = await signInWithGoogleNative()
+      return { error: error ? translateAuthError(error) : null }
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/dashboard` },

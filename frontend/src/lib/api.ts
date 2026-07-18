@@ -7,7 +7,7 @@ import axios from 'axios'
 import { supabase } from './supabase'
 
 export const api = axios.create({
-  baseURL: '/api/careers',
+  baseURL: `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/careers`,
 })
 
 // Interceptor: lee la sesión activa y manda el access_token

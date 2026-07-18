@@ -16,6 +16,7 @@ const allowedOrigins = [
   'https://ergania.com',
   'https://www.ergania.com',
   /\.vercel\.app$/,
+  'https://localhost', // WebView de la app Android (Capacitor, androidScheme: 'https')
 ]
 
 app.use(cors({

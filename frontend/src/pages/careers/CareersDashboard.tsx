@@ -1,4 +1,5 @@
 import { api } from '../../lib/api'
+import { saveBlob } from '../../lib/downloadFile'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -472,14 +473,7 @@ export default function CareersDashboard() {
                   const contentDisposition = response.headers['content-disposition'] || ''
                   const match = contentDisposition.match(/filename="?([^";]+)"?/) 
                   const filename = match?.[1] || `career-ops-backup-${new Date().toISOString().split('T')[0]}.json`
-                  const url = URL.createObjectURL(response.data)
-                  const link = document.createElement('a')
-                  link.href = url
-                  link.download = filename
-                  document.body.appendChild(link)
-                  link.click()
-                  link.remove()
-                  URL.revokeObjectURL(url)
+                  await saveBlob(response.data, filename)
                 } catch (err: unknown) {
                   setRestoreMsg({ ok: false, text: `${t('dashboard.backup.downloadError')} ${(err as Error)?.message || ''}` })
                   setTimeout(() => setRestoreMsg(null), 5000)

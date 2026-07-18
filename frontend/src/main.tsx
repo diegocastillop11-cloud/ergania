@@ -5,8 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './lib/AuthContext'
 import { ThemeProvider } from './lib/ThemeContext'
 import { LanguageProvider } from './lib/i18n/LanguageContext'
+import { setupNativeExternalLinks } from './lib/nativeExternalLinks'
+import { setupNativeBackButton } from './lib/nativeBackButton'
 import App from './App'
 import './index.css'
+
+setupNativeExternalLinks()
+setupNativeBackButton()
 
 const queryClient = new QueryClient({
   defaultOptions: {
