@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import ContactModal from '../components/ContactModal'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
-type Mode = 'login' | 'register'
+type Mode = 'login' | 'register' | 'forgot'
 
 function GoogleIcon() {
   return (
@@ -19,7 +19,7 @@ function GoogleIcon() {
 }
 
 export default function Login() {
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, resetPasswordForEmail } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
@@ -70,11 +70,15 @@ export default function Login() {
       const { error } = await signIn(email, password)
       if (error) setError(error)
       else navigate('/dashboard')
-    } else {
+    } else if (mode === 'register') {
       const { error, session } = await signUp(email, password)
       if (error) setError(error)
       else if (session) navigate('/dashboard')
       else setInfo(t('login.accountCreatedInfo'))
+    } else {
+      const { error } = await resetPasswordForEmail(email)
+      if (error) setError(error)
+      else setInfo(t('login.resetLinkSentInfo'))
     }
 
     setLoading(false)
@@ -95,44 +99,57 @@ export default function Login() {
         <div className="bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-default)] p-6 shadow-xl">
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-6 bg-[var(--bg-surface-alt)] rounded-xl p-1">
-            {(['login', 'register'] as Mode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => reset(m)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                  mode === m
-                    ? 'bg-blue-600 text-[var(--text-primary)] shadow'
-                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {m === 'login'
-                  ? <><LogIn size={14} /> {t('login.tabLogin')}</>
-                  : <><UserPlus size={14} /> {t('login.tabRegister')}</>
-                }
-              </button>
-            ))}
-          </div>
+          {mode !== 'forgot' && (
+            <div className="flex gap-1 mb-6 bg-[var(--bg-surface-alt)] rounded-xl p-1">
+              {(['login', 'register'] as Mode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => reset(m)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                    mode === m
+                      ? 'bg-blue-600 text-[var(--text-primary)] shadow'
+                      : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {m === 'login'
+                    ? <><LogIn size={14} /> {t('login.tabLogin')}</>
+                    : <><UserPlus size={14} /> {t('login.tabRegister')}</>
+                  }
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === 'forgot' && (
+            <div className="mb-5">
+              <h2 className="text-base font-semibold text-[var(--text-primary)]">{t('login.forgotTitle')}</h2>
+              <p className="text-sm text-[var(--text-muted)] mt-1">{t('login.forgotDescription')}</p>
+            </div>
+          )}
 
           {/* Google */}
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={googleLoading || loading}
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed text-gray-800 rounded-xl text-sm font-medium border border-gray-300 transition-colors"
-          >
-            {googleLoading
-              ? <Loader size={16} className="animate-spin" />
-              : <GoogleIcon />
-            }
-            {mode === 'login' ? t('login.googleLogin') : t('login.googleRegister')}
-          </button>
+          {mode !== 'forgot' && (
+            <>
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={googleLoading || loading}
+                className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-white hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed text-gray-800 rounded-xl text-sm font-medium border border-gray-300 transition-colors"
+              >
+                {googleLoading
+                  ? <Loader size={16} className="animate-spin" />
+                  : <GoogleIcon />
+                }
+                {mode === 'login' ? t('login.googleLogin') : t('login.googleRegister')}
+              </button>
 
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-[var(--border-default)]" />
-            <span className="text-xs text-[var(--text-faint)]">{t('login.orEmail')}</span>
-            <div className="flex-1 h-px bg-[var(--border-default)]" />
-          </div>
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-[var(--border-default)]" />
+                <span className="text-xs text-[var(--text-faint)]">{t('login.orEmail')}</span>
+                <div className="flex-1 h-px bg-[var(--border-default)]" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -152,7 +169,8 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password — no aplica en el flujo de recuperación */}
+            {mode !== 'forgot' && (
             <div>
               <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">{t('login.password')}</label>
               <div className="relative">
@@ -175,7 +193,17 @@ export default function Login() {
                   {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => reset('forgot')}
+                  className="text-xs text-[var(--text-muted)] hover:text-blue-400 transition-colors mt-1.5"
+                >
+                  {t('login.forgotPasswordLink')}
+                </button>
+              )}
             </div>
+            )}
 
             {/* Confirm password — solo en registro */}
             {mode === 'register' && (
@@ -240,9 +268,21 @@ export default function Login() {
                 ? <><Loader size={14} className="animate-spin" /> {t('login.processing')}</>
                 : mode === 'login'
                   ? <><LogIn size={14} /> {t('login.submitLogin')}</>
-                  : <><UserPlus size={14} /> {t('login.createAccount')}</>
+                  : mode === 'register'
+                    ? <><UserPlus size={14} /> {t('login.createAccount')}</>
+                    : t('login.sendResetLink')
               }
             </button>
+
+            {mode === 'forgot' && (
+              <button
+                type="button"
+                onClick={() => reset('login')}
+                className="w-full text-center text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                {t('login.backToLogin')}
+              </button>
+            )}
           </form>
         </div>
 

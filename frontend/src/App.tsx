@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Landing from './pages/Landing'
 import Privacy from './pages/Privacy'
 import Subscription from './pages/Subscription'
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       {/* Redirect pages from MercadoPago — must be public, no auth required */}
       <Route path="/subscription/success" element={<SubscriptionCallback />} />
       <Route path="/subscription/failure" element={<SubscriptionCallback />} />
