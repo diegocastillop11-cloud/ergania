@@ -54,6 +54,7 @@ export default function Landing() {
           text-underline-offset: 3px; cursor: pointer;
         }
         .lp-btn-ghost:hover { color: ${C.brown}; }
+        .lp-android-cta:hover { background: #587a5e; }
         .lp-btn-outline {
           display: inline-block; border: 2px solid ${C.white}; color: ${C.white};
           background: transparent; border-radius: 10px; padding: 14px 36px;
@@ -166,9 +167,10 @@ export default function Landing() {
           <a
             href="/ergania.apk"
             download
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.sage, textDecoration: 'none', marginBottom: 36 }}
+            className="lp-android-cta"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: sans, fontSize: 14, fontWeight: 700, color: C.white, textDecoration: 'none', marginBottom: 36, background: C.sage, borderRadius: 100, padding: '10px 20px' }}
           >
-            <Smartphone size={16} />
+            <Smartphone size={17} />
             {t('landing.hero.androidCta')}
           </a>
 
