@@ -16,12 +16,13 @@ export async function sendContact(req: Request, res: Response) {
   try {
     await sendContactEmail(name.trim(), email.trim(), category.trim(), message.trim())
 
-    supabaseAdmin?.from('contact_messages').insert({
-      name: name.trim(), email: email.trim(),
-      category: category.trim(), message: message.trim(),
-    }).then(({ error }) => {
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('contact_messages').insert({
+        name: name.trim(), email: email.trim(),
+        category: category.trim(), message: message.trim(),
+      })
       if (error) console.error('[contact] Error guardando en DB:', error.message)
-    })
+    }
 
     res.json({ ok: true })
   } catch (err) {
