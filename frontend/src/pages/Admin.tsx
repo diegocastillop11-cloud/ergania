@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
 } from 'lucide-react'
-
-const ADMIN_EMAILS = ['ergania.ai@gmail.com', 'diego.castillop11@gmail.com', 'emesmediacontact@gmail.com']
 
 interface SalaryAnchor {
   id: string
