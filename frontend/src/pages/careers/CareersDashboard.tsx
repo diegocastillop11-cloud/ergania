@@ -1,4 +1,5 @@
 import { api } from '../../lib/api'
+import { saveBlob } from '../../lib/downloadFile'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -8,6 +9,7 @@ import {
   HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
+import AndroidAppBanner from '../../components/AndroidAppBanner'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
 import { CareerStats, TrackerEntry, ESTADO_CONFIG, SCORE_COLOR } from '../../types/careers'
@@ -171,6 +173,8 @@ export default function CareersDashboard() {
   return (
     <div className="space-y-6">
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+
+      <AndroidAppBanner />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -472,14 +476,7 @@ export default function CareersDashboard() {
                   const contentDisposition = response.headers['content-disposition'] || ''
                   const match = contentDisposition.match(/filename="?([^";]+)"?/) 
                   const filename = match?.[1] || `career-ops-backup-${new Date().toISOString().split('T')[0]}.json`
-                  const url = URL.createObjectURL(response.data)
-                  const link = document.createElement('a')
-                  link.href = url
-                  link.download = filename
-                  document.body.appendChild(link)
-                  link.click()
-                  link.remove()
-                  URL.revokeObjectURL(url)
+                  await saveBlob(response.data, filename)
                 } catch (err: unknown) {
                   setRestoreMsg({ ok: false, text: `${t('dashboard.backup.downloadError')} ${(err as Error)?.message || ''}` })
                   setTimeout(() => setRestoreMsg(null), 5000)

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../../lib/api'
+import { saveBlob } from '../../lib/downloadFile'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -14,22 +15,13 @@ import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 async function downloadPdf(appId: string, filename: string) {
   const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  await saveBlob(data, filename)
 }
 
 async function downloadInterviewPrepPdf(appId: string, empresa: string, rol: string) {
   const { data } = await api.get(`/applications/${appId}/interview-prep/pdf`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `Prep-Entrevista-${empresa.replace(/[^a-zA-Z0-9]+/g, '_')}-${rol.replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
-  a.click()
-  URL.revokeObjectURL(url)
+  const filename = `Prep-Entrevista-${empresa.replace(/[^a-zA-Z0-9]+/g, '_')}-${rol.replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
+  await saveBlob(data, filename)
 }
 
 function renderInterviewPrep(prep: string) {
@@ -407,10 +399,8 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
               <button
                 onClick={() => {
                   const blob = new Blob([app.cvTex!], { type: 'text/plain' })
-                  const a = document.createElement('a')
-                  a.href = URL.createObjectURL(blob)
-                  a.download = `cv-${app.empresa}-${app.rol}.tex`.replace(/\s+/g, '-').toLowerCase()
-                  a.click()
+                  const filename = `cv-${app.empresa}-${app.rol}.tex`.replace(/\s+/g, '-').toLowerCase()
+                  saveBlob(blob, filename)
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 title={t('careersPostulaciones.cvPreview.downloadTexTitle')}

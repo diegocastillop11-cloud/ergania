@@ -74,28 +74,35 @@ export default function SubscriptionBanner({ sub }: Props) {
   if (sub.status === 'trial') {
     return (
       <div className="flex flex-col gap-1 mb-4">
-        <div className="flex items-center gap-3 bg-blue-950/60 border border-blue-700/40 rounded-xl px-4 py-2.5">
-          <Crown size={15} className="text-blue-400 shrink-0" />
-          <p className="text-sm text-blue-300 flex-1">
-            {t('subscriptionBanner.trialNote', { when: sub.daysLeft === 0 ? t('subscriptionBanner.trialToday') : `${sub.daysLeft} ${sub.daysLeft === 1 ? t('subscriptionBanner.trialDayLeft') : t('subscriptionBanner.trialDaysLeft')}` })}
-          </p>
-          <button
-            onClick={handleSubscribe}
-            disabled={loadingCheckout}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-blue-600 hover:bg-blue-500 disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {loadingProvider === 'mercadopago' && <Loader2 size={12} className="animate-spin" />}
-            {t('subscriptionBanner.subscribeMonthly')}
-          </button>
-          <button
-            onClick={handleSubscribePayPal}
-            disabled={loadingCheckout}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {loadingProvider === 'paypal' && <Loader2 size={12} className="animate-spin" />}
-            {t('subscriptionBanner.payPalMonthly')}
-          </button>
-          <button onClick={() => setDismissed(true)} className="text-blue-600 hover:text-blue-300 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-blue-950/60 border border-blue-700/40 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-3 flex-1">
+            <Crown size={15} className="text-blue-400 shrink-0" />
+            <p className="text-sm text-blue-300 flex-1">
+              {t('subscriptionBanner.trialNote', { when: sub.daysLeft === 0 ? t('subscriptionBanner.trialToday') : `${sub.daysLeft} ${sub.daysLeft === 1 ? t('subscriptionBanner.trialDayLeft') : t('subscriptionBanner.trialDaysLeft')}` })}
+            </p>
+            <button onClick={() => setDismissed(true)} className="text-blue-600 hover:text-blue-300 transition-colors sm:hidden">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
+            <button
+              onClick={handleSubscribe}
+              disabled={loadingCheckout}
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-blue-600 hover:bg-blue-500 disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {loadingProvider === 'mercadopago' && <Loader2 size={12} className="animate-spin" />}
+              {t('subscriptionBanner.subscribeMonthly')}
+            </button>
+            <button
+              onClick={handleSubscribePayPal}
+              disabled={loadingCheckout}
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {loadingProvider === 'paypal' && <Loader2 size={12} className="animate-spin" />}
+              {t('subscriptionBanner.payPalMonthly')}
+            </button>
+          </div>
+          <button onClick={() => setDismissed(true)} className="hidden sm:block text-blue-600 hover:text-blue-300 transition-colors">
             <X size={14} />
           </button>
         </div>
@@ -108,28 +115,35 @@ export default function SubscriptionBanner({ sub }: Props) {
   if (pendingInTrial) {
     return (
       <div className="flex flex-col gap-1 mb-4">
-        <div className="flex items-center gap-3 bg-yellow-950/60 border border-yellow-700/40 rounded-xl px-4 py-2.5">
-          <AlertTriangle size={15} className="text-yellow-400 shrink-0" />
-          <p className="text-sm text-yellow-200 flex-1">
-            {t('subscriptionBanner.pendingNote', { when: sub.daysLeft === 0 ? t('subscriptionBanner.trialToday') : `${sub.daysLeft} ${sub.daysLeft === 1 ? t('subscriptionBanner.trialDayLeft') : t('subscriptionBanner.trialDaysLeft')}` })}
-          </p>
-          <button
-            onClick={handleSubscribe}
-            disabled={loadingCheckout}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-yellow-600 hover:bg-yellow-500 disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {loadingProvider === 'mercadopago' && <Loader2 size={12} className="animate-spin" />}
-            {t('subscriptionBanner.mercadoPagoLabel')}
-          </button>
-          <button
-            onClick={handleSubscribePayPal}
-            disabled={loadingCheckout}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {loadingProvider === 'paypal' && <Loader2 size={12} className="animate-spin" />}
-            {t('subscriptionBanner.payPalLabel')}
-          </button>
-          <button onClick={() => setDismissed(true)} className="text-yellow-600 hover:text-yellow-300 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-yellow-950/60 border border-yellow-700/40 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-3 flex-1">
+            <AlertTriangle size={15} className="text-yellow-400 shrink-0" />
+            <p className="text-sm text-yellow-200 flex-1">
+              {t('subscriptionBanner.pendingNote', { when: sub.daysLeft === 0 ? t('subscriptionBanner.trialToday') : `${sub.daysLeft} ${sub.daysLeft === 1 ? t('subscriptionBanner.trialDayLeft') : t('subscriptionBanner.trialDaysLeft')}` })}
+            </p>
+            <button onClick={() => setDismissed(true)} className="text-yellow-600 hover:text-yellow-300 transition-colors sm:hidden">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
+            <button
+              onClick={handleSubscribe}
+              disabled={loadingCheckout}
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-yellow-600 hover:bg-yellow-500 disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {loadingProvider === 'mercadopago' && <Loader2 size={12} className="animate-spin" />}
+              {t('subscriptionBanner.mercadoPagoLabel')}
+            </button>
+            <button
+              onClick={handleSubscribePayPal}
+              disabled={loadingCheckout}
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {loadingProvider === 'paypal' && <Loader2 size={12} className="animate-spin" />}
+              {t('subscriptionBanner.payPalLabel')}
+            </button>
+          </div>
+          <button onClick={() => setDismissed(true)} className="hidden sm:block text-yellow-600 hover:text-yellow-300 transition-colors">
             <X size={14} />
           </button>
         </div>
@@ -141,35 +155,39 @@ export default function SubscriptionBanner({ sub }: Props) {
   // Trial vencido / cancelado / expirado: banner bloqueante, no descartable
   return (
     <div className="flex flex-col gap-1 mb-4">
-      <div className="flex items-center gap-3 bg-orange-950/70 border border-orange-600/50 rounded-xl px-4 py-3">
-        <AlertTriangle size={16} className="text-orange-400 shrink-0" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-orange-200">
-            {sub.status === 'cancelled' ? t('subscriptionBanner.cancelled') : t('subscriptionBanner.expired')}
-          </p>
-          <p className="text-xs text-orange-400 mt-0.5">
-            {t('subscriptionBanner.expiredNote')}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-orange-950/70 border border-orange-600/50 rounded-xl px-4 py-3">
+        <div className="flex items-start gap-3 flex-1">
+          <AlertTriangle size={16} className="text-orange-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-orange-200">
+              {sub.status === 'cancelled' ? t('subscriptionBanner.cancelled') : t('subscriptionBanner.expired')}
+            </p>
+            <p className="text-xs text-orange-400 mt-0.5">
+              {t('subscriptionBanner.expiredNote')}
+            </p>
+          </div>
         </div>
-        <button
-          onClick={handleSubscribe}
-          disabled={loadingCheckout}
-          className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-primary)] bg-orange-600 hover:bg-orange-500 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-        >
-          {loadingProvider === 'mercadopago'
-            ? <Loader2 size={14} className="animate-spin" />
-            : <Crown size={14} />
-          }
-          {t('subscriptionBanner.mercadoPagoShort')}
-        </button>
-        <button
-          onClick={handleSubscribePayPal}
-          disabled={loadingCheckout}
-          className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-        >
-          {loadingProvider === 'paypal' && <Loader2 size={14} className="animate-spin" />}
-          {t('subscriptionBanner.payPalShort')}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
+          <button
+            onClick={handleSubscribe}
+            disabled={loadingCheckout}
+            className="flex items-center justify-center gap-1.5 text-sm font-bold text-[var(--text-primary)] bg-orange-600 hover:bg-orange-500 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+          >
+            {loadingProvider === 'mercadopago'
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Crown size={14} />
+            }
+            {t('subscriptionBanner.mercadoPagoShort')}
+          </button>
+          <button
+            onClick={handleSubscribePayPal}
+            disabled={loadingCheckout}
+            className="flex items-center justify-center gap-1.5 text-sm font-bold text-[var(--text-primary)] bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+          >
+            {loadingProvider === 'paypal' && <Loader2 size={14} className="animate-spin" />}
+            {t('subscriptionBanner.payPalShort')}
+          </button>
+        </div>
       </div>
       {error && <p className="text-xs text-red-400 px-1">{error}</p>}
     </div>

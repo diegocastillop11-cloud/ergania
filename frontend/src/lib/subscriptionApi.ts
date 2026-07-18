@@ -2,7 +2,7 @@ import axios from 'axios'
 import { supabase } from './supabase'
 import { handleUnauthorized } from './api'
 
-const api = axios.create({ baseURL: '/api/subscription' })
+const api = axios.create({ baseURL: `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/subscription` })
 
 api.interceptors.request.use(async config => {
   const { data } = await supabase.auth.getSession()

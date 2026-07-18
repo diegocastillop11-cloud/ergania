@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
@@ -16,6 +17,19 @@ import CareersScanner from './pages/careers/CareersScanner'
 import CareersPostulaciones from './pages/careers/CareersPostulaciones'
 import CareersBusqueda from './pages/careers/CareersBusqueda'
 import Admin from './pages/Admin'
+
+function Root() {
+  const { user, loading } = useAuth()
+
+  // La landing es una página de marketing sin sentido dentro de la app
+  // instalada — ahí se va directo al login (o al dashboard si ya hay sesión).
+  if (Capacitor.isNativePlatform()) {
+    if (loading) return null
+    return <Navigate to={user ? '/dashboard' : '/login'} replace />
+  }
+
+  return <Landing />
+}
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -36,7 +50,7 @@ function ProtectedLayout() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<Root />} />
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />

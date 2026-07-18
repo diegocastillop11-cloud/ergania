@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff, MessageSquare } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import ContactModal from '../components/ContactModal'
@@ -51,7 +52,9 @@ export default function Login() {
     setGoogleLoading(true)
     const { error } = await signInWithGoogle()
     if (error) { setError(error); setGoogleLoading(false) }
-    // si no hay error, Supabase redirige a Google — no hace falta apagar el loading
+    // En web, Supabase redirige la página entera a Google — no hace falta apagar el loading.
+    // En nativo (Capacitor) no hay redirect de página, así que hay que navegar a mano.
+    else if (Capacitor.isNativePlatform()) { navigate('/dashboard'); setGoogleLoading(false) }
   }
 
   const handleSubmit = async (e: FormEvent) => {

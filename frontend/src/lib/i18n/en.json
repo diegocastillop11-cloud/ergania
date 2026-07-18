@@ -76,6 +76,10 @@
   "dashboard": {
     "subtitle": "Command center for AI-powered job search",
     "learnToUse": "Learn how to use Ergania",
+    "androidBanner": {
+      "text": "Got Android? Download the Ergania app.",
+      "cta": "Download"
+    },
     "evaluateOffer": "Evaluate Offer",
     "errorLoading": "Error loading data:",
     "stats": {
@@ -129,7 +133,8 @@
       "subtitle": "Ergania tailors your resume to each offer, evaluates whether it's worth applying, and preps you for the interview.",
       "ctaPrimary": "Try free for 3 days →",
       "ctaGhost": "See how it works",
-      "socialProof": "job seekers"
+      "socialProof": "job seekers",
+      "androidCta": "Got Android? Download the app →"
     },
     "howItWorks": {
       "kicker": "How it works",

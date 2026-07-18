@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Smartphone } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
@@ -53,6 +54,7 @@ export default function Landing() {
           text-underline-offset: 3px; cursor: pointer;
         }
         .lp-btn-ghost:hover { color: ${C.brown}; }
+        .lp-android-cta:hover { background: #587a5e; }
         .lp-btn-outline {
           display: inline-block; border: 2px solid ${C.white}; color: ${C.white};
           background: transparent; border-radius: 10px; padding: 14px 36px;
@@ -161,6 +163,16 @@ export default function Landing() {
             </Link>
             <a href="#como-funciona" className="lp-btn-ghost">{t('landing.hero.ctaGhost')}</a>
           </div>
+
+          <a
+            href="/ergania.apk"
+            download
+            className="lp-android-cta"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: sans, fontSize: 14, fontWeight: 700, color: C.white, textDecoration: 'none', marginBottom: 36, background: C.sage, borderRadius: 100, padding: '10px 20px' }}
+          >
+            <Smartphone size={17} />
+            {t('landing.hero.androidCta')}
+          </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             <div style={{ display: 'flex' }}>
