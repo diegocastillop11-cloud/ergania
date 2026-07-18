@@ -54,7 +54,24 @@
     "processing": "Procesando...",
     "createAccount": "Crear cuenta",
     "privacyNote": "Tus datos se guardan en tu propia cuenta y nadie más los ve.",
-    "contactQuestion": "¿Tienes dudas? Contáctanos"
+    "contactQuestion": "¿Tienes dudas? Contáctanos",
+    "forgotPasswordLink": "¿Olvidaste tu contraseña?",
+    "forgotTitle": "Recuperar contraseña",
+    "forgotDescription": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+    "sendResetLink": "Enviar enlace",
+    "resetLinkSentInfo": "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y spam).",
+    "backToLogin": "Volver a iniciar sesión"
+  },
+  "resetPassword": {
+    "title": "Nueva contraseña",
+    "tagline": "Elige una nueva contraseña para tu cuenta",
+    "verifying": "Verificando enlace...",
+    "newPassword": "Nueva contraseña",
+    "submit": "Guardar contraseña",
+    "successInfo": "¡Contraseña actualizada! Te llevamos al dashboard...",
+    "expiredTitle": "Enlace inválido o vencido",
+    "expiredHint": "Los enlaces de recuperación expiran después de un tiempo. Solicita uno nuevo desde la pantalla de inicio de sesión.",
+    "backToLogin": "Volver a iniciar sesión"
   },
   "dashboard": {
     "subtitle": "Centro de comando para búsqueda de trabajo con IA",

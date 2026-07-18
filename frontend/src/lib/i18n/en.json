@@ -54,7 +54,24 @@
     "processing": "Processing...",
     "createAccount": "Create account",
     "privacyNote": "Your data is stored in your own account and no one else sees it.",
-    "contactQuestion": "Have questions? Contact us"
+    "contactQuestion": "Have questions? Contact us",
+    "forgotPasswordLink": "Forgot your password?",
+    "forgotTitle": "Reset password",
+    "forgotDescription": "Enter your email and we'll send you a link to reset your password.",
+    "sendResetLink": "Send link",
+    "resetLinkSentInfo": "If an account exists with that email, we sent a link to reset your password. Check your inbox (and spam folder).",
+    "backToLogin": "Back to log in"
+  },
+  "resetPassword": {
+    "title": "New password",
+    "tagline": "Choose a new password for your account",
+    "verifying": "Verifying link...",
+    "newPassword": "New password",
+    "submit": "Save password",
+    "successInfo": "Password updated! Taking you to the dashboard...",
+    "expiredTitle": "Invalid or expired link",
+    "expiredHint": "Recovery links expire after a while. Request a new one from the login screen.",
+    "backToLogin": "Back to log in"
   },
   "dashboard": {
     "subtitle": "Command center for AI-powered job search",
