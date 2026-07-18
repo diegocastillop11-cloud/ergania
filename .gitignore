@@ -11,3 +11,9 @@ frontend/.env.local
 .vercel
 .gstack/
 .claude/
+
+# Keystore de firma de Android — nunca al repo (ver .github/workflows/android-generate-keystore.yml)
+*.jks
+*.keystore
+ergania-release-keystore/
+ergania-release-keystore.zip
