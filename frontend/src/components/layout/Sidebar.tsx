@@ -2,9 +2,10 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   LayoutDashboard, Inbox, List, Globe, UserCircle,
-  Radio, Send, Target, LogOut, Crown, X, MessageSquare, Settings,
+  Radio, Send, Target, LogOut, Crown, X, MessageSquare, Settings, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
+import { isAdminEmail } from '../../lib/adminEmails'
 import type { SubscriptionState } from '../../hooks/useSubscription'
 import ContactModal from '../ContactModal'
 import SettingsModal from '../SettingsModal'
@@ -94,6 +95,22 @@ export default function Sidebar({ sub, onClose }: Props) {
             <span className="flex-1">{t(`sidebar.nav.${key}`)}</span>
           </NavLink>
         ))}
+
+        {isAdminEmail(user?.email) && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-[var(--text-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-alt)]'
+              }`
+            }
+          >
+            <ShieldCheck size={16} />
+            <span className="flex-1">Admin</span>
+          </NavLink>
+        )}
 
         <div className="pt-1 mt-1 border-t border-[var(--border-default)]">
           <button
