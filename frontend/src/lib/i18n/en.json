@@ -127,9 +127,9 @@
   "landing": {
     "nav": { "features": "Features", "pricing": "Pricing", "login": "Log in", "tryNow": "Try now" },
     "hero": {
-      "badge": "AI for your job search · Chile",
-      "title1": "Find your ideal job,",
-      "title2": "let AI help you",
+      "badge": "AI for your job search",
+      "title1": "Find your ideal job.",
+      "title2": "AI does the rest.",
       "subtitle": "Ergania tailors your resume to each offer, evaluates whether it's worth applying, and preps you for the interview.",
       "ctaPrimary": "Try free for 3 days →",
       "ctaGhost": "See how it works",
@@ -183,10 +183,10 @@
       "proPeriod": "per month · cancel anytime",
       "proF1": "Everything in the free plan",
       "proF2": "Unlimited applications",
-      "proF3": "Chile job portal scanner",
+      "proF3": "Job portal scanner",
       "proF4": "Priority support",
       "proCta": "Try 3 days free →",
-      "footnote": "Secure payment with <b>MercadoPago</b> · No commitment · Cancel from your account"
+      "footnote": "Secure payment with <b>MercadoPago</b> and <b>PayPal</b> · No commitment · Cancel from your account"
     },
     "finalCta": {
       "title": "Start your search today.",

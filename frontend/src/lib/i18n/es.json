@@ -127,9 +127,9 @@
   "landing": {
     "nav": { "features": "Funciones", "pricing": "Precios", "login": "Iniciar sesión", "tryNow": "Probar ahora" },
     "hero": {
-      "badge": "IA para tu búsqueda laboral · Chile",
-      "title1": "Encuentra tu trabajo ideal,",
-      "title2": "deja que la IA te ayude",
+      "badge": "IA para tu búsqueda laboral",
+      "title1": "Encuentra tu trabajo ideal.",
+      "title2": "La IA hace el resto.",
       "subtitle": "Ergania adapta tu CV a cada oferta, evalúa si conviene postular, y te prepara para la entrevista.",
       "ctaPrimary": "Probar gratis 3 días →",
       "ctaGhost": "Ver cómo funciona",
@@ -183,10 +183,10 @@
       "proPeriod": "por mes · cancela cuando quieras",
       "proF1": "Todo lo del plan gratis",
       "proF2": "Postulaciones ilimitadas",
-      "proF3": "Escáner de portales Chile",
+      "proF3": "Escáner de portales",
       "proF4": "Soporte prioritario",
       "proCta": "Probar 3 días gratis →",
-      "footnote": "Pago seguro con <b>MercadoPago</b> · Sin permanencia · Cancela desde tu cuenta"
+      "footnote": "Pago seguro con <b>MercadoPago</b> y <b>PayPal</b> · Sin permanencia · Cancela desde tu cuenta"
     },
     "finalCta": {
       "title": "Empieza tu búsqueda hoy.",

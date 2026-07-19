@@ -1,46 +1,47 @@
 import { Link } from 'react-router-dom'
 
 const C = {
-  cream:    '#FAF7F2',
-  creamAlt: '#F0EBE3',
-  brown:    '#2E1508',
-  brownSec: '#7A5C4A',
-  muted:    '#9B7E6A',
-  terra:    '#C4633A',
-  white:    '#FFFFFF',
+  panel:    '#0B1330',
+  panelAlt: '#10142B',
+  footer:   '#070A16',
+  ink:      '#F1F2FB',
+  inkSub:   '#B7BAE0',
+  inkMuted: '#7C82AE',
+  line:     'rgba(255,255,255,.08)',
+  blue2:    '#60A5FA',
 }
 
-const serif = "'Playfair Display', serif"
-const sans  = "'Source Sans Pro', sans-serif"
+const display = "'Space Grotesk', -apple-system, 'Segoe UI', Arial, sans-serif"
+const sans    = "'Source Sans Pro', -apple-system, 'Segoe UI', Arial, sans-serif"
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={{ marginBottom: 36 }}>
-      <h2 style={{ fontFamily: serif, fontSize: 22, fontWeight: 700, color: C.brown, marginBottom: 12 }}>{title}</h2>
-      <div style={{ fontFamily: sans, fontSize: 15.5, lineHeight: 1.7, color: C.brownSec }}>{children}</div>
+      <h2 style={{ fontFamily: display, fontSize: 21, fontWeight: 700, color: C.ink, marginBottom: 12 }}>{title}</h2>
+      <div style={{ fontFamily: sans, fontSize: 15.5, lineHeight: 1.7, color: C.inkSub }}>{children}</div>
     </section>
   )
 }
 
 export default function Privacy() {
   return (
-    <div style={{ fontFamily: sans, background: C.cream, color: C.brown, minHeight: '100vh' }}>
-      <header style={{ background: C.cream, borderBottom: `1px solid rgba(46,21,8,.08)`, position: 'sticky', top: 0, zIndex: 100 }}>
-        <nav style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ fontFamily: sans, background: C.panel, color: C.ink, minHeight: '100vh' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(11,19,48,.72)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: `1px solid ${C.line}` }}>
+        <nav style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link to="/">
             <img src="/logo.png" alt="Ergania" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
           </Link>
-          <Link to="/" style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.brownSec, textDecoration: 'none' }}>
+          <Link to="/" style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.inkSub, textDecoration: 'none' }}>
             ← Volver al inicio
           </Link>
         </nav>
       </header>
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '64px 48px 96px' }}>
-        <h1 style={{ fontFamily: serif, fontSize: 40, fontWeight: 700, color: C.brown, letterSpacing: -0.5, marginBottom: 8 }}>
+        <h1 style={{ fontFamily: display, fontSize: 38, fontWeight: 700, color: C.ink, letterSpacing: -0.5, marginBottom: 8 }}>
           Política de Privacidad
         </h1>
-        <p style={{ fontFamily: sans, fontSize: 14, color: C.muted, marginBottom: 48 }}>
+        <p style={{ fontFamily: sans, fontSize: 14, color: C.inkMuted, marginBottom: 48 }}>
           Última actualización: 15 de julio de 2026
         </p>
 
@@ -53,7 +54,7 @@ export default function Privacy() {
             recomendaciones adaptadas a ti.
           </p>
           <p>
-            Si contratas una suscripción, el pago se procesa directamente por MercadoPago.
+            Si contratas una suscripción, el pago se procesa directamente por MercadoPago o PayPal.
             Ergania no almacena los datos de tu tarjeta ni medio de pago en ningún momento.
           </p>
         </Section>
@@ -74,10 +75,10 @@ export default function Privacy() {
             necesitamos para operar:
           </p>
           <ul style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <li><strong style={{ color: C.brown }}>Supabase</strong> — autenticación y almacenamiento de tu cuenta y datos de perfil.</li>
-            <li><strong style={{ color: C.brown }}>Anthropic (Claude)</strong> — procesamiento de IA sobre tu CV y perfil.</li>
-            <li><strong style={{ color: C.brown }}>MercadoPago</strong> — procesamiento de pagos de tu suscripción.</li>
-            <li><strong style={{ color: C.brown }}>Google AdSense</strong> — muestra anuncios en nuestra página de inicio pública para financiar el servicio (ver sección de Cookies abajo).</li>
+            <li><strong style={{ color: C.ink }}>Supabase</strong> — autenticación y almacenamiento de tu cuenta y datos de perfil.</li>
+            <li><strong style={{ color: C.ink }}>Anthropic (Claude)</strong> — procesamiento de IA sobre tu CV y perfil.</li>
+            <li><strong style={{ color: C.ink }}>MercadoPago y PayPal</strong> — procesamiento de pagos de tu suscripción.</li>
+            <li><strong style={{ color: C.ink }}>Google AdSense</strong> — muestra anuncios en nuestra página de inicio pública para financiar el servicio (ver sección de Cookies abajo).</li>
           </ul>
         </Section>
 
@@ -94,7 +95,7 @@ export default function Privacy() {
               href="https://myadcenter.google.com/personalizationoff"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: C.terra, fontWeight: 600 }}
+              style={{ color: C.blue2, fontWeight: 600 }}
             >
               Google Ad Settings
             </a>. Estos anuncios solo se muestran en nuestra página pública de inicio, nunca dentro
@@ -141,17 +142,17 @@ export default function Privacy() {
         <Section title="Contacto">
           <p>
             Si tienes preguntas sobre esta política o sobre tus datos, escríbenos a{' '}
-            <a href="mailto:contacto@ergania.com" style={{ color: C.terra, fontWeight: 600 }}>
+            <a href="mailto:contacto@ergania.com" style={{ color: C.blue2, fontWeight: 600 }}>
               contacto@ergania.com
             </a>.
           </p>
         </Section>
       </main>
 
-      <footer style={{ background: C.brown, padding: '44px 48px' }}>
+      <footer style={{ background: C.footer, padding: '44px 48px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 700, fontSize: 22, color: C.cream }}>ergania</span>
-          <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(250,247,242,.30)' }}>
+          <span style={{ fontFamily: display, fontWeight: 700, fontSize: 20, color: C.ink }}>ergania</span>
+          <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(241,242,251,.28)' }}>
             Hecho en Chile · 2026
           </p>
         </div>
