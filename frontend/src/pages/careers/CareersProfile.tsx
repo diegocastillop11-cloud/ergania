@@ -286,11 +286,31 @@ export default function CareersProfile() {
 
       setCvImportSuccess(true)
       setTimeout(() => setCvImportSuccess(false), 4000)
+      analyzeCompatibility()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } }; message?: string }
       setCvImportError(e?.response?.data?.error || e?.message || 'Error al importar CV')
     } finally {
       setCvImporting(false)
+    }
+  }
+
+  // ── Análisis de compatibilidad (% de match del CV con distintas especialidades) ─
+  const [compatLoading, setCompatLoading] = useState(false)
+  const [compatError, setCompatError] = useState('')
+  const [compatibility, setCompatibility] = useState<Array<{ cargo: string; porcentaje: number }> | null>(null)
+
+  const analyzeCompatibility = async () => {
+    setCompatLoading(true)
+    setCompatError('')
+    try {
+      const { data } = await api.post('/suggest-targets')
+      setCompatibility(data.suggestions?.compatibilidad || [])
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      setCompatError(e?.response?.data?.error || e?.message || t('careersProfile.compatibility.genericError'))
+    } finally {
+      setCompatLoading(false)
     }
   }
 
@@ -536,6 +556,67 @@ export default function CareersProfile() {
           <button onClick={() => setCvImportError('')} className="ml-auto text-red-500 hover:text-red-300 text-xs">✕</button>
         </div>
       )}
+
+      {/* Análisis de compatibilidad del CV */}
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={16} className="text-blue-400" />
+          <h3 className="text-[var(--text-primary)] font-semibold text-sm">{t('careersProfile.compatibility.title')}</h3>
+        </div>
+        <p className="text-[var(--text-tertiary)] text-xs mb-3">{t('careersProfile.compatibility.subtitle')}</p>
+
+        {compatLoading && (
+          <p className="text-[var(--text-tertiary)] text-sm flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin" /> {t('careersProfile.compatibility.analyzing')}
+          </p>
+        )}
+
+        {!compatLoading && compatError && (
+          <p className="text-red-400 text-sm mb-2">{compatError}</p>
+        )}
+
+        {!compatLoading && (compatibility?.length ?? 0) > 0 && (
+          <div className="space-y-3 mb-3">
+            {compatibility!.map((item, i) => {
+              const tier = item.porcentaje >= 80 ? 'high' : item.porcentaje >= 60 ? 'mid' : 'low'
+              const barColor = tier === 'high' ? 'bg-green-500' : tier === 'mid' ? 'bg-blue-500' : 'bg-slate-500'
+              const badgeClass = tier === 'high'
+                ? 'bg-green-900/40 text-green-300 border-green-800/50'
+                : tier === 'mid'
+                  ? 'bg-blue-900/40 text-blue-300 border-blue-800/50'
+                  : 'bg-slate-800/40 text-slate-300 border-slate-600/50'
+              const badgeLabel = tier === 'high'
+                ? t('careersProfile.compatibility.badgeHigh')
+                : tier === 'mid'
+                  ? t('careersProfile.compatibility.badgeMid')
+                  : t('careersProfile.compatibility.badgeLow')
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-12 text-right font-bold text-sm text-[var(--text-primary)] shrink-0">{item.porcentaje}%</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-sm text-[var(--text-primary)] truncate">{item.cargo}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-lg border shrink-0 ${badgeClass}`}>{badgeLabel}</span>
+                    </div>
+                    <div className="h-1.5 bg-[var(--bg-surface-alt)] rounded-full overflow-hidden">
+                      <div className={`h-full ${barColor}`} style={{ width: `${item.porcentaje}%` }} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {!compatLoading && (
+          <button
+            onClick={analyzeCompatibility}
+            className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-xs font-medium"
+          >
+            <Sparkles size={12} /> {compatibility ? t('careersProfile.compatibility.regenerate') : t('careersProfile.compatibility.cta')}
+          </button>
+        )}
+      </div>
 
       {/* Datos personales */}
       <Section title={t('careersProfile.sections.personalData')} icon={User}>

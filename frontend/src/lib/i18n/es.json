@@ -210,6 +210,17 @@
     "aiNote2": "Puedes subir tu CV (PDF, DOCX o TXT) con el botón",
     "aiNote3": "para rellenar los campos automáticamente.",
     "importCvErrorTitle": "Error al importar CV",
+    "compatibility": {
+      "title": "Análisis de compatibilidad",
+      "subtitle": "Según tu CV, así se adapta a distintas especialidades",
+      "analyzing": "Analizando tu CV...",
+      "cta": "Analizar compatibilidad de mi CV",
+      "regenerate": "Volver a analizar",
+      "genericError": "No se pudo analizar el CV. Intenta de nuevo.",
+      "badgeHigh": "¡Ideal para ti!",
+      "badgeMid": "Buena opción",
+      "badgeLow": "Podría funcionar"
+    },
     "sections": {
       "personalData": "Datos Personales",
       "compensation": "Compensación & Disponibilidad",

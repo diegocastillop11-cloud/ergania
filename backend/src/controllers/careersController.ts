@@ -2063,7 +2063,10 @@ Retorna SOLO JSON (sin markdown):
   "queries": [
     {"nombre": "nombre descriptivo", "query": "consulta de búsqueda para Google/portal", "habilitada": true}
   ],
-  "razon": "breve explicación de por qué estos roles son ideales (1-2 frases)"
+  "razon": "breve explicación de por qué estos roles son ideales (1-2 frases)",
+  "compatibilidad": [
+    {"cargo": "especialidad o cargo", "porcentaje": 92}
+  ]
 }
 
 REGLAS:
@@ -2072,7 +2075,8 @@ REGLAS:
 - 10-15 keywords tecnológicas del CV + variaciones (SQL Server → SQL, MSSQL, T-SQL)
 - 5-8 keywords negativas para evitar roles no deseados (call center, ventas, soporte L1 básico)
 - 5-6 queries: mezcla de rol + tecnología + "${country.nombre}" o "remoto"
-- Cada rol se escribe en su propio idioma (los en español, en español; los en inglés del punto anterior, en inglés). El resto (keywords, razón) va en ${country.idioma === 'en' ? 'inglés' : 'español'} profesional`,
+- "compatibilidad": 3-5 especialidades/cargos con un puntaje 0-100 QUE NO tiene que sumar 100 entre todos — cada puntaje es la confianza independiente de qué tan bien calza el CV con esa especialidad puntual. Ordena de mayor a menor; el primero es la especialidad principal del candidato. No inventes especialidades sin evidencia real en el CV (experiencia, proyectos o estudios que la respalden)
+- Cada rol se escribe en su propio idioma (los en español, en español; los en inglés del punto anterior, en inglés). El resto (keywords, razón, cargos de compatibilidad) va en ${country.idioma === 'en' ? 'inglés' : 'español'} profesional`,
       }],
     })
 
@@ -2080,6 +2084,20 @@ REGLAS:
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     let suggestions: Record<string, unknown> = {}
     if (jsonMatch) { try { suggestions = JSON.parse(jsonMatch[0]) } catch { /* empty */ } }
+
+    // Defensivo: clamp 0-100, orden desc, máx 5 — mismo problema que tuvo el score
+    // de evaluateJob (escala 1-10 mostrada como "6.2/5") si no se sanea acá.
+    const rawCompat = suggestions.compatibilidad
+    if (Array.isArray(rawCompat)) {
+      suggestions.compatibilidad = rawCompat
+        .filter((r): r is { cargo: string; porcentaje: number } =>
+          !!r && typeof r.cargo === 'string' && typeof r.porcentaje === 'number')
+        .map(r => ({ cargo: r.cargo, porcentaje: Math.max(0, Math.min(100, Math.round(r.porcentaje))) }))
+        .sort((a, b) => b.porcentaje - a.porcentaje)
+        .slice(0, 5)
+    } else {
+      suggestions.compatibilidad = []
+    }
 
     res.json({ ok: true, suggestions })
   } catch (err: unknown) {

@@ -210,6 +210,17 @@
     "aiNote2": "You can upload your resume (PDF, DOCX or TXT) with the",
     "aiNote3": "button to fill in the fields automatically.",
     "importCvErrorTitle": "Error importing resume",
+    "compatibility": {
+      "title": "Compatibility analysis",
+      "subtitle": "Based on your resume, here's how it fits different specialties",
+      "analyzing": "Analyzing your resume...",
+      "cta": "Analyze my resume's compatibility",
+      "regenerate": "Analyze again",
+      "genericError": "Couldn't analyze the resume. Try again.",
+      "badgeHigh": "Ideal for you!",
+      "badgeMid": "Good option",
+      "badgeLow": "Could work"
+    },
     "sections": {
       "personalData": "Personal Data",
       "compensation": "Compensation & Availability",
