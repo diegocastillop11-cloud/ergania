@@ -922,7 +922,7 @@ interface Stats {
   testCount:       number
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }[]
-  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null }[]
+  contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null; user_id: string | null; admin_unread: boolean }[]
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
@@ -959,6 +959,7 @@ export default function Admin() {
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
   const [replyErrors, setReplyErrors] = useState<Record<string, string>>({})
   const [sendingReplyId, setSendingReplyId] = useState<string | null>(null)
+  const [threadReplies, setThreadReplies] = useState<Record<string, { id: string; sender: 'user' | 'admin'; body: string; created_at: string }[]>>({})
 
   const loadStats = () => {
     if (!session) return
@@ -1026,13 +1027,32 @@ export default function Admin() {
     loadStats()
   }
 
+  const loadThread = async (id: string) => {
+    if (!session) return
+    const res = await fetch(`${API_BASE}/api/admin/messages/${id}/thread`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setThreadReplies(prev => ({ ...prev, [id]: data }))
+  }
+
   const toggleMsg = (id: string) => {
     setOpenMsgIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id); loadThread(id) }
       return next
     })
   }
+
+  // Poll los hilos abiertos para reflejar mensajes nuevos del usuario sin recargar todo.
+  useEffect(() => {
+    if (openMsgIds.size === 0) return
+    const interval = setInterval(() => {
+      openMsgIds.forEach(id => loadThread(id))
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [openMsgIds, session])
 
   const sendReply = async (m: { id: string }) => {
     if (!session) return
@@ -1048,6 +1068,7 @@ export default function Admin() {
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al enviar') }
       setReplyDrafts(d => { const next = { ...d }; delete next[m.id]; return next })
+      await loadThread(m.id)
       loadStats()
     } catch (err: unknown) {
       setReplyErrors(errs => ({ ...errs, [m.id]: err instanceof Error ? err.message : 'Error al enviar' }))
@@ -1323,6 +1344,12 @@ export default function Admin() {
                             {m.replied_at && (
                               <span className="bg-green-600/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Respondido</span>
                             )}
+                            {m.user_id && (
+                              <span className="bg-blue-600/20 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Chat</span>
+                            )}
+                            {m.admin_unread && (
+                              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Sin leer" />
+                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-xs text-gray-600">{new Date(m.created_at).toLocaleDateString('es-CL')}</span>
@@ -1336,34 +1363,42 @@ export default function Admin() {
 
                       {open && (
                         <div className="mt-3 space-y-2">
-                          {m.replied_at ? (
-                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
-                              <p className="text-xs text-green-400 mb-1">
-                                Respondiste el {new Date(m.replied_at).toLocaleDateString('es-CL')}
-                              </p>
-                              <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{m.reply_text}</p>
-                            </div>
-                          ) : (
-                            <>
-                              <textarea
-                                value={replyDrafts[m.id] ?? ''}
-                                onChange={e => setReplyDrafts(d => ({ ...d, [m.id]: e.target.value }))}
-                                rows={3}
-                                placeholder={`Responder a ${m.name}...`}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
-                              />
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => sendReply(m)}
-                                  disabled={!replyDrafts[m.id]?.trim() || sendingReplyId === m.id}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
-                                >
-                                  <Send size={13} /> {sendingReplyId === m.id ? 'Enviando...' : 'Enviar respuesta'}
-                                </button>
-                                {replyErrors[m.id] && <p className="text-red-400 text-xs">{replyErrors[m.id]}</p>}
-                              </div>
-                            </>
+                          {!m.user_id && (
+                            <p className="text-[11px] text-gray-500">
+                              Mensaje anónimo (sin cuenta) — la respuesta se envía por correo, no aparece en un chat.
+                            </p>
                           )}
+                          {(threadReplies[m.id] ?? []).length > 0 && (
+                            <div className="space-y-2 max-h-64 overflow-y-auto bg-gray-950/40 rounded-lg p-3">
+                              {(threadReplies[m.id] ?? []).map(r => (
+                                <div key={r.id} className={`flex ${r.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                                  <div className={`max-w-[80%] rounded-lg px-3 py-2 ${r.sender === 'admin' ? 'bg-blue-600' : 'bg-gray-800 border border-gray-700'}`}>
+                                    <p className={`text-sm whitespace-pre-wrap break-words ${r.sender === 'admin' ? 'text-white' : 'text-gray-300'}`}>{r.body}</p>
+                                    <p className={`text-[10px] mt-1 ${r.sender === 'admin' ? 'text-blue-200' : 'text-gray-500'}`}>
+                                      {new Date(r.created_at).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <textarea
+                            value={replyDrafts[m.id] ?? ''}
+                            onChange={e => setReplyDrafts(d => ({ ...d, [m.id]: e.target.value }))}
+                            rows={3}
+                            placeholder={`Responder a ${m.name}...`}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => sendReply(m)}
+                              disabled={!replyDrafts[m.id]?.trim() || sendingReplyId === m.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                            >
+                              <Send size={13} /> {sendingReplyId === m.id ? 'Enviando...' : 'Enviar respuesta'}
+                            </button>
+                            {replyErrors[m.id] && <p className="text-red-400 text-xs">{replyErrors[m.id]}</p>}
+                          </div>
                         </div>
                       )}
                     </div>

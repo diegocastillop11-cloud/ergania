@@ -871,7 +871,10 @@
     "sending": "Enviando...",
     "send": "Enviar mensaje",
     "genericError": "Error al enviar",
-    "sendFailed": "No se pudo enviar el mensaje"
+    "sendFailed": "No se pudo enviar el mensaje",
+    "newThread": "Nueva consulta",
+    "backToChat": "Volver a la conversación",
+    "chatPlaceholder": "Escribe un mensaje..."
   },
   "guideModal": {
     "title": "Cómo usar Ergania",

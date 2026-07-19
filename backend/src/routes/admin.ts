@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  getStats, setUserTestFlag, deleteUser, replyToMessage,
+  getStats, setUserTestFlag, deleteUser, replyToMessage, getMessageThread,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
   listReceipts, downloadReceiptPdf,
@@ -17,6 +17,7 @@ router.patch('/users/:id/test', setUserTestFlag)
 router.delete('/users/:id', deleteUser)
 
 router.post('/messages/:id/reply', replyToMessage)
+router.get('/messages/:id/thread', getMessageThread)
 
 router.get('/receipts', listReceipts)
 router.get('/receipts/:id/pdf', downloadReceiptPdf)

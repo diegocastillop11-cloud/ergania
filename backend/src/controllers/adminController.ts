@@ -358,20 +358,49 @@ export async function replyToMessage(req: Request, res: Response) {
     .single()
   if (fetchErr || !msg) return res.status(404).json({ error: 'Mensaje no encontrado' })
 
-  try {
-    const { sendContactReply } = await import('../services/emailService')
-    await sendContactReply(msg.email, msg.name, reply.trim())
-  } catch (err: unknown) {
-    return res.status(500).json({ error: (err as Error).message || 'No se pudo enviar el correo' })
+  // Con user_id: la respuesta queda en el chat in-app (evita depender del correo).
+  // Sin user_id (visitante anónimo, ej. desde /login): único canal sigue siendo el correo.
+  if (!msg.user_id) {
+    try {
+      const { sendContactReply } = await import('../services/emailService')
+      await sendContactReply(msg.email, msg.name, reply.trim())
+    } catch (err: unknown) {
+      return res.status(500).json({ error: (err as Error).message || 'No se pudo enviar el correo' })
+    }
   }
+
+  const { error: replyErr } = await supabaseAdmin.from('contact_replies').insert({
+    contact_message_id: msg.id, sender: 'admin', body: reply.trim(),
+  })
+  if (replyErr) return res.status(500).json({ error: replyErr.message })
 
   const { error } = await supabaseAdmin
     .from('contact_messages')
-    .update({ replied_at: new Date().toISOString(), reply_text: reply.trim() })
+    .update({
+      replied_at: new Date().toISOString(), reply_text: reply.trim(),
+      last_message_at: new Date().toISOString(), admin_unread: false, user_unread: true,
+    })
     .eq('id', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
 
   res.json({ ok: true })
+}
+
+export async function getMessageThread(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data: replies, error } = await supabaseAdmin
+    .from('contact_replies')
+    .select('*')
+    .eq('contact_message_id', req.params.id)
+    .order('created_at', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+
+  await supabaseAdmin.from('contact_messages').update({ admin_unread: false }).eq('id', req.params.id)
+
+  res.json(replies ?? [])
 }
 
 export async function setUserTestFlag(req: Request, res: Response) {

@@ -1,8 +1,10 @@
 import { Router } from 'express'
-import { sendContact } from '../controllers/contactController'
+import { sendContact, getMyThreads, addMyMessage } from '../controllers/contactController'
 
 const router = Router()
 
 router.post('/', sendContact)
+router.get('/mine', getMyThreads)
+router.post('/:id/messages', addMyMessage)
 
 export { router as contactRoutes }
