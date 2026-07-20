@@ -104,6 +104,11 @@ export default function Landing() {
         .lp-testimonial-card {
           background: rgba(255,255,255,.03); border: 1px solid ${C.line}; border-radius: 14px;
           padding: 28px 24px; display: flex; flex-direction: column; gap: 16px;
+          text-decoration: none; color: inherit; cursor: pointer;
+          transition: border-color .18s, background .18s, transform .18s;
+        }
+        .lp-testimonial-card:hover {
+          border-color: rgba(96,165,250,.4); background: rgba(255,255,255,.05); transform: translateY(-2px);
         }
         .lp-plan-card {
           background: rgba(255,255,255,.03); border: 1px solid ${C.line}; border-radius: 18px;
@@ -307,23 +312,23 @@ export default function Landing() {
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.blue2, marginBottom: 14 }}>{t('landing.testimonials.kicker')}</p>
           <h2 style={{ fontFamily: display, fontSize: 38, fontWeight: 700, marginBottom: 44 }}>{t('landing.testimonials.title')}</h2>
-          <div className="lp-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 22 }}>
+          <div className="lp-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 22 }}>
             {[
-              { initial: 'M', bg: '#60A5FA', name: 'María José', role: t('landing.testimonials.t1role'), quote: t('landing.testimonials.t1quote') },
-              { initial: 'R', bg: '#A78BFA', name: 'Rodrigo',    role: t('landing.testimonials.t2role'), quote: t('landing.testimonials.t2quote') },
-              { initial: 'C', bg: '#3B82F6', name: 'Camila',     role: t('landing.testimonials.t3role'), quote: t('landing.testimonials.t3quote') },
+              { initial: 'A', bg: '#60A5FA', name: 'Alberto', quote: t('landing.testimonials.t1quote'), href: 'https://maps.app.goo.gl/ge1J29uMzRC2SU518' },
+              { initial: 'F', bg: '#A78BFA', name: 'Felipe',   quote: t('landing.testimonials.t2quote'), href: 'https://maps.app.goo.gl/Ndd71vFVguyETAQC8' },
             ].map(item => (
-              <div key={item.name} className="lp-testimonial-card">
+              <a key={item.name} href={item.href} target="_blank" rel="noopener noreferrer" className="lp-testimonial-card">
                 <p style={{ color: C.cyan, fontSize: 13, letterSpacing: 2, margin: 0 }}>★★★★★</p>
                 <blockquote style={{ margin: 0, fontFamily: sans, fontSize: 15, lineHeight: 1.65, color: C.ink, flex: 1 }}>{item.quote}</blockquote>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 42, height: 42, borderRadius: '50%', background: item.bg, color: '#05070F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: display, fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{item.initial}</div>
-                  <div>
-                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, margin: 0 }}>{item.name}</p>
-                    <p style={{ fontFamily: sans, fontSize: 12, color: C.inkMuted, margin: 0 }}>{item.role}</p>
-                  </div>
+                  <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, margin: 0 }}>{item.name}</p>
                 </div>
-              </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: sans, fontSize: 12, fontWeight: 600, color: C.blue2, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
+                  {t('landing.testimonials.verifiedTag')}
+                  <span aria-hidden="true">↗</span>
+                </div>
+              </a>
             ))}
           </div>
         </div>

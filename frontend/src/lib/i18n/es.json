@@ -158,13 +158,10 @@
     },
     "testimonials": {
       "kicker": "Testimonios",
-      "title": "Personas que ya encontraron su próximo trabajo",
-      "t1role": "Diseñadora UX",
-      "t1quote": "\"Postulé a 12 empresas en una semana. Antes me demoraba días en preparar cada postulación.\"",
-      "t2role": "Analista de Datos",
-      "t2quote": "\"El score de compatibilidad me salvó de postular a trabajos que no encajaban. Ahorré semanas.\"",
-      "t3role": "Marketing Digital",
-      "t3quote": "\"La preparación para entrevistas fue más útil que cualquier curso que había tomado.\""
+      "title": "Personas que usan Ergania para su búsqueda laboral",
+      "verifiedTag": "Reseña verificada en Google",
+      "t1quote": "\"Intuitiva, facil de usar, muy buena app\"",
+      "t2quote": "\"Plataforma muy útil y completa, la recomiendo totalmente!\""
     },
     "pricing": {
       "kicker": "Precios",

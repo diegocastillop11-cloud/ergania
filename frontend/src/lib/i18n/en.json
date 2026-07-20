@@ -158,13 +158,10 @@
     },
     "testimonials": {
       "kicker": "Testimonials",
-      "title": "People who already found their next job",
-      "t1role": "UX Designer",
-      "t1quote": "\"I applied to 12 companies in a week. It used to take me days to prep each application.\"",
-      "t2role": "Data Analyst",
-      "t2quote": "\"The compatibility score saved me from applying to jobs that didn't fit. I saved weeks.\"",
-      "t3role": "Digital Marketing",
-      "t3quote": "\"Interview prep was more useful than any course I'd taken.\""
+      "title": "People who use Ergania for their job search",
+      "verifiedTag": "Verified Google review",
+      "t1quote": "\"Intuitiva, facil de usar, muy buena app\"",
+      "t2quote": "\"Plataforma muy útil y completa, la recomiendo totalmente!\""
     },
     "pricing": {
       "kicker": "Pricing",
