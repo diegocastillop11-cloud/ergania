@@ -1219,7 +1219,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'suscripciones' | 'users' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
+  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -1385,7 +1385,6 @@ export default function Admin() {
           <nav className="p-3 space-y-0.5">
             {([
               { key: 'suscripciones', label: 'Suscripciones',      icon: Crown         },
-              { key: 'users',         label: 'Usuarios',           icon: Users         },
               { key: 'payments',      label: 'Pagos',               icon: CreditCard    },
               { key: 'messages',      label: 'Mensajes contacto',  icon: MessageSquare },
               { key: 'salaries',      label: 'Salarios',           icon: DollarSign    },
@@ -1424,8 +1423,8 @@ export default function Admin() {
             {/* Stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {([
-                { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'users'    },
-                { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'users'    },
+                { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'suscripciones' },
+                { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'suscripciones' },
                 { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
                 { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
               ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
@@ -1455,7 +1454,7 @@ export default function Admin() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => { setStatusFilter(null); setTab('users') }}
+                  onClick={() => setStatusFilter(null)}
                   className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === null ? 'border-blue-500' : 'border-gray-700 hover:border-gray-600'}`}
                 >
                   <span className="text-lg font-bold text-white">
@@ -1466,7 +1465,7 @@ export default function Admin() {
                 {Object.entries(STATUS_LABEL).map(([key, { label, color }]) => (
                   <button
                     key={key}
-                    onClick={() => { setStatusFilter(f => f === key ? null : key); setTab('users') }}
+                    onClick={() => setStatusFilter(f => f === key ? null : key)}
                     className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === key ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
                   >
                     <span className={`text-lg font-bold ${color}`}>{stats.statusCount[key] ?? 0}</span>
@@ -1474,7 +1473,7 @@ export default function Admin() {
                   </button>
                 ))}
                 <button
-                  onClick={() => { setStatusFilter(f => f === 'test' ? null : 'test'); setTab('users') }}
+                  onClick={() => setStatusFilter(f => f === 'test' ? null : 'test')}
                   className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === 'test' ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
                 >
                   <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
@@ -1482,23 +1481,10 @@ export default function Admin() {
                 </button>
               </div>
             </div>
-          </>
-        )}
-
-        {tab !== 'suscripciones' && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-
-            {/* Filtro activo heredado de Suscripciones */}
-            {tab === 'users' && statusFilter && (
-              <div className="flex items-center gap-2 px-5 py-2.5 text-xs text-gray-400 border-b border-gray-800/50">
-                Filtrando por: <span className="text-blue-400 font-medium">{statusFilter === 'test' ? 'Prueba' : STATUS_LABEL[statusFilter]?.label ?? statusFilter}</span>
-                <button onClick={() => setStatusFilter(null)} className="text-gray-500 hover:text-white underline">Limpiar</button>
-              </div>
-            )}
 
             {/* Tabla usuarios */}
-            {tab === 'users' && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
@@ -1572,7 +1558,14 @@ export default function Admin() {
                   })}
                 </tbody>
               </table>
-            )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab !== 'suscripciones' && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
 
             {/* Tabla pagos */}
             {tab === 'payments' && (
