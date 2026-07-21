@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon,
+  Receipt, Link as LinkIcon, ArrowLeft,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -1219,7 +1219,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('users')
+  const [tab,     setTab]     = useState<'suscripciones' | 'users' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -1378,97 +1378,124 @@ export default function Admin() {
         </button>
       </header>
 
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-6 flex gap-6 items-start">
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {([
-            { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'users'    },
-            { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'users'    },
-            { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
-            { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
-          ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
-            <button
-              key={label}
-              onClick={() => setTab(tabTarget)}
-              className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
-            >
-              <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
-                <Icon size={18} className={color} />
-              </div>
-              <p className="text-2xl font-bold text-white">{value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            </button>
-          ))}
-        </div>
-
-        {/* Estado suscripciones */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-white">Estado de suscripciones</h2>
-            {statusFilter && (
-              <button onClick={() => setStatusFilter(null)} className="text-xs text-gray-500 hover:text-white transition-colors">
-                Limpiar filtro
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => { setStatusFilter(null); setTab('users') }}
-              className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === null ? 'border-blue-500' : 'border-gray-700 hover:border-gray-600'}`}
-            >
-              <span className="text-lg font-bold text-white">
-                {Object.values(stats.statusCount).reduce((a, b) => a + b, 0)}
-              </span>
-              <span className="text-xs text-gray-400">Total</span>
-            </button>
-            {Object.entries(STATUS_LABEL).map(([key, { label, color }]) => (
-              <button
-                key={key}
-                onClick={() => { setStatusFilter(f => f === key ? null : key); setTab('users') }}
-                className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === key ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
-              >
-                <span className={`text-lg font-bold ${color}`}>{stats.statusCount[key] ?? 0}</span>
-                <span className="text-xs text-gray-400">{label}</span>
-              </button>
-            ))}
-            <button
-              onClick={() => { setStatusFilter(f => f === 'test' ? null : 'test'); setTab('users') }}
-              className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === 'test' ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
-            >
-              <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
-              <span className="text-xs text-gray-400">Prueba</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="flex overflow-x-auto border-b border-gray-800">
+        {/* Sidebar */}
+        <aside className="w-56 shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden sticky top-6">
+          <nav className="p-3 space-y-0.5">
             {([
-              { key: 'users',    label: 'Usuarios',          icon: Users        },
-              { key: 'payments', label: 'Pagos',             icon: CreditCard   },
-              { key: 'messages', label: 'Mensajes contacto', icon: MessageSquare },
-              { key: 'salaries', label: 'Salarios',           icon: DollarSign },
-              { key: 'gastos',   label: 'Planilla de gastos', icon: Receipt },
-              { key: 'reportes', label: 'Reportes',           icon: FileText },
-              { key: 'bulkemail', label: 'Correos masivos',    icon: Megaphone },
+              { key: 'suscripciones', label: 'Suscripciones',      icon: Crown         },
+              { key: 'users',         label: 'Usuarios',           icon: Users         },
+              { key: 'payments',      label: 'Pagos',               icon: CreditCard    },
+              { key: 'messages',      label: 'Mensajes contacto',  icon: MessageSquare },
+              { key: 'salaries',      label: 'Salarios',           icon: DollarSign    },
+              { key: 'gastos',        label: 'Planilla de gastos', icon: Receipt       },
+              { key: 'reportes',      label: 'Reportes',           icon: FileText      },
+              { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors border-b-2 shrink-0 whitespace-nowrap ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   tab === key
-                    ? 'border-blue-500 text-blue-400 bg-blue-600/5'
-                    : 'border-transparent text-gray-400 hover:text-white'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
-                <Icon size={14} /> {label}
+                <Icon size={16} /> <span className="flex-1 text-left">{label}</span>
               </button>
             ))}
+          </nav>
+          <div className="p-3 border-t border-gray-800">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            >
+              <ArrowLeft size={16} /> <span className="flex-1 text-left">Volver a Ergania</span>
+            </button>
           </div>
+        </aside>
 
+        {/* Contenido */}
+        <div className="flex-1 min-w-0 space-y-6">
+
+        {tab === 'suscripciones' && (
+          <>
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {([
+                { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'users'    },
+                { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'users'    },
+                { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
+                { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
+              ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
+                <button
+                  key={label}
+                  onClick={() => setTab(tabTarget)}
+                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
+                >
+                  <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
+                    <Icon size={18} className={color} />
+                  </div>
+                  <p className="text-2xl font-bold text-white">{value}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Estado suscripciones */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-white">Estado de suscripciones</h2>
+                {statusFilter && (
+                  <button onClick={() => setStatusFilter(null)} className="text-xs text-gray-500 hover:text-white transition-colors">
+                    Limpiar filtro
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => { setStatusFilter(null); setTab('users') }}
+                  className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === null ? 'border-blue-500' : 'border-gray-700 hover:border-gray-600'}`}
+                >
+                  <span className="text-lg font-bold text-white">
+                    {Object.values(stats.statusCount).reduce((a, b) => a + b, 0)}
+                  </span>
+                  <span className="text-xs text-gray-400">Total</span>
+                </button>
+                {Object.entries(STATUS_LABEL).map(([key, { label, color }]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setStatusFilter(f => f === key ? null : key); setTab('users') }}
+                    className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === key ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
+                  >
+                    <span className={`text-lg font-bold ${color}`}>{stats.statusCount[key] ?? 0}</span>
+                    <span className="text-xs text-gray-400">{label}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setStatusFilter(f => f === 'test' ? null : 'test'); setTab('users') }}
+                  className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === 'test' ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
+                >
+                  <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
+                  <span className="text-xs text-gray-400">Prueba</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {tab !== 'suscripciones' && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
+
+            {/* Filtro activo heredado de Suscripciones */}
+            {tab === 'users' && statusFilter && (
+              <div className="flex items-center gap-2 px-5 py-2.5 text-xs text-gray-400 border-b border-gray-800/50">
+                Filtrando por: <span className="text-blue-400 font-medium">{statusFilter === 'test' ? 'Prueba' : STATUS_LABEL[statusFilter]?.label ?? statusFilter}</span>
+                <button onClick={() => setStatusFilter(null)} className="text-gray-500 hover:text-white underline">Limpiar</button>
+              </div>
+            )}
 
             {/* Tabla usuarios */}
             {tab === 'users' && (
@@ -1693,6 +1720,9 @@ export default function Admin() {
             {tab === 'bulkemail' && session && <BulkEmailTab token={session.access_token} userList={stats.userList} />}
 
           </div>
+        </div>
+        )}
+
         </div>
       </div>
     </div>
