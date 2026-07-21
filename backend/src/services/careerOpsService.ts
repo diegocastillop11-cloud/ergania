@@ -1262,8 +1262,12 @@ export function parseCvDataFromHtml(html: string): CvData {
 
   const summary = stripTags(html.match(/<div class="summary">([\s\S]*?)<\/div>/)?.[1] || '')
 
+  // Cada entry cierra con "<ul>...</ul></div>" — anclar el match ahí en vez de un
+  // "</div></div>" genérico, que solo aparece después de la ÚLTIMA entry de la sección
+  // (pegado al cierre del section wrapper) y hacía que todas las entries se fusionaran
+  // en un solo match cuando había 2+ (bullets de todos los trabajos mezclados en uno).
   const parseEntries = (sectionHtml: string) =>
-    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?)<\/div>\s*<\/div>/g)].map(m => {
+    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?<\/ul>)\s*<\/div>/g)].map(m => {
       const inner = m[1]
       const headers = [...inner.matchAll(/<div class="entry-header">([\s\S]*?)<\/div>/g)].map(h => h[1])
       const company = stripTags(headers[0]?.match(/<span class="company">([\s\S]*?)<\/span>/)?.[1] || '')
@@ -1275,7 +1279,7 @@ export function parseCvDataFromHtml(html: string): CvData {
     })
 
   const parseProjects = (sectionHtml: string) =>
-    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?)<\/div>\s*<\/div>/g)].map(m => {
+    [...sectionHtml.matchAll(/<div class="entry">([\s\S]*?<\/ul>)\s*<\/div>/g)].map(m => {
       const inner = m[1]
       const header = inner.match(/<div class="entry-header">([\s\S]*?)<\/div>/)?.[1] || ''
       const name   = stripTags(header.match(/<span class="company">([\s\S]*?)<\/span>/)?.[1] || '')
