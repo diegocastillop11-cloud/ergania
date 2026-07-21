@@ -438,8 +438,8 @@ body{font-family:'Times New Roman',Times,serif;font-size:11pt;color:#000;backgro
 .contact{text-align:center;font-size:9.5pt;color:#222;line-height:1.6}
 .contact a{color:#222;text-decoration:none}
 .section{margin-top:13px}
-.section-title{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid #000;padding-bottom:1px;margin-bottom:7px}
-.entry{margin-bottom:7px}
+.section-title{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid #000;padding-bottom:1px;margin-bottom:7px;break-after:avoid;page-break-after:avoid}
+.entry{margin-bottom:7px;break-inside:avoid;page-break-inside:avoid}
 .entry-header{display:flex;justify-content:space-between;align-items:baseline}
 .company{font-weight:bold;font-size:11pt}
 .role{font-style:italic;font-size:10.5pt}
@@ -448,7 +448,7 @@ ul{margin-left:14px;margin-top:3px}
 ul li{font-size:10.5pt;line-height:1.38;margin-bottom:1px}
 .summary{font-size:10.5pt;line-height:1.5;margin-top:3px}
 .skill-line{font-size:10.5pt;line-height:1.5}
-.edu-entry{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.edu-entry{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;break-inside:avoid;page-break-inside:avoid}
 .edu-title{font-size:10.5pt}
 .edu-year{font-size:10pt;color:#222;white-space:nowrap;margin-left:8px}
 @media print{body{padding:0.5in 0.6in}@page{margin:0}}
