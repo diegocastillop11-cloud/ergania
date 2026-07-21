@@ -151,7 +151,7 @@ export async function sendRenewalReminder(to: string, daysLeft: number) {
         renueva tu plan mensual de $9.990 CLP antes del vencimiento.
       </p>
       <div style="text-align:center;margin:28px 0;">
-        <a href="https://ergania.com/subscription"
+        <a href="https://www.ergania.com/subscription"
            style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
           Renovar mi plan
         </a>
@@ -163,6 +163,28 @@ export async function sendRenewalReminder(to: string, daysLeft: number) {
     </div>
   `
   await sendEmail(to, `Tu plan de Ergania vence ${dias} — renuévalo aquí`, html)
+}
+
+export async function sendTrialEndingReminder(to: string) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
+        Tu prueba gratis de Ergania termina mañana
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        Te queda menos de un día de acceso completo a tu perfil, tus postulaciones y el escáner
+        de ofertas. Suscríbete por $9.990 CLP al mes para no perder tu progreso.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="https://www.ergania.com/subscription"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          Suscribirme ahora
+        </a>
+      </div>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Recordatorio de prueba gratis</p>
+    </div>
+  `
+  await sendEmail(to, 'Tu prueba gratis de Ergania termina mañana', html)
 }
 
 export async function sendSubscriptionConfirmation(

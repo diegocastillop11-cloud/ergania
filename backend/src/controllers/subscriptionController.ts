@@ -144,6 +144,24 @@ export async function revertPending(req: Request, res: Response) {
   }
 }
 
+// Vercel Cron (diario) — mismo mecanismo de auth que reminders
+export async function trialReminders(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  try {
+    const result = await svc.sendTrialEndingReminders()
+    console.log('[trial-reminders]', JSON.stringify(result))
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[trial-reminders] catch:', msg)
+    res.status(500).json({ error: msg })
+  }
+}
+
 // Vercel Cron (diario) — mismo mecanismo de auth que revertPending
 export async function expireTrials(req: Request, res: Response) {
   const secret = process.env.CRON_SECRET

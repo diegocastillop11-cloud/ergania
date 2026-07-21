@@ -13,6 +13,7 @@
   ],
   "crons": [
     { "path": "/api/subscription/reminders", "schedule": "0 12 * * *" },
+    { "path": "/api/subscription/trial-reminders", "schedule": "0 12 * * *" },
     { "path": "/api/subscription/signup-digest", "schedule": "0 9 * * *" },
     { "path": "/api/subscription/reconcile", "schedule": "0 5 * * *" },
     { "path": "/api/subscription/reconcile", "schedule": "0 17 * * *" },

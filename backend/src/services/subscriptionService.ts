@@ -296,6 +296,45 @@ export async function sendExpiryReminders() {
   return { checked: data?.length ?? 0, sent }
 }
 
+// Llamado por Vercel Cron una vez al día: avisa a quien le queda ≤24h de
+// trial y todavía no pagó, para que no se quede sin acceso de sorpresa.
+// trial_reminder_sent evita mandarlo más de una vez por usuario.
+export async function sendTrialEndingReminders() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  const now = new Date()
+  const cutoff = new Date(now.getTime() + 24 * 3_600_000)
+
+  const { data, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id')
+    .eq('status', 'trial')
+    .eq('trial_reminder_sent', false)
+    .gt('trial_ends_at', now.toISOString())
+    .lte('trial_ends_at', cutoff.toISOString())
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  let sent = 0
+  const { sendTrialEndingReminder } = await import('./emailService')
+
+  for (const sub of data ?? []) {
+    try {
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(sub.user_id)
+      const email = userData?.user?.email
+      if (!email) continue
+
+      await sendTrialEndingReminder(email)
+      await supabaseAdmin.from('subscriptions').update({ trial_reminder_sent: true }).eq('user_id', sub.user_id)
+      sent++
+    } catch (err) {
+      // No marcar como enviado: el cron de mañana reintenta
+      console.error(`[trial-reminders] fallo para user ${sub.user_id}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  return { checked: data?.length ?? 0, sent }
+}
+
 // Llamado por Vercel Cron una vez al día: pending_payment marca "inició un
 // checkout de MercadoPago" — si a esta hora sigue en ese estado es porque
 // nunca completó el pago (si hubiera pagado, el webhook ya lo habría dejado

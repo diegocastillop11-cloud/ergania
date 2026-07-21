@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getStatus, createCheckout, createPayPalCheckout, cancelSub, webhook, paypalWebhook, reminders, signupDigest, revertPending, expireTrials, reconcile } from '../controllers/subscriptionController'
+import { getStatus, createCheckout, createPayPalCheckout, cancelSub, webhook, paypalWebhook, reminders, signupDigest, revertPending, expireTrials, reconcile, trialReminders } from '../controllers/subscriptionController'
 
 export const subscriptionRoutes = Router()
 
@@ -9,6 +9,7 @@ subscriptionRoutes.get('/signup-digest', signupDigest)
 subscriptionRoutes.get('/revert-pending', revertPending)
 subscriptionRoutes.get('/expire-trials', expireTrials)
 subscriptionRoutes.get('/reconcile', reconcile)
+subscriptionRoutes.get('/trial-reminders', trialReminders)
 subscriptionRoutes.post('/checkout', createCheckout)
 subscriptionRoutes.post('/checkout/paypal', createPayPalCheckout)
 subscriptionRoutes.post('/cancel',  cancelSub)
