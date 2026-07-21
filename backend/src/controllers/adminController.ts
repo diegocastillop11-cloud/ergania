@@ -101,18 +101,28 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('payment_receipts').select('*').order('fecha', { ascending: false }),
     supabaseAdmin.from('tracker_entries').select('user_email'),
+    supabaseAdmin.from('perfil_profiles').select('user_email, data'),
   ])
 
   const users = usersRes.data?.users ?? []
   const subs  = subsRes.data ?? []
   const msgs  = messagesRes.data ?? []
   const receipts = receiptsRes.data ?? []
+
+  // Nombre completo declarado en el perfil de Postulante (config/profile.yml en Supabase,
+  // tabla perfil_profiles). No viene de auth.users porque el registro con email/password no
+  // pide nombre — solo login con Google lo trae, y no todos los usuarios entran por ahí.
+  const nameByEmail: Record<string, string> = {}
+  for (const row of profilesRes.data ?? []) {
+    const fullName = (row as any).data?.candidate?.full_name?.trim()
+    if (fullName && !nameByEmail[(row as any).user_email]) nameByEmail[(row as any).user_email] = fullName
+  }
 
   const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
 
@@ -127,6 +137,7 @@ export async function getStats(req: Request, res: Response) {
   const userList = users.map((u: any) => ({
     id:              u.id,
     email:           u.email,
+    fullName:        nameByEmail[u.email] ?? u.user_metadata?.full_name ?? u.user_metadata?.name ?? null,
     createdAt:       u.created_at,
     sub:             subsByUserId[u.id] ?? null,
     evaluationsCount: evalCountByEmail[u.email] ?? 0,

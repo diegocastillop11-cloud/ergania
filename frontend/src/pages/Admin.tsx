@@ -921,7 +921,7 @@ interface Stats {
   statusCount:     Record<string, number>
   testCount:       number
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
-  userList:        { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }[]
+  userList:        { id: string; email: string; fullName: string | null; createdAt: string; sub: any; evaluationsCount: number }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null; user_id: string | null; admin_unread: boolean }[]
 }
 
@@ -952,7 +952,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes' | 'bulkemail'>('users')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [sortKey, setSortKey] = useState<'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
+  const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [newUserIds, setNewUserIds] = useState<Set<string>>(new Set())
   const [openMsgIds, setOpenMsgIds] = useState<Set<string>>(new Set())
@@ -997,6 +997,7 @@ export default function Admin() {
 
   const sortValue = (u: Stats['userList'][number], key: typeof sortKey): string | number => {
     switch (key) {
+      case 'fullName':         return u.fullName?.toLowerCase() ?? ''
       case 'email':            return u.email?.toLowerCase() ?? ''
       case 'createdAt':        return new Date(u.createdAt).getTime()
       case 'status':           return u.sub?.status ?? ''
@@ -1204,6 +1205,7 @@ export default function Admin() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+                    <SortTh label="Nombre" active={sortKey === 'fullName'} dir={sortDir} onClick={() => toggleSort('fullName')} />
                     <SortTh label="Email" active={sortKey === 'email'} dir={sortDir} onClick={() => toggleSort('email')} />
                     <SortTh label="Registro" active={sortKey === 'createdAt'} dir={sortDir} onClick={() => toggleSort('createdAt')} />
                     <SortTh label="Suscripción" active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} />
@@ -1231,6 +1233,7 @@ export default function Admin() {
                     const isTest = !!u.sub?.is_test
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <td className="px-5 py-3 text-white font-medium">{u.fullName || <span className="text-gray-600">—</span>}</td>
                         <td className="px-5 py-3 text-white font-medium">
                           <div className="flex items-center gap-2 flex-wrap">
                             {u.email}
