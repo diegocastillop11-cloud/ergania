@@ -1378,7 +1378,7 @@ export default function Admin() {
         </button>
       </header>
 
-      <div className="max-w-6xl mx-auto p-6 flex gap-6 items-start">
+      <div className="p-4 lg:p-6 flex gap-6 items-start">
 
         {/* Sidebar */}
         <aside className="w-56 shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden sticky top-6">
