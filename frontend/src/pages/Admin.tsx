@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -1222,6 +1222,7 @@ export default function Admin() {
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -1367,58 +1368,86 @@ export default function Admin() {
     <div className="min-h-screen bg-gray-950 text-white">
 
       {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-900 px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-gray-800 bg-gray-900 px-4 lg:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden text-gray-400 hover:text-white transition-colors p-1 -ml-1"
+            aria-label="Abrir menú"
+          >
+            <Menu size={20} />
+          </button>
           <img src="/logo.png" alt="Ergania" className="w-8 h-8 rounded-lg object-contain" />
           <div>
             <h1 className="text-sm font-bold text-white">Ergania Admin</h1>
-            <p className="text-xs text-gray-500">Panel de administración</p>
+            <p className="text-xs text-gray-500 hidden sm:block">Panel de administración</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-400 transition-colors">
-          <LogOut size={14} /> Cerrar sesión
+        <button onClick={handleLogout} className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-400 transition-colors shrink-0">
+          <LogOut size={14} /> <span className="hidden sm:inline">Cerrar sesión</span>
         </button>
       </header>
 
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/60 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <div className="p-4 lg:p-6 flex gap-6 items-start">
 
-        {/* Sidebar */}
-        <aside className="w-56 shrink-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden sticky top-6">
-          <nav className="p-3 space-y-0.5">
-            {([
-              { key: 'suscripciones', label: 'Suscripciones',      icon: Crown         },
-              { key: 'payments',      label: 'Pagos',               icon: CreditCard    },
-              { key: 'messages',      label: 'Mensajes contacto',  icon: MessageSquare },
-              { key: 'salaries',      label: 'Salarios',           icon: DollarSign    },
-              { key: 'gastos',        label: 'Planilla de gastos', icon: Receipt       },
-              { key: 'reportes',      label: 'Reportes',           icon: FileText      },
-              { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
-            ] as const).map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  tab === key
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <Icon size={16} /> <span className="flex-1 text-left">{label}</span>
+        {/* Sidebar — drawer en mobile, fijo en desktop */}
+        <aside className={`
+          fixed inset-y-0 left-0 z-30 w-64 p-4 overflow-y-auto
+          transition-transform duration-200 ease-in-out
+          lg:static lg:z-auto lg:w-56 lg:p-0 lg:shrink-0 lg:translate-x-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden lg:sticky lg:top-6">
+            <div className="flex items-center justify-between px-3 pt-3 lg:hidden">
+              <span className="text-sm font-bold text-white">Menú</span>
+              <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white p-1" aria-label="Cerrar menú">
+                <X size={16} />
               </button>
-            ))}
-          </nav>
-          <div className="p-3 border-t border-gray-800">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-            >
-              <ArrowLeft size={16} /> <span className="flex-1 text-left">Volver a Ergania</span>
-            </button>
+            </div>
+            <nav className="p-3 space-y-0.5">
+              {([
+                { key: 'suscripciones', label: 'Suscripciones',      icon: Crown         },
+                { key: 'payments',      label: 'Pagos',               icon: CreditCard    },
+                { key: 'messages',      label: 'Mensajes contacto',  icon: MessageSquare },
+                { key: 'salaries',      label: 'Salarios',           icon: DollarSign    },
+                { key: 'gastos',        label: 'Planilla de gastos', icon: Receipt       },
+                { key: 'reportes',      label: 'Reportes',           icon: FileText      },
+                { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
+              ] as const).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setTab(key); setSidebarOpen(false) }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    tab === key
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
+                >
+                  <Icon size={16} /> <span className="flex-1 text-left">{label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="p-3 border-t border-gray-800">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+              >
+                <ArrowLeft size={16} /> <span className="flex-1 text-left">Volver a Ergania</span>
+              </button>
+            </div>
           </div>
         </aside>
 
         {/* Contenido */}
-        <div className="flex-1 min-w-0 space-y-6">
+        <div className="flex-1 min-w-0 space-y-6 w-full lg:w-auto">
 
         {tab === 'suscripciones' && (
           <>
