@@ -347,6 +347,79 @@ export async function expireStaleTrials() {
   return { expired: data?.length ?? 0 }
 }
 
+// Red de seguridad para cuando el webhook de MP no llega (mismo bug de
+// redirect 308 que afectó a PayPal — ver CLAUDE.md). Para cada suscripción
+// que localmente quedó vencida/pendiente pero alcanzó a iniciar un checkout
+// de MP sin que un pago quedara registrado, busca en MercadoPago si en
+// realidad sí se aprobó un pago para esa preferencia y, si es así, activa acá
+// mismo en vez de esperar a que el cliente reclame.
+export async function reconcileMercadoPagoPayments() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+
+  const { data: candidates, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, mp_preference_id')
+    .neq('payment_provider', 'paypal')
+    .in('status', ['expired', 'pending_payment'])
+    .is('mp_payment_id', null)
+    .not('mp_preference_id', 'is', null)
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  const fixed: { email: string; provider: string; amount: number; moneda: string; refId: string }[] = []
+
+  for (const row of candidates ?? []) {
+    const prefId = row.mp_preference_id as string
+    let search: { elements?: { payments?: { id: number; status: string; transaction_amount?: number }[] }[] }
+    try {
+      search = await mpFetch(`/merchant_orders/search?preference_id=${prefId}`, 'GET')
+    } catch (err) {
+      console.error(`[reconcile/mp] no se pudo consultar preference ${prefId}:`, err instanceof Error ? err.message : err)
+      continue
+    }
+
+    const approved = search.elements?.flatMap(o => o.payments ?? []).find(p => p.status === 'approved')
+    if (!approved) continue
+
+    const periodEnd = new Date()
+    periodEnd.setDate(periodEnd.getDate() + 30)
+
+    await supabaseAdmin.from('subscriptions').update({
+      status: 'active',
+      mp_payment_id: String(approved.id),
+      current_period_end: periodEnd.toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', row.user_id)
+
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(row.user_id)
+    const userEmail = userData?.user?.email || 'desconocido'
+    const amount = approved.transaction_amount ?? 0
+    const fecha = new Date().toISOString().slice(0, 10)
+
+    const { data: receipt } = await supabaseAdmin.from('payment_receipts').insert({
+      user_id: row.user_id,
+      user_email: userEmail,
+      monto: amount,
+      moneda: PLAN_CURRENCY,
+      plan: 'Ergania — Plan mensual',
+      mp_payment_id: String(approved.id),
+      provider: 'mercadopago',
+      fecha,
+    }).select().single()
+
+    if (userEmail !== 'desconocido') {
+      const { sendSubscriptionConfirmation } = await import('./emailService')
+      sendSubscriptionConfirmation(userEmail, { monto: amount, moneda: PLAN_CURRENCY, plan: 'Ergania — Plan mensual', fecha, paymentId: String(approved.id) })
+        .then(() => { if (receipt?.id) return supabaseAdmin!.from('payment_receipts').update({ email_sent: true }).eq('id', receipt.id) })
+        .catch(err => console.error('[reconcile/mp] Error enviando confirmación al usuario:', err))
+    }
+
+    fixed.push({ email: userEmail, provider: 'mercadopago', amount, moneda: PLAN_CURRENCY, refId: String(approved.id) })
+  }
+
+  return { checked: candidates?.length ?? 0, fixed }
+}
+
 // MP (Checkout Pro) no tiene nada que cancelar del lado del proveedor — es
 // pago manual, no hay cobro automático que apagar. PayPal sí (Subscriptions
 // cobra solo), así que cancelar en la app también cancela en PayPal, si no

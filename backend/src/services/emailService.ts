@@ -73,6 +73,34 @@ export async function sendNewUsersDigest(users: { email: string; createdAt: stri
   await sendEmail(ADMIN_EMAIL, `[Ergania] ${users.length} usuario${users.length === 1 ? '' : 's'} nuevo${users.length === 1 ? '' : 's'} registrado${users.length === 1 ? '' : 's'}`, html)
 }
 
+export async function sendReconciliationAlert(fixed: { email: string; provider: string; amount: number; moneda: string; refId: string }[]) {
+  const rows = fixed.map(f => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;"><a href="mailto:${f.email}">${f.email}</a></td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;">${f.provider}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;">$${f.amount.toLocaleString('es-CL')} ${f.moneda}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;">${f.refId}</td>
+    </tr>`).join('')
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#d97706;border-bottom:2px solid #d97706;padding-bottom:8px;">
+        ⚠️ Reconciliación de pagos: ${fixed.length} suscripción${fixed.length === 1 ? '' : 'es'} recuperada${fixed.length === 1 ? '' : 's'}
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        El webhook de pago no confirmó estas suscripciones a tiempo (quedaron vencidas o pendientes
+        pese a que el pago sí se aprobó en PayPal/MercadoPago). El job de reconciliación las detectó
+        y las activó automáticamente.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <tr><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Email</th><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Proveedor</th><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Monto</th><th style="text-align:left;font-size:11px;color:#999;text-transform:uppercase;padding-bottom:6px;">Referencia</th></tr>
+        ${rows}
+      </table>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania · Alerta automática de reconciliación</p>
+    </div>
+  `
+  await sendEmail(ADMIN_EMAIL, `[Ergania] ⚠️ ${fixed.length} pago${fixed.length === 1 ? '' : 's'} recuperado${fixed.length === 1 ? '' : 's'} por reconciliación`, html)
+}
+
 export async function sendContactEmail(name: string, email: string, category: string, message: string) {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">

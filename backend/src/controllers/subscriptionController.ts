@@ -162,6 +162,33 @@ export async function expireTrials(req: Request, res: Response) {
   }
 }
 
+// Vercel Cron (2x/día) — mismo mecanismo de auth que expireTrials. Red de
+// seguridad si un webhook de pago no llega (ver reconcile* en los services).
+export async function reconcile(req: Request, res: Response) {
+  const secret = process.env.CRON_SECRET
+  const authorized = secret && (req.headers['authorization'] === `Bearer ${secret}` || req.query.key === secret)
+  if (!authorized) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+  try {
+    const [pp, mp] = await Promise.all([
+      paypalSvc.reconcilePayPalSubscriptions(),
+      svc.reconcileMercadoPagoPayments(),
+    ])
+    const fixed = [...pp.fixed, ...mp.fixed]
+    console.log('[reconcile]', JSON.stringify({ checked: pp.checked + mp.checked, fixed: fixed.length }))
+    if (fixed.length > 0) {
+      const { sendReconciliationAlert } = await import('../services/emailService')
+      await sendReconciliationAlert(fixed)
+    }
+    res.json({ checked: pp.checked + mp.checked, fixed })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[reconcile] catch:', msg)
+    res.status(500).json({ error: msg })
+  }
+}
+
 // MercadoPago IPN — no auth, MP signs the request
 export async function webhook(req: Request, res: Response) {
   if (!verifyMPSignature(req)) {

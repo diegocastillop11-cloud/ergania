@@ -219,3 +219,79 @@ export async function handlePayPalWebhook(req: Request) {
     }
   }
 }
+
+// Red de seguridad para cuando el webhook de arriba no llega (como pasó con
+// el bug del redirect 308 por la URL sin www — ver CLAUDE.md). Corre por Cron
+// y compara el estado local contra el estado real en PayPal para cada
+// suscripción que localmente aparece vencida/pendiente pero tiene un
+// paypal_subscription_id — si PayPal dice ACTIVE, la reactivamos acá mismo
+// en vez de esperar a que un cliente reclame.
+export async function reconcilePayPalSubscriptions() {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+
+  const { data: candidates, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, paypal_subscription_id')
+    .eq('payment_provider', 'paypal')
+    .in('status', ['expired', 'pending_payment'])
+    .not('paypal_subscription_id', 'is', null)
+
+  if (error) throw new Error(`DB error: ${error.message}`)
+
+  const fixed: { email: string; provider: string; amount: number; moneda: string; refId: string }[] = []
+
+  for (const row of candidates ?? []) {
+    const subId = row.paypal_subscription_id as string
+    let remote: { status?: string; billing_info?: { next_billing_time?: string; last_payment?: { amount?: { value?: string }; time?: string } }; subscriber?: { email_address?: string } }
+    try {
+      remote = await ppFetch(`/v1/billing/subscriptions/${subId}`, 'GET')
+    } catch (err) {
+      console.error(`[reconcile/paypal] no se pudo consultar ${subId}:`, err instanceof Error ? err.message : err)
+      continue
+    }
+    if (remote.status !== 'ACTIVE') continue
+
+    const periodEnd = remote.billing_info?.next_billing_time ? new Date(remote.billing_info.next_billing_time) : new Date()
+    if (!remote.billing_info?.next_billing_time) periodEnd.setDate(periodEnd.getDate() + 30)
+
+    await supabaseAdmin.from('subscriptions').update({
+      status: 'active',
+      current_period_end: periodEnd.toISOString(),
+      payment_suspended: false,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', row.user_id)
+
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(row.user_id)
+    const userEmail = userData?.user?.email || remote.subscriber?.email_address || 'desconocido'
+    const amount = Number(remote.billing_info?.last_payment?.amount?.value ?? 0)
+
+    const { data: existingReceipt } = await supabaseAdmin
+      .from('payment_receipts')
+      .select('id')
+      .eq('paypal_subscription_id', subId)
+      .maybeSingle()
+
+    if (!existingReceipt) {
+      const fecha = (remote.billing_info?.last_payment?.time ?? new Date().toISOString()).slice(0, 10)
+      await supabaseAdmin.from('payment_receipts').insert({
+        user_id: row.user_id,
+        user_email: userEmail,
+        monto: amount,
+        moneda: 'USD',
+        plan: 'Ergania — Plan mensual',
+        provider: 'paypal',
+        paypal_subscription_id: subId,
+        fecha,
+      })
+      if (userEmail !== 'desconocido') {
+        const { sendSubscriptionConfirmation } = await import('./emailService')
+        sendSubscriptionConfirmation(userEmail, { monto: amount, moneda: 'USD', plan: 'Ergania — Plan mensual', fecha, paymentId: subId })
+          .catch(err => console.error('[reconcile/paypal] Error enviando confirmación al usuario:', err))
+      }
+    }
+
+    fixed.push({ email: userEmail, provider: 'paypal', amount, moneda: 'USD', refId: subId })
+  }
+
+  return { checked: candidates?.length ?? 0, fixed }
+}
