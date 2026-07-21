@@ -6,6 +6,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { PDF_EMBEDDED_FONT_CSS } from './pdfFonts'
 
 // Cargar .env aquí también por si este módulo se inicializa antes que config/supabase.ts
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
@@ -1232,7 +1233,18 @@ export async function generatePDFFromHtml(
     // cortas/desparejas con el mismo texto. Con un viewport de sobra, el max-width propio
     // del HTML es el que manda, igual que en el preview.
     await page.setViewport({ width: 1000, height: 1400 })
-    await page.setContent(html, { waitUntil: 'networkidle0' })
+    // El entorno serverless (@sparticuz/chromium-min) no trae ninguna fuente del sistema --
+    // ni Times New Roman ni ningún otro serif, solo el "Open Sans" que el propio paquete
+    // bundlea como fallback -- así que sin esto, cualquier HTML que pida
+    // 'Times New Roman, Times, serif' (ej. el CV) cae a una fuente con anchos de carácter
+    // completamente distintos SOLO en producción, rompiendo el ajuste de línea de forma
+    // impredecible aunque el HTML/CSS sea idéntico al preview (que sí corre en un SO con
+    // fuentes reales). Se inyecta una fuente embebida métricamente compatible para que el
+    // render sea consistente sin importar qué fuentes tenga instaladas el entorno.
+    const htmlWithFonts = html.includes('<head>')
+      ? html.replace('<head>', `<head>${PDF_EMBEDDED_FONT_CSS}`)
+      : PDF_EMBEDDED_FONT_CSS + html
+    await page.setContent(htmlWithFonts, { waitUntil: 'networkidle0' })
     const pdf = await page.pdf({ format: 'A4', printBackground: true })
     return { buffer: Buffer.from(pdf), filename }
   } finally {
