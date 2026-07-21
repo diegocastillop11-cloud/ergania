@@ -1778,8 +1778,12 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
     const rol = app.rol.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
     const filename = `CV_${candidateName}_${emp}_${rol}.pdf`
 
-    const cvData = svc.parseCvDataFromHtml(app.cvHtml)
-    const buffer = await svc.buildPdfFromCvData(cvData)
+    // Renderiza app.cvHtml directamente (mismo HTML del preview/iframe) en vez de
+    // volver a parsearlo a CvData: cualquier edición por designMode (Editar CV)
+    // puede introducir <div>/<br> anidados que un parser basado en regex no
+    // tolera — con el HTML tal cual, el PDF es siempre exactamente lo que se vio
+    // en el preview.
+    const { buffer } = await svc.generatePDFFromHtml(app.cvHtml, app.empresa, app.rol, candidateName, 'CV')
 
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)

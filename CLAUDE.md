@@ -16,8 +16,13 @@ URL producción: https://ergania.com
 2. **CV editable** — botón "Editar CV" en el modal de CV de Postulaciones
    (`CvPreviewPanel` en `frontend/src/pages/careers/CareersPostulaciones.tsx`). Edición
    WYSIWYG in-place vía `designMode` sobre el iframe, no un formulario por campos. Guarda con
-   `PATCH /applications/:id/cv` (`ctrl.updateApplicationCv` → `svc.patchCvHtml`). El PDF sigue
-   usando el mismo pipeline (`parseCvDataFromHtml` → `buildPdfFromCvData`) sin cambios.
+   `PATCH /applications/:id/cv` (`ctrl.updateApplicationCv` → `svc.patchCvHtml`). El PDF
+   (`ctrl.downloadApplicationPdf`) renderiza `app.cvHtml` directamente vía
+   `svc.generatePDFFromHtml` (Chrome headless) — ya NO se re-parsea el HTML a `CvData` con
+   regex (`parseCvDataFromHtml`, eliminado 2026-07-21): cualquier edición por `designMode`
+   puede meter `<div>`/`<br>` anidados que un parser regex no tolera (causó 2 bugs críticos de
+   PDFs desordenados/truncados el mismo día). Con el HTML tal cual, el PDF es siempre
+   exactamente lo que se vio en el preview.
 3. **Pretensión de renta** — estimación de renta líquida por oferta específica, NO un formulario
    genérico de "cuánto debería cobrar" en el perfil (se descartó ese diseño original).
    - `evaluateJob` (Evaluar Oferta, `backend/src/controllers/careersController.ts`) usa la
