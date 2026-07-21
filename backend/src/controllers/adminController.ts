@@ -442,6 +442,74 @@ export async function deleteUser(req: Request, res: Response) {
   res.json({ ok: true })
 }
 
+// ── Planilla de gastos ──────────────────────────────────────────────────────
+
+export async function listGastos(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('gastos')
+    .select('*')
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ gastos: data ?? [] })
+}
+
+const GASTO_CATEGORIAS = ['hosting_infra', 'apis_ia', 'pagos_suscripciones', 'marketing', 'legal_contable', 'otro']
+
+export async function createGasto(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { monto, moneda, categoria, descripcion, fecha, comprobante_url } = req.body ?? {}
+  if (!Number.isFinite(monto) || monto <= 0) return res.status(400).json({ error: 'monto debe ser un número mayor a 0' })
+  if (!GASTO_CATEGORIAS.includes(categoria)) return res.status(400).json({ error: 'categoria inválida' })
+
+  const { data, error } = await supabaseAdmin
+    .from('gastos')
+    .insert({
+      monto, moneda: moneda || 'CLP', categoria,
+      descripcion: descripcion || '',
+      fecha: fecha || new Date().toISOString().slice(0, 10),
+      comprobante_url: comprobante_url || null,
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ gasto: data })
+}
+
+export async function updateGasto(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { monto, moneda, categoria, descripcion, fecha, comprobante_url } = req.body ?? {}
+  if (!Number.isFinite(monto) || monto <= 0) return res.status(400).json({ error: 'monto debe ser un número mayor a 0' })
+  if (!GASTO_CATEGORIAS.includes(categoria)) return res.status(400).json({ error: 'categoria inválida' })
+
+  const { error } = await supabaseAdmin
+    .from('gastos')
+    .update({ monto, moneda: moneda || 'CLP', categoria, descripcion: descripcion || '', fecha, comprobante_url: comprobante_url || null })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteGasto(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('gastos').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
 function escBulk(s: string | null | undefined) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

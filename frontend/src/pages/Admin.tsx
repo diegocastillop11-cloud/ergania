@@ -5,6 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
+  Receipt, Link as LinkIcon,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -151,6 +152,209 @@ function SalaryAnchorsTab({ token }: { token: string }) {
                 <td className="px-3 py-2 text-right">
                   <button onClick={() => startEdit(a)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
                   <button onClick={() => remove(a.id)} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+// ── Planilla de gastos ─────────────────────────────────────────────────────
+
+interface Gasto {
+  id: string
+  monto: number
+  moneda: string
+  categoria: string
+  descripcion: string
+  fecha: string
+  comprobante_url: string | null
+}
+
+const GASTO_CATEGORIA_LABEL: Record<string, string> = {
+  hosting_infra: 'Hosting / Infra',
+  apis_ia: 'APIs de IA',
+  pagos_suscripciones: 'Pagos y suscripciones',
+  marketing: 'Marketing',
+  legal_contable: 'Legal / Contable',
+  otro: 'Otro',
+}
+
+const EMPTY_GASTO_FORM = {
+  monto: '', moneda: 'CLP', categoria: 'hosting_infra',
+  descripcion: '', fecha: new Date().toISOString().slice(0, 10), comprobante_url: '',
+}
+
+function GastosTab({ token }: { token: string }) {
+  const [gastos, setGastos]   = useState<Gasto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm]       = useState(EMPTY_GASTO_FORM)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [error, setError]     = useState('')
+
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${API_BASE}/api/admin/gastos`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setGastos(d.gastos || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const startEdit = (g: Gasto) => {
+    setEditingId(g.id)
+    setForm({
+      monto: String(g.monto), moneda: g.moneda, categoria: g.categoria,
+      descripcion: g.descripcion, fecha: g.fecha.slice(0, 10), comprobante_url: g.comprobante_url || '',
+    })
+  }
+
+  const cancelEdit = () => { setEditingId(null); setForm(EMPTY_GASTO_FORM) }
+
+  const submit = async () => {
+    setError('')
+    const payload = {
+      monto: Number(form.monto),
+      moneda: form.moneda.trim() || 'CLP',
+      categoria: form.categoria,
+      descripcion: form.descripcion.trim(),
+      fecha: form.fecha,
+      comprobante_url: form.comprobante_url.trim() || null,
+    }
+    if (!Number.isFinite(payload.monto) || payload.monto <= 0) {
+      setError('El monto debe ser un número mayor a 0')
+      return
+    }
+    try {
+      const res = await fetch(
+        editingId ? `${API_BASE}/api/admin/gastos/${editingId}` : `${API_BASE}/api/admin/gastos`,
+        { method: editingId ? 'PUT' : 'POST', headers: authHeaders, body: JSON.stringify(payload) }
+      )
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
+      cancelEdit()
+      load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('¿Eliminar este gasto?')) return
+    await fetch(`${API_BASE}/api/admin/gastos/${id}`, { method: 'DELETE', headers: authHeaders })
+    load()
+  }
+
+  // Total por moneda — no se suman montos de monedas distintas entre sí.
+  const totalsByMoneda = gastos.reduce((acc: Record<string, number>, g) => {
+    acc[g.moneda] = (acc[g.moneda] ?? 0) + Number(g.monto)
+    return acc
+  }, {})
+
+  const thisMonth = new Date().toISOString().slice(0, 7)
+  const totalsThisMonthByMoneda = gastos
+    .filter(g => g.fecha.slice(0, 7) === thisMonth)
+    .reduce((acc: Record<string, number>, g) => {
+      acc[g.moneda] = (acc[g.moneda] ?? 0) + Number(g.monto)
+      return acc
+    }, {})
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 uppercase mb-1">Total histórico</p>
+          {Object.keys(totalsByMoneda).length === 0
+            ? <p className="text-gray-600 text-sm">—</p>
+            : Object.entries(totalsByMoneda).map(([moneda, total]) => (
+                <p key={moneda} className="text-white font-semibold">{total.toLocaleString('es-CL')} {moneda}</p>
+              ))}
+        </div>
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 uppercase mb-1">Total este mes</p>
+          {Object.keys(totalsThisMonthByMoneda).length === 0
+            ? <p className="text-gray-600 text-sm">—</p>
+            : Object.entries(totalsThisMonthByMoneda).map(([moneda, total]) => (
+                <p key={moneda} className="text-white font-semibold">{total.toLocaleString('es-CL')} {moneda}</p>
+              ))}
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">{editingId ? 'Editar gasto' : 'Agregar gasto'}</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <input placeholder="Monto" type="number" value={form.monto}
+            onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <input placeholder="Moneda (CLP, USD...)" value={form.moneda}
+            onChange={e => setForm(f => ({ ...f, moneda: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <select value={form.categoria}
+            onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+            {Object.entries(GASTO_CATEGORIA_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <input placeholder="Fecha" type="date" value={form.fecha}
+            onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
+          <input placeholder="Descripción" value={form.descripcion}
+            onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 col-span-2 sm:col-span-1" />
+          <input placeholder="Link comprobante (opcional)" value={form.comprobante_url}
+            onChange={e => setForm(f => ({ ...f, comprobante_url: e.target.value }))}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 col-span-2 sm:col-span-3" />
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={submit} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+            {editingId ? <Pencil size={13} /> : <Plus size={13} />} {editingId ? 'Guardar cambios' : 'Agregar'}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+              <X size={13} /> Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      ) : gastos.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin gastos registrados aún.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+              <th className="text-left px-3 py-2">Fecha</th>
+              <th className="text-left px-3 py-2">Categoría</th>
+              <th className="text-left px-3 py-2">Descripción</th>
+              <th className="text-right px-3 py-2">Monto</th>
+              <th className="text-left px-3 py-2">Comprobante</th>
+              <th className="text-right px-3 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gastos.map(g => (
+              <tr key={g.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                <td className="px-3 py-2 text-gray-400">{new Date(g.fecha).toLocaleDateString('es-CL')}</td>
+                <td className="px-3 py-2 text-gray-300">{GASTO_CATEGORIA_LABEL[g.categoria] || g.categoria}</td>
+                <td className="px-3 py-2 text-gray-500 text-xs">{g.descripcion || '—'}</td>
+                <td className="px-3 py-2 text-right text-white font-mono">{Number(g.monto).toLocaleString('es-CL')} {g.moneda}</td>
+                <td className="px-3 py-2">
+                  {g.comprobante_url
+                    ? <a href={g.comprobante_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1"><LinkIcon size={12} /> Ver</a>
+                    : <span className="text-gray-600">—</span>}
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <button onClick={() => startEdit(g)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
+                  <button onClick={() => remove(g.id)} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -950,7 +1154,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'reportes' | 'bulkemail'>('users')
+  const [tab,     setTab]     = useState<'users' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('users')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -1181,6 +1385,7 @@ export default function Admin() {
               { key: 'payments', label: 'Pagos',             icon: CreditCard   },
               { key: 'messages', label: 'Mensajes contacto', icon: MessageSquare },
               { key: 'salaries', label: 'Salarios',           icon: DollarSign },
+              { key: 'gastos',   label: 'Planilla de gastos', icon: Receipt },
               { key: 'reportes', label: 'Reportes',           icon: FileText },
               { key: 'bulkemail', label: 'Correos masivos',    icon: Megaphone },
             ] as const).map(({ key, label, icon: Icon }) => (
@@ -1412,6 +1617,9 @@ export default function Admin() {
 
             {/* Anclas salariales */}
             {tab === 'salaries' && session && <SalaryAnchorsTab token={session.access_token} />}
+
+            {/* Planilla de gastos */}
+            {tab === 'gastos' && session && <GastosTab token={session.access_token} />}
 
             {/* Reportes internos */}
             {tab === 'reportes' && session && <ReportsTab token={session.access_token} />}
