@@ -774,8 +774,10 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 
   useEffect(() => { if (open) loadAux() }, [open, email.id])
 
+  const MIN_ACCOUNT_AGE_MS = 24 * 60 * 60 * 1000
   const candidates = userList.filter(u =>
     u.sub?.status === 'trial' && !u.sub?.is_test && u.evaluationsCount <= maxEvals
+    && Date.now() - new Date(u.createdAt).getTime() > MIN_ACCOUNT_AGE_MS
   )
 
   // Al cambiar el filtro, selecciona por defecto a los candidatos que aún no

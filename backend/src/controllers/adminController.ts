@@ -790,6 +790,11 @@ export async function sendBulkEmail(req: Request, res: Response) {
 }
 
 // ── Audiencia: usuarios en trial con pocas ofertas evaluadas ───────────────
+// Excluye cuentas recién creadas: sin este piso, un usuario que se registra
+// el mismo día que se dispara la campaña también tiene 0 evaluaciones y cae
+// en el filtro, recibiendo el correo de "poco uso" como primer contacto con
+// Ergania en vez de la confirmación de cuenta.
+const MIN_ACCOUNT_AGE_MS = 24 * 60 * 60 * 1000
 
 async function loadTrialCandidates(maxEvals: number): Promise<string[]> {
   if (!supabaseAdmin) return []
@@ -805,10 +810,12 @@ async function loadTrialCandidates(maxEvals: number): Promise<string[]> {
     acc[r.user_email] = (acc[r.user_email] ?? 0) + 1
     return acc
   }, {})
+  const ageCutoff = Date.now() - MIN_ACCOUNT_AGE_MS
   return users
     .filter((u: any) => {
       const sub = subsByUserId[u.id]
       if (!sub || sub.status !== 'trial' || sub.is_test) return false
+      if (new Date(u.created_at).getTime() > ageCutoff) return false
       return (evalCountByEmail[u.email] ?? 0) <= maxEvals
     })
     .map((u: any) => u.email)

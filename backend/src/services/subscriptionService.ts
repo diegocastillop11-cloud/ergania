@@ -29,7 +29,7 @@ async function mpFetch(path: string, method: 'GET' | 'POST' | 'PUT', body?: obje
   return JSON.parse(text)
 }
 
-export async function getOrCreateSubscription(userId: string) {
+export async function getOrCreateSubscription(userId: string, userEmail?: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   const { data, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
@@ -58,10 +58,15 @@ export async function getOrCreateSubscription(userId: string) {
     throw error
   }
 
-  // La notificación de nuevo usuario ya no se manda al toque (ver
+  // La notificación al ADMIN de nuevo usuario ya no se manda al toque (ver
   // sendPendingSignupDigest) — se acumula acá (signup_notified_at queda NULL
   // por defecto) y se avisa una vez al día en un solo correo, para no competir
   // por el cupo diario de Resend con emails que sí son urgentes.
+  // El correo de bienvenida AL USUARIO sí va al toque, aparte de ese digest.
+  if (userEmail) {
+    const { sendWelcomeEmail } = await import('./emailService')
+    sendWelcomeEmail(userEmail).catch(err => console.error('[welcome-email] error:', err.message))
+  }
 
   return created
 }

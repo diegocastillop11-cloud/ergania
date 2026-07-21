@@ -22,6 +22,36 @@ export async function sendEmail(to: string, subject: string, html: string) {
 }
 
 
+export async function sendWelcomeEmail(to: string) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#C4633A;border-bottom:2px solid #C4633A;padding-bottom:8px;">
+        ¡Bienvenido a Ergania!
+      </h2>
+      <p style="color:#333;line-height:1.6;">
+        Tu cuenta ya está lista. Tienes 3 días de prueba gratis para explorar todo lo que Ergania
+        puede hacer por tu búsqueda de empleo:
+      </p>
+      <ul style="color:#333;line-height:1.8;">
+        <li>Evaluar cualquier oferta con IA y ver qué tan buen match eres</li>
+        <li>Estimar la renta esperada antes de postular</li>
+        <li>Optimizar tu CV y carta de presentación para cada oferta</li>
+        <li>Postular y hacer seguimiento de todo en un solo lugar</li>
+      </ul>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="https://ergania.com/dashboard?guide=1"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          Empezar con el tutorial de 6 pasos
+        </a>
+      </div>
+      <p style="font-size:12px;color:#999;margin-top:24px;">
+        Ergania · Si tienes dudas, responde directamente a este correo.
+      </p>
+    </div>
+  `
+  await sendEmail(to, '¡Bienvenido a Ergania! Tu cuenta ya está lista', html)
+}
+
 export async function sendNewUsersDigest(users: { email: string; createdAt: string }[]) {
   const rows = users.map(u => `
     <tr>
