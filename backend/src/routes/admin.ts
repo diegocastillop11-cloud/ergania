@@ -8,6 +8,7 @@ import {
   getBulkEmailPreview, listBulkEmailSent, sendBulkEmail,
   listScheduledEmails, createScheduledEmail, deleteScheduledEmail, runScheduledBulkEmails,
   listGastos, createGasto, updateGasto, deleteGasto,
+  uploadGastoArchivoMiddleware, uploadGastoArchivo, downloadGastoArchivo, deleteGastoArchivo,
 } from '../controllers/adminController'
 
 const router = Router()
@@ -50,5 +51,8 @@ router.get('/gastos', listGastos)
 router.post('/gastos', createGasto)
 router.put('/gastos/:id', updateGasto)
 router.delete('/gastos/:id', deleteGasto)
+router.post('/gastos/:id/archivos', uploadGastoArchivoMiddleware, uploadGastoArchivo)
+router.get('/gastos/:gastoId/archivos/:archivoId', downloadGastoArchivo)
+router.delete('/gastos/:gastoId/archivos/:archivoId', deleteGastoArchivo)
 
 export { router as adminRoutes }

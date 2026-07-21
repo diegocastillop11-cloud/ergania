@@ -2,6 +2,9 @@ import { Request, Response } from 'express'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
 
+const multer = require('multer') as typeof import('multer')
+export const uploadGastoArchivoMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('archivo')
+
 const ADMIN_EMAILS = ['ergania.ai@gmail.com', 'diego.castillop11@gmail.com', 'emesmediacontact@gmail.com']
 function isAdmin(email: string | undefined | null): boolean {
   return !!email && ADMIN_EMAILS.includes(email)
@@ -449,16 +452,23 @@ export async function listGastos(req: Request, res: Response) {
   if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const { data, error } = await supabaseAdmin
-    .from('gastos')
-    .select('*')
-    .order('fecha', { ascending: false })
-    .order('created_at', { ascending: false })
-  if (error) return res.status(500).json({ error: error.message })
-  res.json({ gastos: data ?? [] })
+  const [gastosRes, archivosRes] = await Promise.all([
+    supabaseAdmin.from('gastos').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
+    supabaseAdmin.from('gasto_archivos').select('id, gasto_id, nombre_original, mime_type, size_bytes, created_at').order('created_at', { ascending: true }),
+  ])
+  if (gastosRes.error) return res.status(500).json({ error: gastosRes.error.message })
+
+  const archivosByGasto: Record<string, any[]> = {}
+  for (const a of archivosRes.data ?? []) {
+    (archivosByGasto[a.gasto_id] ??= []).push(a)
+  }
+  const gastos = (gastosRes.data ?? []).map(g => ({ ...g, archivos: archivosByGasto[g.id] ?? [] }))
+  res.json({ gastos })
 }
 
 const GASTO_CATEGORIAS = ['hosting_infra', 'apis_ia', 'pagos_suscripciones', 'marketing', 'legal_contable', 'otro']
+const GASTO_ARCHIVO_BUCKET = 'gastos-comprobantes'
+const GASTO_ARCHIVO_MIME_ALLOWLIST = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic']
 
 export async function createGasto(req: Request, res: Response) {
   const user = await getAdminUser(req)
@@ -505,8 +515,90 @@ export async function deleteGasto(req: Request, res: Response) {
   if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
+  // El FK con ON DELETE CASCADE limpia las filas de gasto_archivos, pero no
+  // los archivos reales en Storage — hay que borrarlos a mano antes.
+  const { data: archivos } = await supabaseAdmin.from('gasto_archivos').select('storage_path').eq('gasto_id', req.params.id)
+  if (archivos && archivos.length > 0) {
+    await supabaseAdmin.storage.from(GASTO_ARCHIVO_BUCKET).remove(archivos.map(a => a.storage_path))
+  }
+
   const { error } = await supabaseAdmin.from('gastos').delete().eq('id', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function uploadGastoArchivo(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const file = (req as Request & { file?: { buffer: Buffer; mimetype: string; originalname: string; size: number } }).file
+  if (!file) return res.status(400).json({ error: 'Falta el archivo' })
+  if (!GASTO_ARCHIVO_MIME_ALLOWLIST.includes(file.mimetype)) {
+    return res.status(400).json({ error: 'Tipo de archivo no permitido — solo PDF o imágenes (JPG, PNG, WebP, HEIC)' })
+  }
+
+  const { data: gasto } = await supabaseAdmin.from('gastos').select('id').eq('id', req.params.id).single()
+  if (!gasto) return res.status(404).json({ error: 'Gasto no encontrado' })
+
+  const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]+/g, '_')
+  const storagePath = `${req.params.id}/${Date.now()}_${safeName}`
+
+  const { error: uploadErr } = await supabaseAdmin.storage
+    .from(GASTO_ARCHIVO_BUCKET)
+    .upload(storagePath, file.buffer, { contentType: file.mimetype })
+  if (uploadErr) return res.status(500).json({ error: uploadErr.message })
+
+  const { data, error } = await supabaseAdmin
+    .from('gasto_archivos')
+    .insert({
+      gasto_id: req.params.id, storage_path: storagePath,
+      nombre_original: file.originalname, mime_type: file.mimetype, size_bytes: file.size,
+    })
+    .select('id, gasto_id, nombre_original, mime_type, size_bytes, created_at')
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ archivo: data })
+}
+
+export async function downloadGastoArchivo(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data: archivo, error } = await supabaseAdmin
+    .from('gasto_archivos')
+    .select('*')
+    .eq('id', req.params.archivoId)
+    .eq('gasto_id', req.params.gastoId)
+    .single()
+  if (error || !archivo) return res.status(404).json({ error: 'Archivo no encontrado' })
+
+  const { data: blob, error: downloadErr } = await supabaseAdmin.storage.from(GASTO_ARCHIVO_BUCKET).download(archivo.storage_path)
+  if (downloadErr || !blob) return res.status(500).json({ error: downloadErr?.message || 'No se pudo descargar el archivo' })
+
+  const buffer = Buffer.from(await blob.arrayBuffer())
+  res.setHeader('Content-Type', archivo.mime_type || 'application/octet-stream')
+  res.setHeader('Content-Disposition', `inline; filename="${archivo.nombre_original.replace(/"/g, '')}"`)
+  res.send(buffer)
+}
+
+export async function deleteGastoArchivo(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data: archivo, error } = await supabaseAdmin
+    .from('gasto_archivos')
+    .select('storage_path')
+    .eq('id', req.params.archivoId)
+    .eq('gasto_id', req.params.gastoId)
+    .single()
+  if (error || !archivo) return res.status(404).json({ error: 'Archivo no encontrado' })
+
+  await supabaseAdmin.storage.from(GASTO_ARCHIVO_BUCKET).remove([archivo.storage_path])
+  const { error: delErr } = await supabaseAdmin.from('gasto_archivos').delete().eq('id', req.params.archivoId)
+  if (delErr) return res.status(500).json({ error: delErr.message })
   res.json({ ok: true })
 }
 

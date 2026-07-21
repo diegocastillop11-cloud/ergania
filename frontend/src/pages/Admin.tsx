@@ -164,6 +164,14 @@ function SalaryAnchorsTab({ token }: { token: string }) {
 
 // ── Planilla de gastos ─────────────────────────────────────────────────────
 
+interface GastoArchivo {
+  id: string
+  nombre_original: string
+  mime_type: string | null
+  size_bytes: number | null
+  created_at: string
+}
+
 interface Gasto {
   id: string
   monto: number
@@ -172,6 +180,7 @@ interface Gasto {
   descripcion: string
   fecha: string
   comprobante_url: string | null
+  archivos: GastoArchivo[]
 }
 
 const GASTO_CATEGORIA_LABEL: Record<string, string> = {
@@ -194,6 +203,8 @@ function GastosTab({ token }: { token: string }) {
   const [form, setForm]       = useState(EMPTY_GASTO_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError]     = useState('')
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<Record<string, string>>({})
 
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
@@ -247,6 +258,41 @@ function GastosTab({ token }: { token: string }) {
   const remove = async (id: string) => {
     if (!window.confirm('¿Eliminar este gasto?')) return
     await fetch(`${API_BASE}/api/admin/gastos/${id}`, { method: 'DELETE', headers: authHeaders })
+    load()
+  }
+
+  const uploadArchivo = async (gastoId: string, file: File | undefined) => {
+    if (!file) return
+    setUploadingId(gastoId)
+    setUploadError(e => ({ ...e, [gastoId]: '' }))
+    try {
+      const fd = new FormData()
+      fd.append('archivo', file)
+      const res = await fetch(`${API_BASE}/api/admin/gastos/${gastoId}/archivos`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al subir el archivo') }
+      load()
+    } catch (err: unknown) {
+      setUploadError(e => ({ ...e, [gastoId]: err instanceof Error ? err.message : 'Error al subir el archivo' }))
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  const viewArchivo = async (gastoId: string, archivo: GastoArchivo) => {
+    const res = await fetch(`${API_BASE}/api/admin/gastos/${gastoId}/archivos/${archivo.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+  }
+
+  const removeArchivo = async (gastoId: string, archivoId: string) => {
+    if (!window.confirm('¿Eliminar este archivo?')) return
+    await fetch(`${API_BASE}/api/admin/gastos/${gastoId}/archivos/${archivoId}`, { method: 'DELETE', headers: authHeaders })
     load()
   }
 
@@ -347,10 +393,29 @@ function GastosTab({ token }: { token: string }) {
                 <td className="px-3 py-2 text-gray-300">{GASTO_CATEGORIA_LABEL[g.categoria] || g.categoria}</td>
                 <td className="px-3 py-2 text-gray-500 text-xs">{g.descripcion || '—'}</td>
                 <td className="px-3 py-2 text-right text-white font-mono">{Number(g.monto).toLocaleString('es-CL')} {g.moneda}</td>
-                <td className="px-3 py-2">
-                  {g.comprobante_url
-                    ? <a href={g.comprobante_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1"><LinkIcon size={12} /> Ver</a>
-                    : <span className="text-gray-600">—</span>}
+                <td className="px-3 py-2 min-w-[160px]">
+                  <div className="space-y-1">
+                    {g.comprobante_url && (
+                      <a href={g.comprobante_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 text-xs">
+                        <LinkIcon size={12} /> Link
+                      </a>
+                    )}
+                    {g.archivos.map(a => (
+                      <div key={a.id} className="flex items-center gap-1.5 text-xs">
+                        <button onClick={() => viewArchivo(g.id, a)} className="text-blue-400 hover:text-blue-300 truncate max-w-[110px]" title={a.nombre_original}>
+                          {a.nombre_original}
+                        </button>
+                        <button onClick={() => removeArchivo(g.id, a.id)} className="text-gray-600 hover:text-red-400 shrink-0"><X size={11} /></button>
+                      </div>
+                    ))}
+                    {!g.comprobante_url && g.archivos.length === 0 && <span className="text-gray-600 text-xs">—</span>}
+                    <label className="text-gray-500 hover:text-white text-xs cursor-pointer inline-flex items-center gap-1">
+                      <Plus size={11} /> {uploadingId === g.id ? 'Subiendo...' : 'Adjuntar'}
+                      <input type="file" accept=".pdf,image/*" className="hidden" disabled={uploadingId === g.id}
+                        onChange={e => { uploadArchivo(g.id, e.target.files?.[0]); e.target.value = '' }} />
+                    </label>
+                    {uploadError[g.id] && <p className="text-red-400 text-[11px]">{uploadError[g.id]}</p>}
+                  </div>
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   <button onClick={() => startEdit(g)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
