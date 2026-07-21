@@ -1225,6 +1225,13 @@ export async function generatePDFFromHtml(
   const browser = await launchBrowser()
   try {
     const page = await browser.newPage()
+    // Viewport ancho a propósito: Puppeteer arranca en 800x600 por default, más angosto
+    // que el max-width:8.5in (816px) que usan las plantillas HTML (ej. HARVARD_CSS) — eso
+    // hacía que el contenido se reflowara más angosto en el PDF que en el preview del
+    // navegador (donde el iframe siempre es más ancho que ese cap), dando líneas más
+    // cortas/desparejas con el mismo texto. Con un viewport de sobra, el max-width propio
+    // del HTML es el que manda, igual que en el preview.
+    await page.setViewport({ width: 1000, height: 1400 })
     await page.setContent(html, { waitUntil: 'networkidle0' })
     const pdf = await page.pdf({ format: 'A4', printBackground: true })
     return { buffer: Buffer.from(pdf), filename }
