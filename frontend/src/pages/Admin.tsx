@@ -1281,12 +1281,14 @@ export default function Admin() {
 
   const handleLogout = async () => { await signOut(); navigate('/login') }
 
-  const toggleTestFlag = async (u: { id: string; sub: any }) => {
+  const toggleTestFlag = async (u: { id: string; email: string; sub: any }) => {
     if (!session) return
+    const willBeTest = !u.sub?.is_test
+    if (willBeTest && !window.confirm(`¿Marcar a ${u.email} como cuenta de prueba?`)) return
     await fetch(`${API_BASE}/api/admin/users/${u.id}/test`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isTest: !u.sub?.is_test }),
+      body: JSON.stringify({ isTest: willBeTest }),
     })
     loadStats()
   }
@@ -1544,9 +1546,11 @@ export default function Admin() {
                       return sortDir === 'asc' ? cmp : -cmp
                     })
                     .map(u => {
-                    const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
-                    const vence = u.sub?.current_period_end ?? u.sub?.trial_ends_at
                     const isTest = !!u.sub?.is_test
+                    // Cuentas de prueba no vencen ni deben leerse como el estado real de
+                    // la suscripción — se muestran siempre como Activo y sin fecha.
+                    const s = isTest ? STATUS_LABEL.active : (STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' })
+                    const vence = isTest ? null : (u.sub?.current_period_end ?? u.sub?.trial_ends_at)
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                         <td className="px-5 py-3 text-white font-medium">{u.fullName || <span className="text-gray-600">—</span>}</td>
@@ -1561,7 +1565,12 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
+                        <td className="px-5 py-3 text-gray-400">
+                          {new Date(u.createdAt).toLocaleDateString('es-CL')}{' '}
+                          <span className="text-gray-600 text-xs">
+                            {new Date(u.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </td>
                         <td className="px-5 py-3"><span className={`font-semibold ${s.color}`}>{s.label}</span></td>
                         <td className="px-5 py-3 text-gray-400">
                           {vence
