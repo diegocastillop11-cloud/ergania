@@ -89,6 +89,20 @@ export async function cancelSub(req: Request, res: Response) {
   }
 }
 
+export async function deleteAccount(req: Request, res: Response) {
+  try {
+    const user = await getUserFromToken(req)
+    const motivo = (req.body?.motivo || '').trim()
+    if (!motivo) throw new Error('El motivo es requerido')
+    if (!user.email) throw new Error('Usuario sin email')
+    await svc.requestAccountDeletion(user.id, user.email, motivo)
+    res.json({ success: true })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    res.status(400).json({ error: msg })
+  }
+}
+
 // Vercel Cron (diario) — auth por CRON_SECRET, no por token de usuario
 export async function reminders(req: Request, res: Response) {
   const secret = process.env.CRON_SECRET

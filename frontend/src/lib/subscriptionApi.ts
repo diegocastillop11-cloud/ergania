@@ -45,6 +45,10 @@ export async function cancelSubscription(): Promise<void> {
   await api.post('/cancel')
 }
 
+export async function deleteAccount(motivo: string): Promise<void> {
+  await api.post('/delete-account', { motivo })
+}
+
 export interface SubscriptionRecord {
   id: string
   user_id: string

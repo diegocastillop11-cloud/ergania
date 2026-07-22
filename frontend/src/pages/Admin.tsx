@@ -1328,6 +1328,7 @@ interface Stats {
   userList:        { id: string; email: string; fullName: string | null; createdAt: string; sub: any; evaluationsCount: number }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null; user_id: string | null; admin_unread: boolean }[]
   apkDownloadsCount: number
+  deletionRequests: { id: string; userId: string; email: string; motivo: string; createdAt: string }[]
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
@@ -1648,12 +1649,47 @@ export default function Admin() {
                   <span className="text-lg font-bold text-gray-500">{stats.testCount}</span>
                   <span className="text-xs text-gray-400">Prueba</span>
                 </button>
+                <button
+                  onClick={() => setStatusFilter(f => f === 'eliminados' ? null : 'eliminados')}
+                  className={`bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-2 border transition-colors ${statusFilter === 'eliminados' ? 'border-blue-500' : 'border-transparent hover:border-gray-600'}`}
+                >
+                  <span className="text-lg font-bold text-red-500">{stats.deletionRequests.length}</span>
+                  <span className="text-xs text-gray-400">Eliminados</span>
+                </button>
               </div>
             </div>
 
-            {/* Tabla usuarios */}
+            {/* Tabla usuarios / eliminados */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
+              {statusFilter === 'eliminados' ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
+                      <th className="text-left px-5 py-3">Correo</th>
+                      <th className="text-left px-5 py-3">Fecha</th>
+                      <th className="text-left px-5 py-3">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.deletionRequests.length === 0 && (
+                      <tr><td colSpan={3} className="px-5 py-8 text-center text-gray-600">Sin cuentas eliminadas aún</td></tr>
+                    )}
+                    {stats.deletionRequests.map(d => (
+                      <tr key={d.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <td className="px-5 py-3 text-white font-medium">{d.email}</td>
+                        <td className="px-5 py-3 text-gray-400">
+                          {new Date(d.createdAt).toLocaleDateString('es-CL')}{' '}
+                          <span className="text-gray-600 text-xs">
+                            {new Date(d.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-300">{d.motivo || <span className="text-gray-600">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase">
@@ -1734,6 +1770,7 @@ export default function Admin() {
                   })}
                 </tbody>
               </table>
+              )}
               </div>
             </div>
           </>

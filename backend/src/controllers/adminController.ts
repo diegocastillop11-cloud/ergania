@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
+import * as subscriptionSvc from '../services/subscriptionService'
 
 const multer = require('multer') as typeof import('multer')
 export const uploadGastoArchivoMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('archivo')
@@ -104,7 +105,7 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes, deletionsRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
@@ -112,12 +113,16 @@ export async function getStats(req: Request, res: Response) {
     supabaseAdmin.from('tracker_entries').select('user_email'),
     supabaseAdmin.from('perfil_profiles').select('user_email, data'),
     supabaseAdmin.from('apk_downloads').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('account_deletion_requests').select('*').order('created_at', { ascending: false }),
   ])
 
   const users = usersRes.data?.users ?? []
   const subs  = subsRes.data ?? []
   const msgs  = messagesRes.data ?? []
   const receipts = receiptsRes.data ?? []
+  const deletionRequests = (deletionsRes.data ?? []).map((d: any) => ({
+    id: d.id, userId: d.user_id, email: d.email, motivo: d.motivo, createdAt: d.created_at,
+  }))
 
   // Nombre completo declarado en el perfil de Postulante (config/profile.yml en Supabase,
   // tabla perfil_profiles). No viene de auth.users porque el registro con email/password no
@@ -178,6 +183,7 @@ export async function getStats(req: Request, res: Response) {
     userList,
     contactMessages: msgs,
     apkDownloadsCount: apkDownloadsRes.count ?? 0,
+    deletionRequests,
   })
 }
 
@@ -501,9 +507,16 @@ export async function deleteUser(req: Request, res: Response) {
   const targetId = req.params.id
   if (targetId === admin.id) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta de administrador' })
 
-  await supabaseAdmin.from('subscriptions').delete().eq('user_id', targetId)
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(targetId)
-  if (error) return res.status(500).json({ error: error.message })
+  const { data: targetData } = await supabaseAdmin.auth.admin.getUserById(targetId)
+  const targetEmail = targetData?.user?.email
+  if (!targetEmail) return res.status(404).json({ error: 'Usuario no encontrado' })
+
+  const motivo = (req.body?.motivo || '').trim() || 'Eliminado por admin'
+  try {
+    await subscriptionSvc.requestAccountDeletion(targetId, targetEmail, motivo)
+  } catch (e: unknown) {
+    return res.status(500).json({ error: e instanceof Error ? e.message : 'Error' })
+  }
   res.json({ ok: true })
 }
 
