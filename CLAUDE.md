@@ -147,6 +147,9 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
    --titulo "..." --contenido "..." --checklist "item 1|item 2"` — Diego no lo crea a mano, esto
    reemplaza los PDFs sueltos como historial. `contenido` debe ser legible para alguien no técnico
    (su socia lo revisa en reuniones).
+7. **Después de cada push a `master` que incluya cambios en `frontend/`**, recompilar y
+   actualizar el APK descargable — ver "App Android (APK descargable)" más abajo. Si el push
+   es solo de `backend/`, no hace falta (el APK no lo incluye).
 
 ## Stack
 
@@ -155,6 +158,31 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 - **Auth/DB**: Supabase (anon key en frontend, service role key en backend)
 - **Pagos**: MercadoPago Checkout Pro (no Preapproval)
 - **Deploy**: Vercel — push a `master` → deploy automático
+
+## App Android (APK descargable)
+
+`frontend/android/` (Capacitor). `capacitor.config.ts` no tiene `server.url`, así que el APK
+**empaqueta el frontend compilado dentro del build** — no carga ergania.com en vivo. Esto
+significa que cualquier cambio de frontend que llegue a producción queda desactualizado dentro
+del APK hasta que se recompile y se resuba manualmente.
+
+El botón de descarga (`AndroidAppBanner.tsx`, `Landing.tsx`, ambos apuntan a `/ergania.apk`) sirve
+directo el archivo estático `frontend/public/ergania.apk` — no hay versionado ni build automático,
+el archivo commiteado ES lo que se descarga.
+
+**Procedimiento** (repetir después de cada push a `master` que toque `frontend/`, regla 7 de
+"Reglas generales"):
+
+1. `gh workflow run android-build.yml --ref master` — dispara el build firmado en GitHub Actions
+   (usa el keystore guardado en Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+   `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`).
+2. Esperar a que termine (`gh run list --workflow=android-build.yml -L 1` para el run id, luego
+   `gh run watch <run-id>`).
+3. `gh run download <run-id> -n ergania-android-apk -D <carpeta temporal>` y reemplazar
+   `frontend/public/ergania.apk` con el nuevo build.
+4. Commit y push a `master` (`chore(android): actualiza la APK descargable con el build más
+   reciente`) — este push no dispara un nuevo deploy relevante en Vercel más que servir el
+   archivo nuevo, pero sigue el mismo flujo de push directo.
 
 ## Arquitectura de auth
 
