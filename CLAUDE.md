@@ -167,12 +167,20 @@ significa que cualquier cambio de frontend que llegue a producción queda desact
 del APK hasta que se recompile y se resuba manualmente.
 
 El botón de descarga (`AndroidAppBanner.tsx`, `Landing.tsx`, ambos apuntan a `/ergania.apk`) sirve
-directo el archivo estático `frontend/public/ergania.apk` — no hay versionado ni build automático,
-el archivo commiteado ES lo que se descarga.
+directo el archivo estático `frontend/public/ergania.apk` — no hay build automático, el archivo
+commiteado ES lo que se descarga. La versión que se muestra al usuario (botón "Descargar (v2.1)"
+y el nombre del archivo descargado, ej. `ergania_v2.1.apk`) sale de una constante manual en
+`frontend/src/lib/appVersion.ts` (`ANDROID_APK_VERSION`) — no se calcula sola, hay que subirla a
+mano (ver paso 0 abajo).
 
 **Procedimiento** (repetir después de cada push a `master` que toque `frontend/`, regla 7 de
 "Reglas generales"):
 
+0. Subir la versión: `ANDROID_APK_VERSION` en `frontend/src/lib/appVersion.ts` y
+   `versionCode`/`versionName` en `frontend/android/app/build.gradle` (mantenerlos sincronizados —
+   el primero es lo que ve el usuario antes de descargar, el segundo es lo que Android reporta ya
+   instalado). Solo si este push incluye cambios de frontend visibles al usuario; un rebuild sin
+   cambios reales no necesita subir versión.
 1. `gh workflow run android-build.yml --ref master` — dispara el build firmado en GitHub Actions
    (usa el keystore guardado en Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
    `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`).

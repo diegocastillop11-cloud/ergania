@@ -78,7 +78,7 @@
     "learnToUse": "Learn how to use Ergania",
     "androidBanner": {
       "text": "Got Android? Download the Ergania app.",
-      "cta": "Download"
+      "cta": "Download (v{{version}})"
     },
     "evaluateOffer": "Evaluate Offer",
     "scanOffers": "Scan Offers",
@@ -135,7 +135,7 @@
       "ctaPrimary": "Try free for 3 days →",
       "ctaGhost": "See how it works",
       "socialProof": "job seekers",
-      "androidCta": "Got Android? Download the app →"
+      "androidCta": "Got Android? Download the app (v{{version}}) →"
     },
     "howItWorks": {
       "kicker": "How it works",

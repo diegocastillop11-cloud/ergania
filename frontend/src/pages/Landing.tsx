@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { CosmicButton } from '../components/ui/cosmic-button'
 import { logApkDownload } from '../lib/logApkDownload'
+import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME } from '../lib/appVersion'
 
 const ADSENSE_CLIENT = 'ca-pub-2632840688699034'
 
@@ -245,9 +246,9 @@ export default function Landing() {
             <a href="#como-funciona" className="lp-btn-ghost">{t('landing.hero.ctaGhost')}</a>
           </div>
 
-          <a href="/ergania.apk" download onClick={logApkDownload} className="lp-android-link" style={{ marginBottom: 40 }}>
+          <a href="/ergania.apk" download={ANDROID_APK_FILENAME} onClick={logApkDownload} className="lp-android-link" style={{ marginBottom: 40 }}>
             <Smartphone size={16} />
-            {t('landing.hero.androidCta')}
+            {t('landing.hero.androidCta', { version: ANDROID_APK_VERSION })}
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>

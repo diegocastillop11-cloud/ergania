@@ -78,7 +78,7 @@
     "learnToUse": "Aprende a usar Ergania",
     "androidBanner": {
       "text": "¿Tienes Android? Descarga la app de Ergania.",
-      "cta": "Descargar"
+      "cta": "Descargar (v{{version}})"
     },
     "evaluateOffer": "Evaluar Oferta",
     "scanOffers": "Escanear Ofertas",
@@ -135,7 +135,7 @@
       "ctaPrimary": "Probar gratis 3 días →",
       "ctaGhost": "Ver cómo funciona",
       "socialProof": "buscando trabajo",
-      "androidCta": "¿Tienes Android? Descarga la app →"
+      "androidCta": "¿Tienes Android? Descarga la app (v{{version}}) →"
     },
     "howItWorks": {
       "kicker": "Cómo funciona",
