@@ -194,6 +194,9 @@ export default function CareersPipeline() {
   const [evalStates, setEvalStates] = useState<Record<string, EvalState>>({})
   const [directEval, setDirectEval] = useState<EvalState>({ loading: false, result: null, error: null })
   const [confirmation, setConfirmation] = useState<{ titulo: string; score: number; recomendacion: string; url: string } | null>(null)
+  const [dateFilter, setDateFilter] = useState('todas')
+  const [portalFilter, setPortalFilter] = useState('todos')
+  const [blockedFilter, setBlockedFilter] = useState<'todos' | 'bloqueados' | 'no-bloqueados'>('todos')
 
   const { data: pipeline = [] } = useQuery<PipelineJob[]>({
     queryKey: ['careers-pipeline'],
@@ -206,6 +209,18 @@ export default function CareersPipeline() {
 
   const isBlockedDomain = (url: string) =>
     url.includes('computrabajo.com') || url.includes('indeed.com') || url.includes('linkedin.com')
+
+  const availableDates = [...new Set(sortedPipeline.map(j => j.added))]
+  const availablePortals = [...new Set(sortedPipeline.map(j => j.source || 'manual'))].sort()
+
+  const filteredPipeline = sortedPipeline.filter(job => {
+    if (dateFilter !== 'todas' && job.added !== dateFilter) return false
+    if (portalFilter !== 'todos' && (job.source || 'manual') !== portalFilter) return false
+    const blocked = isBlockedDomain(job.url)
+    if (blockedFilter === 'bloqueados' && !blocked) return false
+    if (blockedFilter === 'no-bloqueados' && blocked) return false
+    return true
+  })
 
   const addMut = useMutation({
     mutationFn: (url: string) => api.post('/pipeline', { url, source: 'manual' }),
@@ -238,14 +253,15 @@ export default function CareersPipeline() {
 
       const { data } = await api.post<EvaluationResult>('/evaluate', payload)
       setState({ loading: false, result: data })
-      if (url) {
-        setConfirmation({
-          titulo: data.meta?.rol || titleFromUrl(url),
-          score: data.meta?.score || 0,
-          recomendacion: data.meta?.recomendacion || '—',
-          url,
-        })
-      }
+      // Mostrar el modal de confirmación con acceso directo al tracker también cuando
+      // se evalúa pegando el texto del JD (antes solo aparecía evaluando por URL) — el
+      // usuario no tenía forma rápida de ir a postular después de evaluar por texto.
+      setConfirmation({
+        titulo: data.meta?.rol || (url ? titleFromUrl(url) : t('careersPipeline.confirmationModal.untitled')),
+        score: data.meta?.score || 0,
+        recomendacion: data.meta?.recomendacion || '—',
+        url: url || '',
+      })
       qc.invalidateQueries({ queryKey: ['careers-tracker'] })
       qc.invalidateQueries({ queryKey: ['careers-stats'] })
       if (url) removeMut.mutate(url)
@@ -410,16 +426,46 @@ export default function CareersPipeline() {
 
       {/* Lista del pipeline */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h3 className="text-[var(--text-primary)] font-semibold flex items-center gap-2">
             <Clock size={16} className="text-orange-400" />
             {t('careersPipeline.queueTitle')}
             {pipeline.length > 0 && (
               <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded-full">
-                {pipeline.length}
+                {filteredPipeline.length === pipeline.length ? pipeline.length : `${filteredPipeline.length}/${pipeline.length}`}
               </span>
             )}
           </h3>
+
+          {pipeline.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-blue-500"
+              >
+                <option value="todas">{t('careersPipeline.filters.allDates')}</option>
+                {availableDates.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select
+                value={portalFilter}
+                onChange={e => setPortalFilter(e.target.value)}
+                className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-blue-500"
+              >
+                <option value="todos">{t('careersPipeline.filters.allPortals')}</option>
+                {availablePortals.map(p => <option key={p} value={p}>{p === 'manual' ? t('careersPipeline.filters.manualSource') : p}</option>)}
+              </select>
+              <select
+                value={blockedFilter}
+                onChange={e => setBlockedFilter(e.target.value as typeof blockedFilter)}
+                className="bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-blue-500"
+              >
+                <option value="todos">{t('careersPipeline.filters.allBlocked')}</option>
+                <option value="bloqueados">{t('careersPipeline.filters.onlyBlocked')}</option>
+                <option value="no-bloqueados">{t('careersPipeline.filters.onlyUnblocked')}</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {pipeline.length === 0 ? (
@@ -427,9 +473,14 @@ export default function CareersPipeline() {
             <Clock size={24} className="text-gray-700" />
             {t('careersPipeline.emptyQueue')}
           </div>
+        ) : filteredPipeline.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-24 text-[var(--text-muted)] text-sm gap-2">
+            <Clock size={24} className="text-gray-700" />
+            {t('careersPipeline.filters.noMatches')}
+          </div>
         ) : (
           <div className="space-y-3">
-            {sortedPipeline.map(job => {
+            {filteredPipeline.map(job => {
               const state = evalStates[job.url] || { loading: false, result: null, error: null }
               return (
                 <div key={job.url} className="border border-[var(--border-default)] rounded-xl overflow-hidden">

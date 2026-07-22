@@ -81,6 +81,7 @@
       "cta": "Download"
     },
     "evaluateOffer": "Evaluate Offer",
+    "scanOffers": "Scan Offers",
     "errorLoading": "Error loading data:",
     "stats": {
       "totalEvaluated": "Total Evaluated",
@@ -601,6 +602,15 @@
     "analyzingBlocks": "Evaluating blocks A-G: resume match, salary strategy, interview plan...",
     "queueTitle": "Evaluation Queue",
     "emptyQueue": "No offers in the queue. Add URLs above.",
+    "filters": {
+      "allDates": "All dates",
+      "allPortals": "All portals",
+      "manualSource": "Manual",
+      "allBlocked": "All",
+      "onlyBlocked": "Blocked only",
+      "onlyUnblocked": "Unblocked only",
+      "noMatches": "No results match these filters."
+    },
     "blockedPortalNote": "Portal blocked — paste the JD text for better results",
     "analyzingShort": "Analyzing...",
     "evaluate": "Evaluate",
@@ -612,7 +622,8 @@
       "score": "Score",
       "recommendation": "Recommendation",
       "goToTracker": "Go to tracker",
-      "close": "Close"
+      "close": "Close",
+      "untitled": "Offer evaluated"
     },
     "evalResult": {
       "reusedNote": "You already evaluated this offer on {{date}} — this is that result, no new query was spent.",

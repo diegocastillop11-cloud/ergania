@@ -1,7 +1,7 @@
 import { api } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
-import { useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -9,7 +9,7 @@ import PerfilTabs from '../../components/careers/PerfilTabs'
 import {
   Radio, Play, Square, ExternalLink, CheckCircle2,
   XCircle, Zap, Globe, ChevronDown, ChevronUp,
-  Loader2, TrendingUp
+  Loader2
 } from 'lucide-react'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
@@ -48,12 +48,6 @@ interface EvaluationConfirmation {
   score: number
   recomendacion: string
   url: string
-}
-
-interface LogEntry {
-  type: 'start' | 'portal' | 'portal_done' | 'portal_error' | 'portal_warn' | 'done' | 'error'
-  timestamp: string
-  data: Record<string, unknown>
 }
 
 function getOfferClickData(url: string): OfferClickData {
@@ -226,10 +220,11 @@ export default function CareersScanner() {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [scanning, setScanning] = useState(false)
   const [portalEvents, setPortalEvents] = useState<Record<string, PortalEvent>>({})
   const [regionFilter, setRegionFilter] = useState<'todos' | 'chile' | 'remoto'>('todos')
-  const [log, setLog] = useState<LogEntry[]>([])
+  const [scanError, setScanError] = useState<string | null>(null)
   const [summary, setSummary] = useState<{ total: number; encontradas: number; agregadas: number } | null>(null)
   const [searchInfo, setSearchInfo] = useState<{ queries: string[]; keywords_positivas: string[] } | null>(null)
   const [evaluatingUrl, setEvaluatingUrl] = useState<string | null>(null)
@@ -237,16 +232,11 @@ export default function CareersScanner() {
   const [confirmation, setConfirmation] = useState<EvaluationConfirmation | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  const addLog = useCallback((type: LogEntry['type'], data: Record<string, unknown>) => {
-    const entry: LogEntry = { type, timestamp: new Date().toLocaleTimeString('es-CL'), data }
-    setLog(prev => [...prev, entry])
-  }, [])
-
   const startScan = useCallback(async () => {
     if (scanning) return
     setScanning(true)
     setPortalEvents({})
-    setLog([])
+    setScanError(null)
     setSummary(null)
     setSearchInfo(null)
     setEvalResult(null)
@@ -267,34 +257,23 @@ export default function CareersScanner() {
         const data = JSON.parse(rawData) as Record<string, unknown>
         if (eventType === 'search_info') {
           setSearchInfo(data as { queries: string[]; keywords_positivas: string[] })
-        } else if (eventType === 'start') {
-          addLog('start', data)
         } else if (eventType === 'portal') {
           const pe = data as unknown as PortalEvent
           setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...pe, seenAt: Date.now() } }))
-          addLog('portal', data)
-        } else if (eventType === 'portal_done') {
+        } else if (eventType === 'portal_done' || eventType === 'portal_error' || eventType === 'portal_warn') {
           const pe = data as unknown as PortalEvent
           setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...prev[pe.nombre], ...pe, seenAt: prev[pe.nombre]?.seenAt || Date.now() } }))
-          addLog('portal_done', data)
-        } else if (eventType === 'portal_error') {
-          const pe = data as unknown as PortalEvent
-          setPortalEvents(prev => ({ ...prev, [pe.nombre]: { ...prev[pe.nombre], ...pe, seenAt: prev[pe.nombre]?.seenAt || Date.now() } }))
-          addLog('portal_error', data)
-        } else if (eventType === 'portal_warn') {
-          addLog('portal_warn', data)
         } else if (eventType === 'done') {
           setSummary({
             total: data.total_portales as number,
             encontradas: data.ofertas_encontradas as number,
             agregadas: data.agregadas_pipeline as number,
           })
-          addLog('done', data)
           setScanning(false)
           qc.invalidateQueries({ queryKey: ['careers-pipeline'] })
           qc.invalidateQueries({ queryKey: ['careers-stats'] })
         } else if (eventType === 'error') {
-          addLog('error', data)
+          setScanError(String(data.error || t('careersScanner.log.genericError')))
           setScanning(false)
         }
       } catch { /* ignore parse errors */ }
@@ -307,7 +286,7 @@ export default function CareersScanner() {
       })
 
       if (!response.ok || !response.body) {
-        addLog('error', { error: `Error ${response.status}: ${response.statusText}` })
+        setScanError(`Error ${response.status}: ${response.statusText}`)
         setScanning(false)
         return
       }
@@ -337,17 +316,26 @@ export default function CareersScanner() {
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        addLog('error', { error: (err as Error).message || t('careersScanner.log.connectionError') })
+        setScanError((err as Error).message || t('careersScanner.log.connectionError'))
         setScanning(false)
       }
     }
-  }, [scanning, addLog, qc, t])
+  }, [scanning, qc, t])
 
   const stopScan = useCallback(() => {
     abortRef.current?.abort()
     setScanning(false)
-    addLog('error', { error: t('careersScanner.log.stoppedByUser') })
-  }, [addLog, t])
+  }, [])
+
+  // Permite que el botón "Escanear Ofertas" del Dashboard (/scanner?autostart=1)
+  // llegue directo a este módulo y arranque el escaneo sin que el usuario tenga
+  // que encontrar y apretar el botón "Iniciar Escaneo" de nuevo.
+  useEffect(() => {
+    if (searchParams.get('autostart') !== '1') return
+    setSearchParams(prev => { prev.delete('autostart'); return prev }, { replace: true })
+    startScan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const evaluarOferta = useCallback(async (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => {
     setEvaluatingUrl(url)
@@ -429,6 +417,12 @@ export default function CareersScanner() {
       </div>
 
       {/* Resumen de resultado */}
+      {scanError && (
+        <div className="bg-red-900/20 border border-red-800/40 rounded-xl p-4 text-red-300 text-sm">
+          {scanError}
+        </div>
+      )}
+
       {summary && (
         <div className="bg-green-900/20 border border-green-800/40 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
@@ -593,60 +587,6 @@ export default function CareersScanner() {
               onExternalClick={incrementOfferClick}
             />
           ))}
-        </div>
-      )}
-
-      {/* Log en tiempo real */}
-      {log.length > 0 && (
-        <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
-            <h3 className="text-[var(--text-primary)] text-sm font-semibold flex items-center gap-2">
-              <TrendingUp size={14} className="text-[var(--text-tertiary)]" />
-              {t('careersScanner.log.title')}
-            </h3>
-            <span className="text-xs text-[var(--text-muted)]">{t('careersScanner.log.events', { count: log.length })}</span>
-          </div>
-          <div className="p-3 max-h-48 overflow-y-auto space-y-1 font-mono">
-            {log.map((entry, i) => {
-              const colors: Record<LogEntry['type'], string> = {
-                start: 'text-blue-400',
-                portal: 'text-[var(--text-tertiary)]',
-                portal_done: 'text-green-400',
-                portal_error: 'text-red-400',
-                portal_warn: 'text-amber-400',
-                done: 'text-green-300',
-                error: 'text-red-300',
-              }
-              const icons: Record<LogEntry['type'], string> = {
-                start: '▶',
-                portal: '◌',
-                portal_done: '✓',
-                portal_error: '✗',
-                portal_warn: '⚠',
-                done: '★',
-                error: '!',
-              }
-              return (
-                <div key={i} className={`text-xs flex gap-2 ${colors[entry.type]}`}>
-                  <span className="shrink-0 text-[var(--text-faint)]">{entry.timestamp}</span>
-                  <span className="shrink-0">{icons[entry.type]}</span>
-                  <span>
-                    {entry.type === 'portal' && t('careersScanner.log.scanning', { name: String(entry.data.nombre) })}
-                    {entry.type === 'portal_done' && (entry.data.nota
-                      ? `${entry.data.nombre}: ${entry.data.nota}`
-                      : t('careersScanner.log.found', { name: String(entry.data.nombre), found: String(entry.data.encontradas), added: String(entry.data.agregadas) }) +
-                        (entry.data.omitidas ? t('careersScanner.log.alreadyAppliedSuffix', { count: String(entry.data.omitidas) }) : '')
-                    )}
-                    {entry.type === 'portal_error' && t('careersScanner.log.portalError', { name: String(entry.data.nombre), error: String(entry.data.error) })}
-                    {entry.type === 'portal_warn' && t('careersScanner.log.portalWarn', { name: String(entry.data.nombre), note: String(entry.data.nota) })}
-                    {entry.type === 'start' && t('careersScanner.log.starting', { count: String(entry.data.total) })}
-                    {entry.type === 'done' && t('careersScanner.log.done', { count: String(entry.data.agregadas_pipeline) })}
-                    {entry.type === 'error' && String(entry.data.error || t('careersScanner.log.genericError'))}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
         </div>
       )}
 

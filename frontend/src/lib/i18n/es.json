@@ -81,6 +81,7 @@
       "cta": "Descargar"
     },
     "evaluateOffer": "Evaluar Oferta",
+    "scanOffers": "Escanear Ofertas",
     "errorLoading": "Error al cargar datos:",
     "stats": {
       "totalEvaluated": "Total Evaluadas",
@@ -601,6 +602,15 @@
     "analyzingBlocks": "Evaluando bloques A-G: match de CV, estrategia salarial, plan de entrevistas...",
     "queueTitle": "Cola de Evaluación",
     "emptyQueue": "No hay ofertas en cola. Agrega URLs arriba.",
+    "filters": {
+      "allDates": "Todas las fechas",
+      "allPortals": "Todos los portales",
+      "manualSource": "Manual",
+      "allBlocked": "Todos",
+      "onlyBlocked": "Solo bloqueados",
+      "onlyUnblocked": "Solo no bloqueados",
+      "noMatches": "Ningún resultado con estos filtros."
+    },
     "blockedPortalNote": "Portal bloqueado — pega el texto del JD para mejor resultado",
     "analyzingShort": "Analizando...",
     "evaluate": "Evaluar",
@@ -612,7 +622,8 @@
       "score": "Score",
       "recommendation": "Recomendación",
       "goToTracker": "Ir al tracker",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "untitled": "Oferta evaluada"
     },
     "evalResult": {
       "reusedNote": "Ya evaluaste esta oferta el {{date}} — este es ese resultado, no se gastó una consulta nueva.",

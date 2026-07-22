@@ -191,6 +191,13 @@ export default function CareersDashboard() {
             {t('dashboard.learnToUse')}
           </button>
           <button
+            onClick={() => navigate('/scanner?autostart=1')}
+            className="flex items-center gap-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-[var(--border-alt)]"
+          >
+            <Search size={16} />
+            {t('dashboard.scanOffers')}
+          </button>
+          <button
             onClick={() => navigate('/pipeline')}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
           >

@@ -555,39 +555,20 @@ export const evaluateJob = async (req: Request, res: Response) => {
         if (status === 403) {
           console.warn(`[Scraping] 403 Forbidden — ${url} bloquea acceso server-side`)
         }
-        // Si axios falla, intenta con puppeteer-core para JavaScript rendering
+        // Si axios falla, intenta con Chrome headless para JavaScript rendering.
+        // Usa svc.launchBrowser() (mismo lanzador que la generación de PDF) en vez de
+        // buscar Chrome en rutas locales fijas — esas rutas nunca existen en producción
+        // (Vercel/Linux), así que este fallback nunca corría en prod hasta ahora.
         const blockedDomains = ['indeed.com', 'linkedin.com', 'computrabajo.com']
         if (blockedDomains.some(d => url.includes(d)) && scrapedContent.length < 200) {
           try {
-            const puppeteer = require('puppeteer-core')
-            // Intenta encontrar Chrome instalado en Windows
-            const browserPaths = [
-              'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-              'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-              process.env.CHROME_PATH,
-            ].filter(Boolean)
-            
-            let browser: any = null
-            for (const path of browserPaths) {
-              try {
-                if (path && require('fs').existsSync(path)) {
-                  browser = await puppeteer.launch({ 
-                    executablePath: path,
-                    args: ['--no-sandbox', '--disable-setuid-sandbox']
-                  })
-                  break
-                }
-              } catch {
-                continue
-              }
-            }
-            
-            if (browser) {
+            const browser = await svc.launchBrowser()
+            try {
               const page = await browser.newPage()
+              await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36')
               await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 })
               const html = await page.content()
-              await browser.close()
-              
+
               scrapedContent = String(html)
                 .replace(/<script[\s\S]*?<\/script>/gi, '')
                 .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -597,6 +578,8 @@ export const evaluateJob = async (req: Request, res: Response) => {
                 .replace(/\s+/g, ' ')
                 .trim()
                 .slice(0, 6000)
+            } finally {
+              await browser.close()
             }
           } catch (puppeteerErr) {
             console.log('[Scraping] Puppeteer fallback failed:', (puppeteerErr as Error).message)
@@ -799,9 +782,19 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
       }
     }
 
-    // Asegura que empresa y rol nunca sean completamente '—'
     const finalEmpresa = (meta.empresa as string)?.trim() || empresa || ''
     const finalRol = (meta.rol as string)?.trim() || rol || ''
+
+    // Si no se pudo identificar ni empresa ni rol (típico cuando la URL bloqueó el
+    // scraping y tampoco se pegó texto del JD), no tiene sentido guardar una entrada
+    // "Oferta sin identificar" en el tracker — antes quedaba ahí para siempre sin forma
+    // de saber a qué oferta correspondía. Se corta acá y se le pide al usuario reintentar
+    // con más contexto, antes de gastar el reporte/tracker entry.
+    if (!finalEmpresa && !finalRol) {
+      return res.status(422).json({
+        error: 'No pudimos identificar esta oferta a partir de la URL. Intenta nuevamente con la URL directa de la publicación, o pega el texto completo del aviso en "Pegar texto del JD" para un mejor resultado.',
+      })
+    }
 
     // El modelo puede detectar que el país real de la oferta es distinto al
     // preseleccionado por el usuario (ver "VERIFICACIÓN DE PAÍS" en el prompt)
@@ -835,8 +828,8 @@ ${fullText}
 
     const entry = await svc.addTrackerEntry({
       fecha: today,
-      empresa: finalEmpresa || 'Oferta sin identificar',
-      rol: finalRol || 'Posición',
+      empresa: finalEmpresa || 'Empresa no especificada',
+      rol: finalRol || 'Cargo no especificado',
       score: meta.score ? Number(meta.score) : null,
       estado: 'Evaluada',
       pdf: false,
@@ -2248,22 +2241,24 @@ function parseComputrabajo(html: string, baseScore: (t: string) => number, posit
   return results
 }
 
-// Indeed Chile: parse jobTitle + companyName + data-jk from HTML
+// Indeed Chile: parse título + data-jk desde el <span title id="jobTitle-{jk}">,
+// empresa desde data-testid="company-name" y ubicación desde data-testid="text-location".
+// El markup viejo (class="jobTitle"/"companyName") ya no existe — Indeed movió el título
+// real a un span anidado y usa data-testid en vez de clases fijas para todo lo demás.
 function parseIndeed(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string): JobResult[] {
   const results: JobResult[] = []
-  const titleMatches = [...html.matchAll(/class="[^"]*jobTitle[^"]*"[^>]*>([\s\S]*?)<\/[a-z]+>/gi)]
-    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()).filter(t => t.length > 2)
-  const compMatches  = [...html.matchAll(/class="[^"]*companyName[^"]*"[^>]*>([\s\S]*?)<\/[a-z]+>/gi)]
+  const titleMatches = [...html.matchAll(/id="jobTitle-([a-f0-9]+)"[^>]*>([^<]+)<\/span>/gi)]
+    .map(m => ({ jk: m[1], title: m[2].replace(/\s+/g, ' ').trim() }))
+    .filter(m => m.title.length > 2)
+  const compMatches  = [...html.matchAll(/data-testid="company-name"[^>]*>([^<]*(?:<[^>]+>[^<]*)*?)<\/[a-z]+>/gi)]
     .map(m => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim())
-  const jkMatches    = [...html.matchAll(/data-jk="([a-f0-9]+)"/gi)].map(m => m[1])
-  const locMatches   = [...html.matchAll(/class="[^"]*companyLocation[^"]*"[^>]*>([\s\S]*?)<\/[a-z]+>/gi)]
-    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim())
+  const locMatches   = [...html.matchAll(/data-testid="text-location"[^>]*>([^<]+)<\//gi)]
+    .map(m => m[1].replace(/\s+/g, ' ').trim())
   const seen = new Set<string>()
   for (let i = 0; i < titleMatches.length; i++) {
-    const title = titleMatches[i]
+    const { jk, title } = titleMatches[i]
     if (!title || seen.has(title.toLowerCase()) || !kwMatch(title, positive, negative)) continue
     seen.add(title.toLowerCase())
-    const jk  = jkMatches[i]
     results.push({
       titulo: title,
       empresa: compMatches[i] || '—',
@@ -2308,36 +2303,16 @@ function dedup(jobs: JobResult[]): JobResult[] {
   })
 }
 
-// Rutas comunes de Chrome en Windows/Mac/Linux
-const CHROME_PATHS = [
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium-browser',
-]
-
-function findChrome(): string | undefined {
-  const fs = require('fs')
-  return CHROME_PATHS.find(p => { try { return fs.existsSync(p) } catch { return false } })
-}
-
 /**
  * Carga una página SPA con Chrome headless y devuelve el HTML completo.
- * Usado para portales que renderizan con JavaScript (Trabajando, YWork, etc.)
+ * Usado para portales que renderizan con JavaScript (Trabajando, YWork, Laborum, etc.)
+ * Reusa svc.launchBrowser() — el mismo lanzador que usa la generación de PDF, que ya
+ * sabe usar @sparticuz/chromium-min en producción (Vercel) y Chrome local en desarrollo.
+ * findChrome()/CHROME_PATHS local que había antes solo funcionaba en desarrollo — en
+ * producción (Linux serverless) esas rutas nunca existen y el escaneo fallaba en silencio.
  */
 async function scrapeWithBrowser(url: string, waitMs = 3000): Promise<string> {
-  const executablePath = findChrome()
-  if (!executablePath) throw new Error('Chrome no encontrado en el sistema')
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const puppeteer = require('puppeteer-core')
-  const browser = await puppeteer.launch({
-    executablePath,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-    timeout: 30000,
-  })
+  const browser = await svc.launchBrowser()
   try {
     const page = await browser.newPage()
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36')
@@ -2350,38 +2325,73 @@ async function scrapeWithBrowser(url: string, waitMs = 3000): Promise<string> {
   }
 }
 
-// Bumeran / Laborum: parsea HTML server-rendered (formato SEO con URLs /empleo-*.html)
-function parseBumeranLaborum(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string, siteBase: string): JobResult[] {
+// Laborum (Chile/Bumeran fusionados): parsea el HTML ya renderizado por Chrome headless
+// (la página es una SPA — un fetch plano solo devuelve el shell vacío). Cada tarjeta usa
+// clases de styled-components que rotan en cada deploy de Laborum, así que en vez de
+// depender de nombres de clase se ancla al patrón de tags estable dentro del bloque:
+// <h3>fecha</h3> ... <h2>título</h2> ... <h3>empresa</h3>. El recorte de cada tarjeta se
+// hace por posición (hasta el siguiente <a href="/empleos/...">, tope 4000 chars) en vez
+// de un regex con lookahead+cuantificador perezoso — con tarjetas grandes (>2000 chars)
+// esa combinación nunca cierra el match y silenciosamente no encuentra nada.
+function parseLaborum(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string, siteBase: string): JobResult[] {
   const results: JobResult[] = []
   const seen = new Set<string>()
 
-  // Extrae pares (href, title) de anchors que apuntan a páginas de empleo
-  // Bumeran/Laborum usan /empleo-slug.html y título como texto del link o en h2/h3 cercano
-  const linkRe = /href="((?:https?:\/\/(?:www\.)?(?:bumeran|laborum)\.cl)?\/empleo[^"#?]+\.html)"[^>]*>\s*([\s\S]{0,200}?)\s*<\/a>/gi
-  let m: RegExpExecArray | null
-  while ((m = linkRe.exec(html)) !== null) {
-    const href = m[1]
-    const inner = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    // El título debe ser razonablemente corto (un nombre de cargo, no un bloque de HTML)
-    if (!inner || inner.length < 5 || inner.length > 120) continue
-    if (seen.has(inner.toLowerCase())) continue
-    if (!kwMatch(inner, positive, negative)) continue
-    seen.add(inner.toLowerCase())
-    const url = href.startsWith('http') ? href : `${siteBase}${href}`
-    results.push({ titulo: inner, empresa: '—', url, ubicacion: 'Chile', match_score: baseScore(inner), razon })
+  const anchors = [...html.matchAll(/<a[^>]+href="(\/empleos\/[^"#?]+\.html)"[^>]*>/g)]
+  for (let i = 0; i < anchors.length; i++) {
+    const href = anchors[i][1]
+    const start = anchors[i].index! + anchors[i][0].length
+    const end = i + 1 < anchors.length ? Math.min(anchors[i + 1].index!, start + 4000) : Math.min(html.length, start + 4000)
+    const block = html.slice(start, end)
+
+    const titulo = block.match(/<h2[^>]*>([^<]{2,150})<\/h2>/)?.[1]?.trim()
+    if (!titulo || !kwMatch(titulo, positive, negative)) continue
+    if (seen.has(titulo.toLowerCase())) continue
+    seen.add(titulo.toLowerCase())
+    const h3s = [...block.matchAll(/<h3[^>]*>([^<]{2,150})<\/h3>/g)].map(x => x[1].trim())
+    // El primer <h3> del bloque es la fecha ("Actualizado hace..."), el siguiente es la empresa
+    const empresa = h3s.find(t => !/^(actualizado|publicado)/i.test(t)) || '—'
+    results.push({ titulo, empresa, url: `${siteBase}${href}`, ubicacion: 'Chile', match_score: baseScore(titulo), razon })
   }
 
-  // Fallback: busca títulos en elementos con clases típicas de Bumeran (js-title-aviso, titulo-aviso, etc.)
-  if (results.length === 0) {
-    const titleRe = /class="[^"]*(?:titulo|title|aviso)[^"]*"[^>]*>\s*<a[^>]+href="(\/empleo[^"]+)"[^>]*>([^<]{5,100})<\/a>/gi
-    while ((m = titleRe.exec(html)) !== null) {
-      const titulo = m[2].trim()
-      const href   = m[1]
-      if (!titulo || seen.has(titulo.toLowerCase())) continue
-      if (!kwMatch(titulo, positive, negative)) continue
-      seen.add(titulo.toLowerCase())
-      results.push({ titulo, empresa: '—', url: `${siteBase}${href}`, ubicacion: 'Chile', match_score: baseScore(titulo), razon })
-    }
+  return results
+}
+
+// GetOnBoard: parsea la página de resultados /empleos-{query} (server-rendered, sin
+// necesidad de Chrome). Cada oferta es un <a class="results-item" href="...">, con el
+// título en <h4 class="results-list-title"><strong> y la empresa en el atributo alt del
+// logo (<img alt="Empresa" class="results-avatar">) — más estable que cavar entre <strong>
+// anidados. Recorte de tarjeta por posición, igual que Laborum, por la misma razón.
+function parseGetOnBoard(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string): JobResult[] {
+  const results: JobResult[] = []
+  const seen = new Set<string>()
+
+  const anchors = [...html.matchAll(/<a class="results-item[^"]*"[^>]*href="([^"]+)"[^>]*>/g)]
+  for (let i = 0; i < anchors.length; i++) {
+    const url = anchors[i][1]
+    const start = anchors[i].index! + anchors[i][0].length
+    const end = i + 1 < anchors.length ? Math.min(anchors[i + 1].index!, start + 3000) : Math.min(html.length, start + 3000)
+    const block = html.slice(start, end)
+
+    const titulo = block.match(/results-list-title"[^>]*>\s*<strong[^>]*>([^<]{2,150})<\/strong>/)?.[1]?.trim()
+    if (!titulo || !kwMatch(titulo, positive, negative)) continue
+    if (seen.has(titulo.toLowerCase())) continue
+    seen.add(titulo.toLowerCase())
+    const empresa = block.match(/<img alt="([^"]*)"[^>]*results-avatar/)?.[1]?.trim() || '—'
+    const locRaw = block.match(/class="location">\s*<span[^>]*>\s*([^<]+)/)?.[1]
+    const ubicacionCiudad = locRaw?.replace(/&nbsp;?/gi, ' ').replace(/\s+/g, ' ').trim()
+    // Ubicaciones fuera de Chile aparecen como "Remoto (País)" o la ciudad seguida del
+    // país entre paréntesis — se filtran las que declaran explícitamente otro país,
+    // salvo que sea remoto (igual que el filtro original basado en la API).
+    const isRemoto = /remoto/i.test(block)
+    const otherCountryMatch = block.match(/\((Colombia|México|Perú|Argentina|Brasil|Ecuador|Uruguay|Panamá|Costa Rica|España|Venezuela|Bolivia|Paraguay)\)/i)
+    if (otherCountryMatch && !isRemoto) continue
+    results.push({
+      titulo, empresa,
+      url: url.startsWith('http') ? url : `https://www.getonbrd.com${url}`,
+      ubicacion: isRemoto ? 'Remoto' : (ubicacionCiudad || 'Chile'),
+      match_score: baseScore(titulo), razon,
+    })
   }
 
   return results
@@ -2481,29 +2491,18 @@ export const scanPortals = async (req: Request, res: Response) => {
 
         const score = (t: string) => kwScore(t, allPositive)
 
-        // ── GetOnBoard: API pública ──────────────────────────────────────────
+        // ── GetOnBoard: HTML de resultados (la API v0 pública quedó deprecada —
+        // ahora responde 401 Unauthorized — así que se cambió a scrapear la página
+        // de resultados real /empleos-{query}, que sigue siendo server-rendered) ──
         if (domain.includes('getonbrd.com')) {
           for (const q of portalQueries.slice(0, 5)) {
             try {
-              const { data } = await axios.get('https://www.getonbrd.com/api/v0/jobs', {
-                params: { query: q, per_page: 15, page: 0 },
-                timeout: 10000, headers: { ...HEADERS, Accept: 'application/json' },
+              const slug = q.trim().replace(/\s+/g, '-')
+              const { data } = await axios.get(`https://www.getonbrd.com/empleos-${encodeURIComponent(slug)}`, {
+                timeout: 12000, headers: { ...HEADERS, Accept: 'text/html,*/*;q=0.9' },
               })
-              for (const job of ((data as { data?: unknown[] }).data || [])) {
-                const a = (job as { attributes?: Record<string, unknown> }).attributes || {}
-                const title = String(a.title || '')
-                if (!title || !kwMatch(title, allPositive, negative)) continue
-                const country = String((a.country as Record<string,unknown>)?.name || '').toLowerCase()
-                if (country && !country.includes('chile') && !a.remote) continue
-                ofertas.push({
-                  titulo: title,
-                  empresa: String(a.company_name || '—'),
-                  url: String(a.applications_url || `https://www.getonbrd.com/jobs/${(job as { id?: string }).id || ''}`),
-                  ubicacion: a.remote ? 'Remoto' : 'Chile',
-                  match_score: score(title),
-                  razon: `GetOnBoard · "${q}"`,
-                })
-              }
+              const parsed = parseGetOnBoard(String(data), score, allPositive, negative, `GetOnBoard · "${q}"`)
+              ofertas.push(...parsed)
             } catch (e: unknown) {
               console.warn(`[Scanner] GetOnBoard query "${q}" falló:`, (e as Error).message?.slice(0, 120))
             }
@@ -2614,22 +2613,24 @@ export const scanPortals = async (req: Request, res: Response) => {
           }
         }
 
-        // ── Bumeran Chile / Laborum Chile: HTML con URLs SEO ────────────────
-        // Usan server-side rendering para SEO, las páginas de búsqueda son scrapeables
+        // ── Bumeran Chile / Laborum Chile: Bumeran.cl se fusionó con Laborum y hoy
+        // redirige completo al home de laborum.cl (pierde cualquier ruta/búsqueda),
+        // así que ambos apuntan siempre a laborum.cl. Laborum ya NO es server-rendered
+        // para resultados de búsqueda (devuelve un shell vacío sin JS) — requiere
+        // Chrome headless igual que Trabajando/YWork más abajo.
         else if (domain.includes('bumeran.cl') || domain.includes('laborum.cl')) {
-          const siteBase = `https://www.${domain}`
-          for (const q of portalQueries.slice(0, 4)) {
+          const siteBase = 'https://www.laborum.cl'
+          if (domain.includes('bumeran.cl')) {
+            send('portal_warn', { nombre: portal.name, nota: 'Bumeran Chile se fusionó con Laborum — mostrando resultados desde laborum.cl' })
+          }
+          for (const q of portalQueries.slice(0, 3)) {
             try {
               const slug = q.toLowerCase()
                 .normalize('NFD').replace(/[̀-ͯ]/g, '')
                 .replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '-')
               const searchUrl = `${siteBase}/empleos-busqueda-${slug}.html`
-              const { data } = await axios.get(searchUrl, {
-                timeout: 12000,
-                headers: { ...HEADERS, Accept: 'text/html,*/*;q=0.9', Referer: siteBase + '/' },
-              })
-              const html = String(data)
-              const parsed = parseBumeranLaborum(html, score, allPositive, negative, `${portal.name} · "${q}"`, siteBase)
+              const html = await scrapeWithBrowser(searchUrl, 3500)
+              const parsed = parseLaborum(html, score, allPositive, negative, `${portal.name} · "${q}"`, siteBase)
               ofertas.push(...parsed)
             } catch (e: unknown) {
               console.warn(`[Scanner] ${portal.name} query "${q}" falló:`, (e as Error).message?.slice(0, 120))
@@ -2637,26 +2638,25 @@ export const scanPortals = async (req: Request, res: Response) => {
           }
         }
 
-        // ── Trabajando.cl / YWork: SPA — cargamos con Chrome headless ────────
-        else if (domain.includes('trabajando.cl') || domain.includes('yw.cl')) {
-          const chromeOk = !!findChrome()
-          if (!chromeOk) {
-            send('portal_done', { nombre: portal.name, encontradas: 0, agregadas: 0, ofertas: [], nota: 'Chrome no encontrado para cargar este portal' })
-            continue
-          }
+        // ── YWork (yw.cl): el dominio caducó y hoy es una página parqueada de
+        // anuncios (redirige a quickresultonline.com) — ya no es un portal de empleo,
+        // así que no tiene sentido seguir intentando escanearlo.
+        else if (domain.includes('yw.cl')) {
+          send('portal_done', { nombre: portal.name, encontradas: 0, agregadas: 0, ofertas: [], nota: 'Este dominio ya no es un portal de empleo (caducado/parqueado) — no se puede escanear' })
+        }
+
+        // ── Trabajando.cl: SPA — cargamos con Chrome headless ────────────────
+        else if (domain.includes('trabajando.cl')) {
           for (const q of portalQueries.slice(0, 3)) {
             try {
-              let searchUrl = ''
-              if (domain.includes('trabajando.cl')) {
-                searchUrl = `https://www.trabajando.cl/busqueda?q=${encodeURIComponent(q)}&pub_date=7`
-              } else {
-                searchUrl = `https://www.yw.cl/busqueda?q=${encodeURIComponent(q)}`
-              }
+              const searchUrl = `https://www.trabajando.cl/busqueda?q=${encodeURIComponent(q)}&pub_date=7`
               const html = await scrapeWithBrowser(searchUrl, 4000)
               // Parsear títulos y links de la página cargada
               const parsed = parseSpaPortal(html, score, allPositive, negative, `${portal.name} · "${q}"`, `https://www.${domain}`)
               ofertas.push(...parsed)
-            } catch { /* skip si Chrome falla */ }
+            } catch (e: unknown) {
+              console.warn(`[Scanner] ${portal.name} query "${q}" falló:`, (e as Error).message?.slice(0, 120))
+            }
           }
         }
 
