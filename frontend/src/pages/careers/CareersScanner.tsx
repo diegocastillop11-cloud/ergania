@@ -142,6 +142,24 @@ function PortalCard({ event, onEvaluar, onExternalClick }: { event: PortalEvent;
             <p className="text-[var(--text-tertiary)] text-xs mt-0.5">
               {event.nota
                 ? <span className="text-yellow-600">{event.nota}</span>
+                : (event.encontradas ?? 0) === 0
+                ? <span className="text-amber-500">
+                    {t('careersScanner.noOffersFound')}
+                    {event.url && (
+                      <>
+                        {' '}
+                        <a
+                          href={event.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="text-blue-400 hover:underline"
+                        >
+                          {t('careersScanner.searchManuallyLink')}
+                        </a>
+                      </>
+                    )}
+                  </span>
                 : <>
                     {t('careersScanner.matchesFound', { count: event.encontradas ?? 0, added: event.agregadas ?? 0 })}
                     {event.omitidas ? t('careersScanner.alreadyAppliedSuffix', { count: event.omitidas }) : ''}

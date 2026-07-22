@@ -785,14 +785,17 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
     const finalEmpresa = (meta.empresa as string)?.trim() || empresa || ''
     const finalRol = (meta.rol as string)?.trim() || rol || ''
 
-    // Si no se pudo identificar ni empresa ni rol (típico cuando la URL bloqueó el
-    // scraping y tampoco se pegó texto del JD), no tiene sentido guardar una entrada
-    // "Oferta sin identificar" en el tracker — antes quedaba ahí para siempre sin forma
-    // de saber a qué oferta correspondía. Se corta acá y se le pide al usuario reintentar
-    // con más contexto, antes de gastar el reporte/tracker entry.
-    if (!finalEmpresa && !finalRol) {
+    // Si no se pudo identificar el rol, o el modelo no llegó a producir un score real
+    // (típico cuando la URL bloqueó el scraping, no había texto del JD, y el modelo
+    // devolvió una respuesta vacía/genérica), no tiene sentido guardar una entrada en
+    // el tracker — antes quedaba ahí como "Oferta sin identificar" o con score 0/5 sin
+    // forma de saber a qué oferta correspondía ni recomendación real. Se corta acá y se
+    // le pide al usuario reintentar con más contexto, antes de gastar el reporte/entry.
+    // (empresa por sí sola no basta: el modelo a veces adivina el dueño del portal como
+    // "empresa" aunque no haya podido leer la oferta real.)
+    if (!finalRol || meta.score === undefined || meta.score === null) {
       return res.status(422).json({
-        error: 'No pudimos identificar esta oferta a partir de la URL. Intenta nuevamente con la URL directa de la publicación, o pega el texto completo del aviso en "Pegar texto del JD" para un mejor resultado.',
+        error: 'Oferta no identificada: no fue posible evaluarla a partir de la URL. Intenta con otra URL, o pega el texto completo de la oferta en "Pegar texto del JD".',
       })
     }
 

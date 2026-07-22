@@ -651,6 +651,8 @@
     "evaluate": "Evaluate",
     "analyzingWithAi": "Analyzing with AI...",
     "matchesFound": "{{count}} found · {{added}} to pipeline",
+    "noOffersFound": "No offers found — try searching manually on the portal.",
+    "searchManuallyLink": "Search manually →",
     "alreadyAppliedSuffix": " · {{count}} already applied",
     "matchLabel": "match{{plural}}",
     "summary": {

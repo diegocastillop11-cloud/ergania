@@ -91,6 +91,7 @@ function LegitimidadBadge({ leg }: { leg: string }) {
 
 function EvalResult({ result, onRecalcular, recalculating }: { result: EvaluationResult; onRecalcular?: () => void; recalculating?: boolean }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const { meta, report } = result
 
@@ -129,6 +130,15 @@ function EvalResult({ result, onRecalcular, recalculating }: { result: Evaluatio
             {meta.salario_estimado && <p className="text-green-400">{meta.salario_estimado}</p>}
           </div>
         </div>
+        {/* Persiste después de cerrar el modal de confirmación — sin esto, si el
+            usuario cerraba el modal, no tenía forma de volver a llegar al tracker
+            desde esta tarjeta. */}
+        <button
+          onClick={() => navigate('/tracker')}
+          className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all"
+        >
+          {t('careersPipeline.confirmationModal.goToTracker')}
+        </button>
 
         {meta.keywords?.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
