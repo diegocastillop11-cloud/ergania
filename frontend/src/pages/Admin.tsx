@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft, Menu,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -1194,6 +1194,7 @@ interface Stats {
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; fullName: string | null; createdAt: string; sub: any; evaluationsCount: number }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null; user_id: string | null; admin_unread: boolean }[]
+  apkDownloadsCount: number
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
@@ -1452,12 +1453,13 @@ export default function Admin() {
         {tab === 'suscripciones' && (
           <>
             {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               {([
                 { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'suscripciones' },
                 { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'suscripciones' },
                 { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
                 { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
+                { icon: Smartphone, label: 'Descargas APK',    value: stats.apkDownloadsCount,               color: 'text-emerald-400', bg: 'bg-emerald-600/10', tabTarget: 'suscripciones' },
               ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
                 <button
                   key={label}

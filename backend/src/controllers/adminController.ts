@@ -104,13 +104,14 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('payment_receipts').select('*').order('fecha', { ascending: false }),
     supabaseAdmin.from('tracker_entries').select('user_email'),
     supabaseAdmin.from('perfil_profiles').select('user_email, data'),
+    supabaseAdmin.from('apk_downloads').select('*', { count: 'exact', head: true }),
   ])
 
   const users = usersRes.data?.users ?? []
@@ -176,6 +177,7 @@ export async function getStats(req: Request, res: Response) {
     payments,
     userList,
     contactMessages: msgs,
+    apkDownloadsCount: apkDownloadsRes.count ?? 0,
   })
 }
 

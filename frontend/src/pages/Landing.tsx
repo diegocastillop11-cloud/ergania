@@ -4,6 +4,7 @@ import { Smartphone } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { CosmicButton } from '../components/ui/cosmic-button'
+import { logApkDownload } from '../lib/logApkDownload'
 
 const ADSENSE_CLIENT = 'ca-pub-2632840688699034'
 
@@ -244,7 +245,7 @@ export default function Landing() {
             <a href="#como-funciona" className="lp-btn-ghost">{t('landing.hero.ctaGhost')}</a>
           </div>
 
-          <a href="/ergania.apk" download className="lp-android-link" style={{ marginBottom: 40 }}>
+          <a href="/ergania.apk" download onClick={logApkDownload} className="lp-android-link" style={{ marginBottom: 40 }}>
             <Smartphone size={16} />
             {t('landing.hero.androidCta')}
           </a>
