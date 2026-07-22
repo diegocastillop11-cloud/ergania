@@ -2409,8 +2409,17 @@ export const scanPortals = async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive')
   res.flushHeaders()
 
-  const send = (event: string, data: unknown) =>
+  // El botón "Detener" del frontend aborta el fetch del lado del cliente, pero sin esto
+  // el for-loop de portales seguía corriendo del lado del servidor (gastando tiempo y
+  // cuotas en portales reales) aunque ya nadie estuviera escuchando — el usuario veía
+  // "Detener" sin efecto real porque el escaneo seguía avanzando en el fondo.
+  let clientDisconnected = false
+  res.on('close', () => { clientDisconnected = true })
+
+  const send = (event: string, data: unknown) => {
+    if (clientDisconnected) return
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+  }
 
   try {
     const { email: userEmail, userId } = await getUser(req)
@@ -2452,8 +2461,11 @@ export const scanPortals = async (req: Request, res: Response) => {
     const searchQueries = queries.length > 0 ? queries : positive.slice(0, 4)
     send('search_info', { queries: portalQueries, keywords_positivas: positive.slice(0, 10) })
 
-    // FIX 2: Siempre incluir los portales principales de Chile (GetOnBoard, LinkedIn, Indeed, Computrabajo)
-    // más cualquier portal adicional configurado por el usuario (empresa específica, etc.)
+    // FIX 2: Incluir por defecto los portales principales de Chile (GetOnBoard, LinkedIn,
+    // Indeed, Computrabajo) más cualquier portal adicional configurado por el usuario —
+    // pero respetando el toggle "enabled" de la página Portales si el usuario apagó
+    // alguno de estos 4 explícitamente. Antes se ignoraba ese toggle para estos 4 y
+    // siempre se escaneaban aunque el usuario los hubiera desactivado.
     const BASE_PORTALS = [
       { name: 'GetOnBoard', careers_url: 'https://www.getonbrd.com', enabled: true },
       { name: 'LinkedIn Chile', careers_url: 'https://www.linkedin.com/jobs/', enabled: true },
@@ -2461,10 +2473,18 @@ export const scanPortals = async (req: Request, res: Response) => {
       { name: 'Computrabajo Chile', careers_url: 'https://cl.computrabajo.com', enabled: true },
     ]
     const baseDomains = new Set(BASE_PORTALS.map(p => new URL(p.careers_url).hostname))
+    const trackedByDomain = new Map<string, svc.Portal>()
+    for (const p of (portalsConfig.tracked_companies || [])) {
+      try { trackedByDomain.set(new URL(p.careers_url).hostname, p) } catch { /* skip malformed url */ }
+    }
+    const activeBasePortals = BASE_PORTALS.filter(p => {
+      const cfg = trackedByDomain.get(new URL(p.careers_url).hostname)
+      return !cfg || cfg.enabled !== false
+    })
     // Portales extra del usuario (empresas, otros portales no base)
     const extraPortals = (portalsConfig.tracked_companies || [])
       .filter(p => p.enabled && (() => { try { return !baseDomains.has(new URL(p.careers_url).hostname) } catch { return false } })())
-    const portals = [...BASE_PORTALS, ...extraPortals]
+    const portals = [...activeBasePortals, ...extraPortals]
 
     send('start', { total: portals.length, mensaje: `Escaneando ${portals.length} portales · ${searchQueries.length} consultas` })
 
@@ -2486,6 +2506,7 @@ export const scanPortals = async (req: Request, res: Response) => {
     }
 
     for (const portal of portals) {
+      if (clientDisconnected) break
       send('portal', { nombre: portal.name, url: portal.careers_url, estado: 'escaneando' })
 
       try {
