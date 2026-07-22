@@ -1424,6 +1424,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
     mutationFn: (estado: string) => api.patch(`/applications/${appSummary.id}`, { estado }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['applications'] }),
   })
+  const statusError = statusMut.isError
 
   return (
     <>
@@ -1536,22 +1537,30 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
         {/* Expandible: cambiar estado + notas */}
         {expanded && (
           <div className="border-t border-[var(--border-default)] p-4 bg-gray-800/30">
+            <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">{t('careersPostulaciones.card.changeStatus')}</p>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-[var(--text-muted)]">{t('careersPostulaciones.card.changeStatus')}</p>
-              {APLICACION_ESTADOS.map(estado => (
-                <button
-                  key={estado}
-                  onClick={() => statusMut.mutate(estado)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                    appSummary.estado === estado
-                      ? 'bg-blue-600 border-blue-500 text-[var(--text-primary)]'
-                      : 'border-[var(--border-alt)] text-[var(--text-tertiary)] hover:border-gray-500 hover:text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {estado}
-                </button>
-              ))}
+              {APLICACION_ESTADOS.map(estado => {
+                const isPending = statusMut.isPending && statusMut.variables === estado
+                return (
+                  <button
+                    key={estado}
+                    onClick={() => statusMut.mutate(estado)}
+                    disabled={statusMut.isPending}
+                    className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full border-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                      appSummary.estado === estado
+                        ? 'bg-blue-600 border-blue-500 text-[var(--text-primary)]'
+                        : 'border-[var(--border-alt)] text-[var(--text-tertiary)] hover:border-blue-500 hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {isPending && <Loader2 size={12} className="animate-spin" />}
+                    {estado}
+                  </button>
+                )
+              })}
             </div>
+            {statusError && (
+              <p className="text-xs text-red-400 mt-2">{t('careersPostulaciones.card.statusError')}</p>
+            )}
           </div>
         )}
       </div>

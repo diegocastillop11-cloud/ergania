@@ -85,11 +85,17 @@ export const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: s
   Evaluada:     { label: 'Evaluada',    color: 'text-blue-400',   bg: 'bg-blue-900/30' },
   'CV Generado':{ label: 'CV Listo',    color: 'text-cyan-400',   bg: 'bg-cyan-900/30' },
   Postulada:    { label: 'Postulada',   color: 'text-yellow-400', bg: 'bg-yellow-900/30' },
+  // Application.estado (APLICACION_ESTADOS) usa formas masculinas — distinto vocabulario
+  // que TrackerEntry.estado (EstadoJob), pero comparten este mismo badge/config.
+  Postulado:    { label: 'Postulado',   color: 'text-yellow-400', bg: 'bg-yellow-900/30' },
+  Preparado:    { label: 'Preparado',   color: 'text-orange-400', bg: 'bg-orange-900/30' },
   Respondida:   { label: 'Respondida',  color: 'text-orange-400', bg: 'bg-orange-900/30' },
   Entrevista:   { label: 'Entrevista',  color: 'text-purple-400', bg: 'bg-purple-900/30' },
   Oferta:       { label: '🎉 Oferta',   color: 'text-green-400',  bg: 'bg-green-900/30' },
   Rechazada:    { label: 'Rechazada',   color: 'text-red-400',    bg: 'bg-red-900/30' },
+  Rechazado:    { label: 'Rechazado',   color: 'text-red-400',    bg: 'bg-red-900/30' },
   Descartada:   { label: 'Descartada',  color: 'text-gray-500',   bg: 'bg-gray-800/50' },
+  Descartado:   { label: 'Descartado',  color: 'text-gray-500',   bg: 'bg-gray-800/50' },
   SKIP:         { label: 'Skip',        color: 'text-gray-600',   bg: 'bg-gray-800/30' },
 }
 

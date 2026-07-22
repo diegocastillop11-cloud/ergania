@@ -523,7 +523,8 @@
       "salaryRequest": "Salary Expectations",
       "less": "Less",
       "more": "More",
-      "changeStatus": "Change status:"
+      "changeStatus": "Change status:",
+      "statusError": "Couldn't save the status change. Please try again."
     }
   },
   "careersTracker": {
@@ -800,7 +801,8 @@
     "cancelledNote": "Subscription cancelled. You can subscribe again anytime.",
     "mercadoPagoError": "Error connecting to MercadoPago",
     "payPalError": "Error connecting to PayPal",
-    "cancelError": "Error cancelling"
+    "cancelError": "Error cancelling",
+    "checkoutIncomplete": "Payment could not be completed, please try again"
   },
   "subscriptionCallback": {
     "success": {

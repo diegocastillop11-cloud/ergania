@@ -523,7 +523,8 @@
       "salaryRequest": "Pretensión de Renta",
       "less": "Menos",
       "more": "Más",
-      "changeStatus": "Cambiar estado:"
+      "changeStatus": "Cambiar estado:",
+      "statusError": "No se pudo guardar el cambio de estado. Intenta de nuevo."
     }
   },
   "careersTracker": {
@@ -800,7 +801,8 @@
     "cancelledNote": "Suscripción cancelada. Puedes volver a suscribirte cuando quieras.",
     "mercadoPagoError": "Error al conectar con MercadoPago",
     "payPalError": "Error al conectar con PayPal",
-    "cancelError": "Error al cancelar"
+    "cancelError": "Error al cancelar",
+    "checkoutIncomplete": "No se pudo completar el pago, intenta nuevamente"
   },
   "subscriptionCallback": {
     "success": {
