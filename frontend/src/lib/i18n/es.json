@@ -27,7 +27,19 @@
     "themeDark": "Oscuro",
     "themeLight": "Claro",
     "language": "Idioma",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "dangerZone": "Zona de peligro",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountDesc": "Esta acción borra tu cuenta y todos tus datos de forma permanente. No se puede deshacer.",
+    "deleteAccountReasonLabel": "Cuéntanos por qué te vas (obligatorio)",
+    "deleteAccountReasonPlaceholder": "Ej: ya no estoy buscando trabajo, encontré otra herramienta, etc.",
+    "deleteAccountConfirmLabel": "Escribe ELIMINAR para confirmar",
+    "deleteAccountButton": "Eliminar mi cuenta",
+    "deleteAccountCancel": "Cancelar",
+    "deleteAccountReasonRequired": "Cuéntanos el motivo antes de continuar",
+    "deleteAccountConfirmRequired": "Escribe ELIMINAR (en mayúsculas) para confirmar",
+    "deleteAccountError": "No se pudo eliminar la cuenta. Intenta de nuevo o escríbenos.",
+    "deleteAccountDeleting": "Eliminando..."
   },
   "login": {
     "title": "Ergania",

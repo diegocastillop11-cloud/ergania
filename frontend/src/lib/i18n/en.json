@@ -27,7 +27,19 @@
     "themeDark": "Dark",
     "themeLight": "Light",
     "language": "Language",
-    "close": "Close"
+    "close": "Close",
+    "dangerZone": "Danger zone",
+    "deleteAccount": "Delete account",
+    "deleteAccountDesc": "This permanently deletes your account and all your data. This cannot be undone.",
+    "deleteAccountReasonLabel": "Tell us why you're leaving (required)",
+    "deleteAccountReasonPlaceholder": "E.g. no longer job hunting, found another tool, etc.",
+    "deleteAccountConfirmLabel": "Type ELIMINAR to confirm",
+    "deleteAccountButton": "Delete my account",
+    "deleteAccountCancel": "Cancel",
+    "deleteAccountReasonRequired": "Tell us the reason before continuing",
+    "deleteAccountConfirmRequired": "Type ELIMINAR (uppercase) to confirm",
+    "deleteAccountError": "Couldn't delete the account. Try again or contact us.",
+    "deleteAccountDeleting": "Deleting..."
   },
   "login": {
     "title": "Ergania",

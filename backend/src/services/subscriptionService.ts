@@ -44,12 +44,30 @@ export async function getOrCreateSubscription(userId: string, userEmail?: string
   }
   if (data) return data
 
+  // Si este correo ya eliminó una cuenta antes, no le regalamos otro trial de
+  // 3 días — borrar y volver a registrarse con el mismo correo no debe ser una
+  // forma gratis de estirar el trial indefinidamente.
+  let alreadyDeletedBefore = false
+  if (userEmail) {
+    const { data: priorDeletion } = await supabaseAdmin
+      .from('account_deletion_requests')
+      .select('id')
+      .eq('email', userEmail)
+      .limit(1)
+      .maybeSingle()
+    alreadyDeletedBefore = !!priorDeletion
+  }
+
   const trialEndsAt = new Date()
   trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS)
 
   const { data: created, error } = await supabaseAdmin
     .from('subscriptions')
-    .insert({ user_id: userId, status: 'trial', trial_ends_at: trialEndsAt.toISOString() })
+    .insert({
+      user_id: userId,
+      status: alreadyDeletedBefore ? 'expired' : 'trial',
+      trial_ends_at: trialEndsAt.toISOString(),
+    })
     .select()
     .single()
 
@@ -63,12 +81,51 @@ export async function getOrCreateSubscription(userId: string, userEmail?: string
   // por defecto) y se avisa una vez al día en un solo correo, para no competir
   // por el cupo diario de Resend con emails que sí son urgentes.
   // El correo de bienvenida AL USUARIO sí va al toque, aparte de ese digest.
-  if (userEmail) {
+  // No se manda si ya había eliminado la cuenta antes — no aplica un mensaje
+  // de "bienvenida" y sin trial nuevo el correo confundiría más de lo que ayuda.
+  if (userEmail && !alreadyDeletedBefore) {
     const { sendWelcomeEmail } = await import('./emailService')
     sendWelcomeEmail(userEmail).catch(err => console.error('[welcome-email] error:', err.message))
   }
 
   return created
+}
+
+// Tablas con datos propios del usuario, todas llaveadas por user_email.
+// perfiles cascadea a perfil_profiles/perfil_cvs/perfil_portals (FK ON DELETE
+// CASCADE, ver migración 004/005) — no hace falta listarlas aparte.
+// payment_receipts y contact_messages/contact_replies NO se tocan: los
+// primeros por obligación legal de conservar registros de pago (ver Política
+// de Privacidad), los segundos porque son el historial de soporte, no datos
+// de perfil.
+const USER_DATA_TABLES = [
+  'tracker_entries', 'pipeline_jobs', 'applications', 'reports',
+  'profiles', 'cvs', 'portals_config', 'perfiles',
+]
+
+// Llamado tanto por el borrado self-service (Configuración) como por el admin
+// (panel Admin) — un solo lugar que deja el motivo registrado, limpia los
+// datos del usuario y borra la cuenta de Supabase Auth.
+export async function requestAccountDeletion(userId: string, email: string, motivo: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+
+  const { error: insertErr } = await supabaseAdmin
+    .from('account_deletion_requests')
+    .insert({ user_id: userId, email, motivo })
+  if (insertErr) {
+    console.error('[account-deletion/log] error:', insertErr.message)
+    throw insertErr
+  }
+
+  for (const table of USER_DATA_TABLES) {
+    const { error } = await supabaseAdmin.from(table).delete().eq('user_email', email)
+    if (error) console.error(`[account-deletion/${table}] error:`, error.message)
+  }
+
+  await supabaseAdmin.from('subscriptions').delete().eq('user_id', userId)
+
+  const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId)
+  if (authErr) throw authErr
 }
 
 export async function sendPendingSignupDigest() {

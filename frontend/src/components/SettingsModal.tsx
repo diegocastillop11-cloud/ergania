@@ -1,6 +1,12 @@
-import { X, Settings, Sun, Moon } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { X, Settings, Sun, Moon, AlertTriangle, Loader2 } from 'lucide-react'
 import { useTheme } from '../lib/ThemeContext'
 import { useTranslation, Language } from '../lib/i18n/LanguageContext'
+import { useAuth } from '../lib/AuthContext'
+import { deleteAccount } from '../lib/subscriptionApi'
+
+const DELETE_CONFIRM_WORD = 'ELIMINAR'
 
 interface Props {
   onClose: () => void
@@ -9,6 +15,29 @@ interface Props {
 export default function SettingsModal({ onClose }: Props) {
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useTranslation()
+  const { signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const [showDelete, setShowDelete] = useState(false)
+  const [reason, setReason]         = useState('')
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting]     = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  const handleDelete = async () => {
+    setDeleteError('')
+    if (!reason.trim()) { setDeleteError(t('settingsModal.deleteAccountReasonRequired')); return }
+    if (confirmText !== DELETE_CONFIRM_WORD) { setDeleteError(t('settingsModal.deleteAccountConfirmRequired')); return }
+    setDeleting(true)
+    try {
+      await deleteAccount(reason.trim())
+      await signOut()
+      navigate('/')
+    } catch {
+      setDeleteError(t('settingsModal.deleteAccountError'))
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -67,6 +96,73 @@ export default function SettingsModal({ onClose }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Zona de peligro */}
+          <div className="border-t border-[var(--border-default)] pt-5">
+            <label className="text-xs text-red-400 mb-2 flex items-center gap-1.5 font-medium">
+              <AlertTriangle size={13} /> {t('settingsModal.dangerZone')}
+            </label>
+
+            {!showDelete ? (
+              <button
+                onClick={() => setShowDelete(true)}
+                className="w-full py-2 rounded-lg text-sm font-medium border border-red-900/50 text-red-400 hover:bg-red-950/30 transition-colors"
+              >
+                {t('settingsModal.deleteAccount')}
+              </button>
+            ) : (
+              <div className="space-y-3 bg-red-950/10 border border-red-900/40 rounded-xl p-4">
+                <p className="text-xs text-[var(--text-tertiary)]">{t('settingsModal.deleteAccountDesc')}</p>
+
+                <div>
+                  <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">
+                    {t('settingsModal.deleteAccountReasonLabel')}
+                  </label>
+                  <textarea
+                    value={reason}
+                    onChange={e => setReason(e.target.value)}
+                    placeholder={t('settingsModal.deleteAccountReasonPlaceholder')}
+                    rows={3}
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:border-red-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">
+                    {t('settingsModal.deleteAccountConfirmLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={e => setConfirmText(e.target.value)}
+                    placeholder={DELETE_CONFIRM_WORD}
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-gray-600 focus:outline-none focus:border-red-500 font-mono"
+                  />
+                </div>
+
+                {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white transition-colors"
+                  >
+                    {deleting
+                      ? <><Loader2 size={13} className="animate-spin" /> {t('settingsModal.deleteAccountDeleting')}</>
+                      : t('settingsModal.deleteAccountButton')}
+                  </button>
+                  <button
+                    onClick={() => { setShowDelete(false); setReason(''); setConfirmText(''); setDeleteError('') }}
+                    disabled={deleting}
+                    className="px-3 py-2 rounded-lg text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {t('settingsModal.deleteAccountCancel')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
