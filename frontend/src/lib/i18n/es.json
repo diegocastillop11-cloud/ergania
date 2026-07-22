@@ -55,6 +55,7 @@
     "createAccount": "Crear cuenta",
     "privacyNote": "Tus datos se guardan en tu propia cuenta y nadie más los ve.",
     "contactQuestion": "¿Tienes dudas? Contáctanos",
+    "faqLink": "Preguntas frecuentes",
     "forgotPasswordLink": "¿Olvidaste tu contraseña?",
     "forgotTitle": "Recuperar contraseña",
     "forgotDescription": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
@@ -886,6 +887,15 @@
     "newThread": "Nueva consulta",
     "backToChat": "Volver a la conversación",
     "chatPlaceholder": "Escribe un mensaje..."
+  },
+  "preguntas": {
+    "title": "Preguntas frecuentes",
+    "subtitle": "Resuelve tus dudas antes de escribirnos",
+    "loading": "Cargando preguntas...",
+    "empty": "Aún no hay preguntas frecuentes publicadas.",
+    "notFound": "¿No encontraste tu respuesta? Escríbenos y te responderemos por correo — tu conversación no se pierde, solo responde el correo que te llegue para seguir hablando con nosotros.",
+    "askOwn": "Enviar mi pregunta",
+    "backToLogin": "← Volver a iniciar sesión"
   },
   "guideModal": {
     "title": "Cómo usar Ergania",

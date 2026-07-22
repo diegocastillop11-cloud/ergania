@@ -131,9 +131,20 @@ export async function sendContactReply(to: string, name: string, replyText: stri
       <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin-top:8px;">
         <p style="margin:0;white-space:pre-wrap;color:#333;">${replyText}</p>
       </div>
-      <p style="font-size:12px;color:#999;margin-top:24px;">
-        Ergania · Si tienes más dudas, responde directamente a este correo.
+      <p style="color:#333;font-size:13px;margin-top:16px;">
+        ¿Tienes más dudas? Responde directamente a este correo — la conversación sigue en el mismo
+        hilo, no se pierde.
       </p>
+      <div style="text-align:center;margin:24px 0 8px;">
+        <a href="https://ergania.com/login?tab=registro"
+           style="background:#C4633A;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block;">
+          Crear cuenta gratis
+        </a>
+      </div>
+      <p style="font-size:11px;color:#999;text-align:center;">
+        Con una cuenta puedes ver el historial completo de esta conversación dentro de Ergania.
+      </p>
+      <p style="font-size:12px;color:#999;margin-top:24px;">Ergania</p>
     </div>
   `
   await sendEmail(to, 'Respuesta a tu mensaje — Ergania', html)

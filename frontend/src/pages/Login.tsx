@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
-import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff, MessageSquare } from 'lucide-react'
+import { Mail, Lock, Loader, AlertCircle, UserPlus, LogIn, Eye, EyeOff, MessageSquare, HelpCircle } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import ContactModal from '../components/ContactModal'
 import { useTranslation } from '../lib/i18n/LanguageContext'
@@ -96,6 +96,24 @@ export default function Login() {
           <img src="/logo.png" alt="Ergania" className="w-14 h-14 rounded-2xl mb-4 shadow-lg object-contain" />
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('login.title')}</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">{t('login.tagline')}</p>
+
+          {/* Contacto — arriba del card para que no se corte si la página se abre al 100% de zoom */}
+          <div className="flex items-center gap-4 mt-4">
+            <button
+              onClick={() => setShowContact(true)}
+              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+            >
+              <MessageSquare size={12} />
+              {t('login.contactQuestion')}
+            </button>
+            <Link
+              to="/preguntas"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+            >
+              <HelpCircle size={12} />
+              {t('login.faqLink')}
+            </Link>
+          </div>
         </div>
 
         {/* Card */}
@@ -292,16 +310,6 @@ export default function Login() {
         <p className="text-center text-xs text-[var(--text-faint)] mt-6">
           {t('login.privacyNote')}
         </p>
-
-        <div className="flex justify-center mt-3">
-          <button
-            onClick={() => setShowContact(true)}
-            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-          >
-            <MessageSquare size={12} />
-            {t('login.contactQuestion')}
-          </button>
-        </div>
 
       </div>
 
