@@ -237,6 +237,66 @@ export async function deleteSalaryAnchor(req: Request, res: Response) {
   res.json({ ok: true })
 }
 
+export async function listFaqs(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('faqs')
+    .select('*')
+    .order('order_index', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ faqs: data ?? [] })
+}
+
+export async function createFaq(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { question, answer, order_index, published } = req.body ?? {}
+  if (!question?.trim() || !answer?.trim()) {
+    return res.status(400).json({ error: 'Pregunta y respuesta son requeridas' })
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('faqs')
+    .insert({
+      question: question.trim(), answer: answer.trim(),
+      order_index: Number.isFinite(order_index) ? order_index : 0,
+      published: published ?? true,
+    })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+}
+
+export async function updateFaq(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { question, answer, order_index, published } = req.body ?? {}
+  const { error } = await supabaseAdmin
+    .from('faqs')
+    .update({ question, answer, order_index, published })
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
+export async function deleteFaq(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('faqs').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
 export async function listReports(req: Request, res: Response) {
   const user = await getAdminUser(req)
   if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })

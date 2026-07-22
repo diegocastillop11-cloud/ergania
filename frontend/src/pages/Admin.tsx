@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone, HelpCircle,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -157,6 +157,139 @@ function SalaryAnchorsTab({ token }: { token: string }) {
             ))}
           </tbody>
         </table>
+      )}
+    </div>
+  )
+}
+
+interface Faq {
+  id: string
+  question: string
+  answer: string
+  order_index: number
+  published: boolean
+}
+
+const EMPTY_FAQ_FORM = { question: '', answer: '', order_index: '0', published: true }
+
+function FaqsTab({ token }: { token: string }) {
+  const [faqs, setFaqs] = useState<Faq[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(EMPTY_FAQ_FORM)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${API_BASE}/api/admin/faqs`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setFaqs(d.faqs || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const startEdit = (f: Faq) => {
+    setEditingId(f.id)
+    setForm({ question: f.question, answer: f.answer, order_index: String(f.order_index), published: f.published })
+  }
+
+  const cancelEdit = () => { setEditingId(null); setForm(EMPTY_FAQ_FORM) }
+
+  const submit = async () => {
+    setError('')
+    const payload = {
+      question: form.question.trim(),
+      answer: form.answer.trim(),
+      order_index: Number(form.order_index) || 0,
+      published: form.published,
+    }
+    if (!payload.question || !payload.answer) {
+      setError('Pregunta y respuesta son requeridas')
+      return
+    }
+    try {
+      const res = await fetch(
+        editingId ? `/api/admin/faqs/${editingId}` : '/api/admin/faqs',
+        { method: editingId ? 'PUT' : 'POST', headers: authHeaders, body: JSON.stringify(payload) }
+      )
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Error al guardar') }
+      cancelEdit()
+      load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta pregunta frecuente?')) return
+    await fetch(`${API_BASE}/api/admin/faqs/${id}`, { method: 'DELETE', headers: authHeaders })
+    load()
+  }
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">{editingId ? 'Editar pregunta' : 'Agregar pregunta frecuente'}</h3>
+        <div className="space-y-3">
+          <input placeholder="Pregunta" value={form.question}
+            onChange={e => setForm(f => ({ ...f, question: e.target.value }))}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          <textarea placeholder="Respuesta" rows={3} value={form.answer}
+            onChange={e => setForm(f => ({ ...f, answer: e.target.value }))}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none" />
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-gray-400">
+              Orden
+              <input type="number" value={form.order_index}
+                onChange={e => setForm(f => ({ ...f, order_index: e.target.value }))}
+                className="w-20 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+            </label>
+            <label className="flex items-center gap-2 text-xs text-gray-400">
+              <input type="checkbox" checked={form.published}
+                onChange={e => setForm(f => ({ ...f, published: e.target.checked }))} />
+              Publicada
+            </label>
+          </div>
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={submit} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+            {editingId ? <Pencil size={13} /> : <Plus size={13} />} {editingId ? 'Guardar cambios' : 'Agregar'}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+              <X size={13} /> Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-500 text-sm">Cargando...</p>
+      ) : faqs.length === 0 ? (
+        <p className="text-gray-600 text-sm text-center py-6">Sin preguntas frecuentes configuradas aún.</p>
+      ) : (
+        <div className="space-y-2">
+          {faqs.map(f => (
+            <div key={f.id} className="border border-gray-800 rounded-lg p-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 font-mono">#{f.order_index}</span>
+                  <p className="text-sm text-white font-medium truncate">{f.question}</p>
+                  {!f.published && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700 shrink-0">Oculta</span>}
+                </div>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{f.answer}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => startEdit(f)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
+                <button onClick={() => remove(f.id)} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -1222,7 +1355,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
+  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'faqs' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
@@ -1421,6 +1554,7 @@ export default function Admin() {
                 { key: 'payments',      label: 'Pagos',               icon: CreditCard    },
                 { key: 'messages',      label: 'Mensajes contacto',  icon: MessageSquare },
                 { key: 'salaries',      label: 'Salarios',           icon: DollarSign    },
+                { key: 'faqs',          label: 'Preguntas frecuentes', icon: HelpCircle  },
                 { key: 'gastos',        label: 'Planilla de gastos', icon: Receipt       },
                 { key: 'reportes',      label: 'Reportes',           icon: FileText      },
                 { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
@@ -1744,6 +1878,9 @@ export default function Admin() {
 
             {/* Anclas salariales */}
             {tab === 'salaries' && session && <SalaryAnchorsTab token={session.access_token} />}
+
+            {/* Preguntas frecuentes */}
+            {tab === 'faqs' && session && <FaqsTab token={session.access_token} />}
 
             {/* Planilla de gastos */}
             {tab === 'gastos' && session && <GastosTab token={session.access_token} />}

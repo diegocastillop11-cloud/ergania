@@ -55,6 +55,7 @@
     "createAccount": "Create account",
     "privacyNote": "Your data is stored in your own account and no one else sees it.",
     "contactQuestion": "Have questions? Contact us",
+    "faqLink": "Frequently asked questions",
     "forgotPasswordLink": "Forgot your password?",
     "forgotTitle": "Reset password",
     "forgotDescription": "Enter your email and we'll send you a link to reset your password.",
@@ -886,6 +887,15 @@
     "newThread": "New inquiry",
     "backToChat": "Back to conversation",
     "chatPlaceholder": "Type a message..."
+  },
+  "preguntas": {
+    "title": "Frequently asked questions",
+    "subtitle": "Find your answer before writing to us",
+    "loading": "Loading questions...",
+    "empty": "No frequently asked questions published yet.",
+    "notFound": "Didn't find your answer? Write to us and we'll reply by email — your conversation isn't lost, just reply to the email you receive to keep talking with us.",
+    "askOwn": "Send my question",
+    "backToLogin": "← Back to log in"
   },
   "guideModal": {
     "title": "How to use Ergania",

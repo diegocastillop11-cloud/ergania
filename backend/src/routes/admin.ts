@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getStats, setUserTestFlag, deleteUser, replyToMessage, getMessageThread,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
+  listFaqs, createFaq, updateFaq, deleteFaq,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
   listReceipts, downloadReceiptPdf,
   listBulkEmails, createBulkEmail, updateBulkEmail, deleteBulkEmail,
@@ -28,6 +29,11 @@ router.get('/salary-anchors', listSalaryAnchors)
 router.post('/salary-anchors', createSalaryAnchor)
 router.put('/salary-anchors/:id', updateSalaryAnchor)
 router.delete('/salary-anchors/:id', deleteSalaryAnchor)
+
+router.get('/faqs', listFaqs)
+router.post('/faqs', createFaq)
+router.put('/faqs/:id', updateFaq)
+router.delete('/faqs/:id', deleteFaq)
 
 router.get('/reports', listReports)
 router.post('/reports', createReport)

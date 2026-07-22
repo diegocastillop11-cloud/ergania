@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { useAuth } from './lib/AuthContext'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
+import Preguntas from './pages/Preguntas'
 import ResetPassword from './pages/ResetPassword'
 import Landing from './pages/Landing'
 import Privacy from './pages/Privacy'
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/" element={<Root />} />
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/preguntas" element={<Preguntas />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       {/* Redirect pages from MercadoPago — must be public, no auth required */}
       <Route path="/subscription/success" element={<SubscriptionCallback />} />
