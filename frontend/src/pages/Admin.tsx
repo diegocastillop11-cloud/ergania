@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { ADMIN_EMAILS } from '../lib/adminEmails'
@@ -1385,6 +1385,39 @@ export default function Admin() {
     loadStats()
   }, [session, user, authLoading])
 
+  // Poll el resumen completo (no solo los hilos abiertos) para que un mensaje nuevo
+  // — o una respuesta del usuario en un hilo ya viejo — aparezca solo, sin necesidad
+  // de recargar la página a mano. Antes solo se cargaba una vez al entrar.
+  useEffect(() => {
+    if (!session) return
+    const interval = setInterval(loadStats, 20000)
+    return () => clearInterval(interval)
+  }, [session])
+
+  const unreadMsgCount = stats?.contactMessages.filter(m => m.admin_unread).length ?? 0
+  const prevUnreadRef = useRef<number | null>(null)
+
+  // Título de la pestaña + sonido: si el conteo de no leídos sube (llegó algo nuevo),
+  // avisa aunque el admin tenga la pestaña de fondo o esté en otra sección del panel.
+  // prevUnreadRef arranca en null a propósito: en la primera carga puede haber
+  // mensajes sin leer de antes, y eso no debe sonar como si fuera nuevo recién ahora.
+  useEffect(() => {
+    document.title = unreadMsgCount > 0 ? `(${unreadMsgCount}) Mensajes nuevos — Ergania Admin` : 'Ergania Admin'
+    if (prevUnreadRef.current !== null && unreadMsgCount > prevUnreadRef.current) {
+      try {
+        const ctx = new AudioContext()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.frequency.value = 880
+        gain.gain.setValueAtTime(0.15, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+        osc.start(); osc.stop(ctx.currentTime + 0.4)
+      } catch { /* audio no disponible (autoplay bloqueado, etc.) — no es crítico */ }
+    }
+    prevUnreadRef.current = unreadMsgCount
+  }, [unreadMsgCount])
+
   // "Nuevo" en usuarios que no estaban la última vez que se cargó este panel —
   // se marca al comparar contra localStorage y se "consume" (deja de ser nuevo)
   // apenas se guarda la lista actual, o sea en el próximo refresh ya no aparece.
@@ -1570,6 +1603,11 @@ export default function Admin() {
                   }`}
                 >
                   <Icon size={16} /> <span className="flex-1 text-left">{label}</span>
+                  {key === 'messages' && unreadMsgCount > 0 && (
+                    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                      {unreadMsgCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -1601,8 +1639,13 @@ export default function Admin() {
                 <button
                   key={label}
                   onClick={() => setTab(tabTarget)}
-                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
+                  className="relative bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-700 hover:bg-gray-800/40 transition-colors"
                 >
+                  {tabTarget === 'messages' && unreadMsgCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                      {unreadMsgCount} nuevo{unreadMsgCount > 1 ? 's' : ''}
+                    </span>
+                  )}
                   <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center mb-3`}>
                     <Icon size={18} className={color} />
                   </div>
@@ -1837,13 +1880,18 @@ export default function Admin() {
                 {stats.contactMessages.map(m => {
                   const open = openMsgIds.has(m.id)
                   return (
-                    <div key={m.id} className="px-5 py-4">
+                    <div key={m.id} className={`px-5 py-4 ${m.admin_unread ? 'bg-red-950/20 border-l-4 border-red-500' : ''}`}>
                       <button
                         onClick={() => toggleMsg(m.id)}
                         className="w-full text-left hover:opacity-80 transition-opacity"
                       >
                         <div className="flex items-center justify-between mb-1 gap-2">
                           <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            {m.admin_unread && (
+                              <span className="bg-red-600 text-white text-xs font-extrabold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wide animate-pulse">
+                                Nuevo
+                              </span>
+                            )}
                             <span className="text-white font-medium text-sm">{m.name}</span>
                             <span className="text-gray-500 text-xs break-all">{m.email}</span>
                             <span className="bg-gray-800 text-gray-400 text-xs px-2 py-0.5 rounded-full shrink-0">{m.category}</span>
@@ -1852,9 +1900,6 @@ export default function Admin() {
                             )}
                             {m.user_id && (
                               <span className="bg-blue-600/20 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Chat</span>
-                            )}
-                            {m.admin_unread && (
-                              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Sin leer" />
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
