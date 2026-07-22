@@ -653,6 +653,7 @@
     "matchesFound": "{{count}} encontradas · {{added}} al pipeline",
     "noOffersFound": "Ofertas no encontradas — intenta buscar de forma manual en el portal.",
     "searchManuallyLink": "Buscar manualmente →",
+    "stoppedNote": "Detenido por el usuario antes de terminar.",
     "alreadyAppliedSuffix": " · {{count}} ya postuladas",
     "matchLabel": "match{{plural}}",
     "summary": {

@@ -2461,30 +2461,22 @@ export const scanPortals = async (req: Request, res: Response) => {
     const searchQueries = queries.length > 0 ? queries : positive.slice(0, 4)
     send('search_info', { queries: portalQueries, keywords_positivas: positive.slice(0, 10) })
 
-    // FIX 2: Incluir por defecto los portales principales de Chile (GetOnBoard, LinkedIn,
-    // Indeed, Computrabajo) más cualquier portal adicional configurado por el usuario —
-    // pero respetando el toggle "enabled" de la página Portales si el usuario apagó
-    // alguno de estos 4 explícitamente. Antes se ignoraba ese toggle para estos 4 y
-    // siempre se escaneaban aunque el usuario los hubiera desactivado.
+    // La página Portales es la fuente de verdad: se escanea exactamente lo que el
+    // usuario tiene agregado y activado ahí, ni más ni menos. Antes se forzaba a
+    // incluir GetOnBoard/LinkedIn/Indeed/Computrabajo SIEMPRE, incluso si el usuario
+    // nunca los había agregado (o los había apagado) — el escáner terminaba golpeando
+    // portales invisibles para el usuario en la UI, sin forma de sacarlos. Solo se usa
+    // este set de 4 como default de arranque para una cuenta que todavía no configuró
+    // ningún portal (tracked_companies vacío) — una vez que el usuario tiene su propia
+    // lista, esa lista manda por completo.
     const BASE_PORTALS = [
       { name: 'GetOnBoard', careers_url: 'https://www.getonbrd.com', enabled: true },
       { name: 'LinkedIn Chile', careers_url: 'https://www.linkedin.com/jobs/', enabled: true },
       { name: 'Indeed Chile', careers_url: 'https://cl.indeed.com', enabled: true },
       { name: 'Computrabajo Chile', careers_url: 'https://cl.computrabajo.com', enabled: true },
     ]
-    const baseDomains = new Set(BASE_PORTALS.map(p => new URL(p.careers_url).hostname))
-    const trackedByDomain = new Map<string, svc.Portal>()
-    for (const p of (portalsConfig.tracked_companies || [])) {
-      try { trackedByDomain.set(new URL(p.careers_url).hostname, p) } catch { /* skip malformed url */ }
-    }
-    const activeBasePortals = BASE_PORTALS.filter(p => {
-      const cfg = trackedByDomain.get(new URL(p.careers_url).hostname)
-      return !cfg || cfg.enabled !== false
-    })
-    // Portales extra del usuario (empresas, otros portales no base)
-    const extraPortals = (portalsConfig.tracked_companies || [])
-      .filter(p => p.enabled && (() => { try { return !baseDomains.has(new URL(p.careers_url).hostname) } catch { return false } })())
-    const portals = [...activeBasePortals, ...extraPortals]
+    const configuredPortals = (portalsConfig.tracked_companies || []).filter(p => p.enabled)
+    const portals = configuredPortals.length > 0 ? configuredPortals : BASE_PORTALS
 
     send('start', { total: portals.length, mensaje: `Escaneando ${portals.length} portales · ${searchQueries.length} consultas` })
 

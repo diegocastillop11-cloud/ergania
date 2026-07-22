@@ -343,7 +343,20 @@ export default function CareersScanner() {
   const stopScan = useCallback(() => {
     abortRef.current?.abort()
     setScanning(false)
-  }, [])
+    // Los portales que quedaron a mitad de camino (sin portal_done/portal_error todavía)
+    // nunca van a recibir ese evento — el servidor deja de mandar datos apenas detecta
+    // que el cliente se desconectó. Sin esto, la tarjeta se quedaba pulsando "Analizando
+    // con IA..." para siempre, dando la sensación de que "Detener" no hizo nada.
+    setPortalEvents(prev => {
+      const next: Record<string, PortalEvent> = {}
+      for (const [nombre, event] of Object.entries(prev)) {
+        next[nombre] = event.encontradas !== undefined || event.error
+          ? event
+          : { ...event, encontradas: 0, agregadas: 0, ofertas: [], nota: t('careersScanner.stoppedNote') }
+      }
+      return next
+    })
+  }, [t])
 
   // Permite que el botón "Escanear Ofertas" del Dashboard (/scanner?autostart=1)
   // llegue directo a este módulo y arranque el escaneo sin que el usuario tenga
