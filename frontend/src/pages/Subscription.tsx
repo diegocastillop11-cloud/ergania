@@ -1,5 +1,5 @@
 import { Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, CreditCard, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSubscription } from '../hooks/useSubscription'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
@@ -25,6 +25,24 @@ export default function Subscription() {
   const [cancelled, setCancelled]         = useState(false)
 
   const checkoutLoading = checkoutProvider !== null
+
+  // window.location.href a MercadoPago/PayPal navega fuera del SPA sin que la promesa
+  // resuelva nunca — si el usuario presiona "atrás" sin pagar, el navegador restaura la
+  // página desde bfcache con el estado de loading tal cual quedó, dejando los botones
+  // bloqueados para siempre. `pageshow` con `persisted: true` detecta esa restauración.
+  const checkoutProviderRef = useRef(checkoutProvider)
+  useEffect(() => { checkoutProviderRef.current = checkoutProvider }, [checkoutProvider])
+
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted && checkoutProviderRef.current !== null) {
+        setCheckoutProvider(null)
+        setError(t('subscription.checkoutIncomplete'))
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [t])
 
   const handleSubscribe = async () => {
     setCheckoutProvider('mercadopago')
