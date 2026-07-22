@@ -493,7 +493,7 @@ export default function CareersPortals() {
     )
   }
 
-  const companies = config.tracked_companies || []
+  const companies = (config.tracked_companies || []).filter(c => c.name?.trim() && c.careers_url?.trim())
 
   const togglePortal = (idx: number) => {
     const updated = [...companies]
@@ -520,9 +520,9 @@ export default function CareersPortals() {
     setShowAdd(false)
   }
 
-  const filtered = filterCountry === 'all'
-    ? companies
-    : companies.filter(c => c.country === filterCountry)
+  const filtered = companies
+    .map((portal, idx) => ({ portal, idx }))
+    .filter(({ portal }) => filterCountry === 'all' || portal.country === filterCountry)
 
   const distinctCountries = Array.from(
     new Set(companies.map(c => c.country).filter((c): c is string => Boolean(c)))
@@ -778,17 +778,14 @@ export default function CareersPortals() {
             <p className="text-sm mt-1">{t('careersPortals.emptyState2')}</p>
           </div>
         ) : (
-          filtered.map((portal) => {
-            const realIdx = companies.findIndex(c => c.careers_url === portal.careers_url)
-            return (
-              <PortalCard
-                key={portal.careers_url}
-                portal={portal}
-                onToggle={() => togglePortal(realIdx)}
-                onDelete={() => deletePortal(realIdx)}
-              />
-            )
-          })
+          filtered.map(({ portal, idx }) => (
+            <PortalCard
+              key={idx}
+              portal={portal}
+              onToggle={() => togglePortal(idx)}
+              onDelete={() => deletePortal(idx)}
+            />
+          ))
         )}
       </div>
 

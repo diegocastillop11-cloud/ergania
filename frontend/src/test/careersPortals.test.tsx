@@ -111,4 +111,34 @@ describe('CareersPortals — regiones de job boards internacionales', () => {
     expect(filterButtons.length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'España' })).toBeInTheDocument()
   })
+
+  it('oculta entradas guardadas con nombre/url vacío y borra la fila correcta aunque compartan careers_url vacío', async () => {
+    getMock.mockResolvedValue({
+      data: {
+        ...emptyConfig,
+        tracked_companies: [
+          { name: '', careers_url: '', country: '', enabled: true },
+          { name: 'GetOnBoard Chile', careers_url: 'https://www.getonbrd.com/jobs', country: 'Chile', enabled: true },
+          { name: '', careers_url: '', country: '', enabled: false },
+        ],
+      },
+    })
+    renderPortals()
+
+    await waitFor(() => screen.getByText('Portales Recomendados'))
+
+    // Solo la entrada con datos reales se muestra en la lista guardada (más de una vez porque
+    // también aparece tachada en "Portales Recomendados" — se valida que no haya filas vacías).
+    expect(screen.getAllByText('GetOnBoard Chile').length).toBeGreaterThan(0)
+
+    // Botón de borrar de la única fila visible en la lista guardada
+    const trashButtons = document.querySelectorAll('button svg.lucide-trash2')
+    expect(trashButtons.length).toBe(1)
+    fireEvent.click(trashButtons[0].closest('button')!)
+
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1))
+    const [, payload] = putMock.mock.calls[0]
+    // El borrado debe eliminar GetOnBoard Chile (la fila real), no una de las filas vacías
+    expect(payload.tracked_companies.some((c: { name: string }) => c.name === 'GetOnBoard Chile')).toBe(false)
+  })
 })
