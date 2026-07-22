@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Smartphone, X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
+import { logApkDownload } from '../lib/logApkDownload'
 
 const DISMISS_KEY = 'ergania:androidBannerDismissed'
 
@@ -23,6 +24,7 @@ export default function AndroidAppBanner() {
       <a
         href="/ergania.apk"
         download
+        onClick={logApkDownload}
         className="text-xs font-semibold text-[var(--text-primary)] bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
       >
         {t('dashboard.androidBanner.cta')}

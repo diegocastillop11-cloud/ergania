@@ -8,6 +8,7 @@ import { careersRoutes } from './routes/careers'
 import { subscriptionRoutes } from './routes/subscription'
 import { contactRoutes } from './routes/contact'
 import { adminRoutes } from './routes/admin'
+import { apkRoutes } from './routes/apk'
 
 const app = express()
 
@@ -37,6 +38,7 @@ app.use('/api/careers', careersRoutes)
 app.use('/api/subscription', subscriptionRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/apk', apkRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

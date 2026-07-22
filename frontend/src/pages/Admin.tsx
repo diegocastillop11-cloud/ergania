@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft, Menu,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -1194,6 +1194,7 @@ interface Stats {
   payments:        { userId: string; userEmail: string; paymentId: string; receiptId: string; amount: number; date: string }[]
   userList:        { id: string; email: string; fullName: string | null; createdAt: string; sub: any; evaluationsCount: number }[]
   contactMessages: { id: string; name: string; email: string; category: string; message: string; created_at: string; replied_at: string | null; reply_text: string | null; user_id: string | null; admin_unread: boolean }[]
+  apkDownloadsCount: number
 }
 
 const SEEN_USERS_KEY = 'ergania_admin_seen_users'
@@ -1280,12 +1281,14 @@ export default function Admin() {
 
   const handleLogout = async () => { await signOut(); navigate('/login') }
 
-  const toggleTestFlag = async (u: { id: string; sub: any }) => {
+  const toggleTestFlag = async (u: { id: string; email: string; sub: any }) => {
     if (!session) return
+    const willBeTest = !u.sub?.is_test
+    if (willBeTest && !window.confirm(`¿Marcar a ${u.email} como cuenta de prueba?`)) return
     await fetch(`${API_BASE}/api/admin/users/${u.id}/test`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isTest: !u.sub?.is_test }),
+      body: JSON.stringify({ isTest: willBeTest }),
     })
     loadStats()
   }
@@ -1452,12 +1455,13 @@ export default function Admin() {
         {tab === 'suscripciones' && (
           <>
             {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               {([
                 { icon: Users,      label: 'Usuarios totales', value: stats.totalUsers,                      color: 'text-blue-400',   bg: 'bg-blue-600/10',   tabTarget: 'suscripciones' },
                 { icon: Crown,      label: 'Suscritos activos', value: stats.statusCount['active'] ?? 0,     color: 'text-green-400',  bg: 'bg-green-600/10',  tabTarget: 'suscripciones' },
                 { icon: TrendingUp, label: 'Ingresos/mes',      value: `$${revenue.toLocaleString('es-CL')}`, color: 'text-orange-400', bg: 'bg-orange-600/10', tabTarget: 'payments' },
                 { icon: MessageSquare, label: 'Mensajes recibidos', value: stats.contactMessages.length,     color: 'text-purple-400', bg: 'bg-purple-600/10', tabTarget: 'messages' },
+                { icon: Smartphone, label: 'Descargas APK',    value: stats.apkDownloadsCount,               color: 'text-emerald-400', bg: 'bg-emerald-600/10', tabTarget: 'suscripciones' },
               ] as const).map(({ icon: Icon, label, value, color, bg, tabTarget }) => (
                 <button
                   key={label}
@@ -1542,9 +1546,11 @@ export default function Admin() {
                       return sortDir === 'asc' ? cmp : -cmp
                     })
                     .map(u => {
-                    const s = STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' }
-                    const vence = u.sub?.current_period_end ?? u.sub?.trial_ends_at
                     const isTest = !!u.sub?.is_test
+                    // Cuentas de prueba no vencen ni deben leerse como el estado real de
+                    // la suscripción — se muestran siempre como Activo y sin fecha.
+                    const s = isTest ? STATUS_LABEL.active : (STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' })
+                    const vence = isTest ? null : (u.sub?.current_period_end ?? u.sub?.trial_ends_at)
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                         <td className="px-5 py-3 text-white font-medium">{u.fullName || <span className="text-gray-600">—</span>}</td>
@@ -1559,7 +1565,12 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString('es-CL')}</td>
+                        <td className="px-5 py-3 text-gray-400">
+                          {new Date(u.createdAt).toLocaleDateString('es-CL')}{' '}
+                          <span className="text-gray-600 text-xs">
+                            {new Date(u.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </td>
                         <td className="px-5 py-3"><span className={`font-semibold ${s.color}`}>{s.label}</span></td>
                         <td className="px-5 py-3 text-gray-400">
                           {vence
