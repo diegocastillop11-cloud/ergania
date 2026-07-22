@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ApiKeySettingsModal from '../careers/ApiKeySettingsModal'
 import SubscriptionBanner from '../subscription/SubscriptionBanner'
+import UpdateAvailableBanner from '../UpdateAvailableBanner'
 import { useSubscription } from '../../hooks/useSubscription'
 import { useIdleLogout } from '../../hooks/useIdleLogout'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
@@ -64,6 +65,7 @@ export default function Layout() {
           {blocked
             ? <Navigate to="/subscription" replace />
             : <>
+                <UpdateAvailableBanner />
                 <SubscriptionBanner sub={sub} />
                 <Outlet />
               </>

@@ -940,6 +940,10 @@
     "paid": "Pago"
   },
   "layout": {
-    "openMenu": "Abrir menú"
+    "openMenu": "Abrir menú",
+    "updateBanner": {
+      "text": "Hay una nueva versión de la app disponible.",
+      "cta": "Actualizar (v{{version}})"
+    }
   }
 }

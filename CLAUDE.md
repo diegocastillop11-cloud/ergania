@@ -176,11 +176,13 @@ mano (ver paso 0 abajo).
 **Procedimiento** (repetir después de cada push a `master` que toque `frontend/`, regla 7 de
 "Reglas generales"):
 
-0. Subir la versión: `ANDROID_APK_VERSION` en `frontend/src/lib/appVersion.ts` y
-   `versionCode`/`versionName` en `frontend/android/app/build.gradle` (mantenerlos sincronizados —
-   el primero es lo que ve el usuario antes de descargar, el segundo es lo que Android reporta ya
-   instalado). Solo si este push incluye cambios de frontend visibles al usuario; un rebuild sin
-   cambios reales no necesita subir versión.
+0. Subir la versión en 3 lugares (mantenerlos sincronizados): `ANDROID_APK_VERSION` en
+   `frontend/src/lib/appVersion.ts` (lo que ve el usuario antes de descargar), `versionCode`/
+   `versionName` en `frontend/android/app/build.gradle` (lo que Android reporta ya instalado), y
+   `CURRENT_APK_VERSION` en `backend/src/config/apkVersion.ts` (lo que expone `GET
+   /api/apk/version` para que la app instalada sepa si hay una versión más nueva y muestre el
+   aviso de actualización — `UpdateAvailableBanner.tsx`). Solo si este push incluye cambios de
+   frontend visibles al usuario; un rebuild sin cambios reales no necesita subir versión.
 1. `gh workflow run android-build.yml --ref master` — dispara el build firmado en GitHub Actions
    (usa el keystore guardado en Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
    `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`).

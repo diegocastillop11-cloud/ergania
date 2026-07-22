@@ -940,6 +940,10 @@
     "paid": "Paid"
   },
   "layout": {
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "updateBanner": {
+      "text": "A new version of the app is available.",
+      "cta": "Update (v{{version}})"
+    }
   }
 }
