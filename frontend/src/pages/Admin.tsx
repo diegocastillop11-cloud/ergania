@@ -172,12 +172,13 @@ interface Faq {
 
 const EMPTY_FAQ_FORM = { question: '', answer: '', order_index: '0', published: true }
 
-function FaqsTab({ token }: { token: string }) {
+export function FaqsTab({ token }: { token: string }) {
   const [faqs, setFaqs] = useState<Faq[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(EMPTY_FAQ_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const formRef = useRef<HTMLDivElement>(null)
 
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
@@ -194,6 +195,10 @@ function FaqsTab({ token }: { token: string }) {
   const startEdit = (f: Faq) => {
     setEditingId(f.id)
     setForm({ question: f.question, answer: f.answer, order_index: String(f.order_index), published: f.published })
+    // El form de edición está arriba de la lista — sin este scroll, editar un item
+    // más abajo en la lista deja el form pre-llenado fuera de la vista y parece
+    // que el click "no hizo nada" (reportado por un admin no-principal).
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const cancelEdit = () => { setEditingId(null); setForm(EMPTY_FAQ_FORM) }
@@ -231,7 +236,7 @@ function FaqsTab({ token }: { token: string }) {
 
   return (
     <div className="p-5 space-y-5">
-      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+      <div ref={formRef} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-semibold text-white">{editingId ? 'Editar pregunta' : 'Agregar pregunta frecuente'}</h3>
         <div className="space-y-3">
           <input placeholder="Pregunta" value={form.question}
@@ -284,8 +289,8 @@ function FaqsTab({ token }: { token: string }) {
                 <p className="text-xs text-gray-500 mt-1 line-clamp-2">{f.answer}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => startEdit(f)} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
-                <button onClick={() => remove(f.id)} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
+                <button onClick={() => startEdit(f)} aria-label={`Editar pregunta: ${f.question}`} className="p-1 text-gray-500 hover:text-blue-400"><Pencil size={14} /></button>
+                <button onClick={() => remove(f.id)} aria-label={`Eliminar pregunta: ${f.question}`} className="p-1 text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
