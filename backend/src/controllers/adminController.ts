@@ -2,14 +2,12 @@ import { Request, Response } from 'express'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
 import * as subscriptionSvc from '../services/subscriptionService'
+import { isAdminEmail } from '../config/adminEmails'
 
 const multer = require('multer') as typeof import('multer')
 export const uploadGastoArchivoMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('archivo')
 
-const ADMIN_EMAILS = ['ergania.ai@gmail.com', 'diego.castillop11@gmail.com', 'emesmediacontact@gmail.com']
-function isAdmin(email: string | undefined | null): boolean {
-  return !!email && ADMIN_EMAILS.includes(email)
-}
+const isAdmin = isAdminEmail
 
 const TIPO_LABEL: Record<string, string> = {
   correccion: 'Corrección',
