@@ -38,6 +38,7 @@ careersRoutes.get('/reports', ctrl.listReports)
 careersRoutes.get('/reports/:slug', ctrl.getReport)
 
 careersRoutes.post('/evaluate', ctrl.evaluateJob)
+careersRoutes.get('/evaluation-limit', ctrl.getEvaluationLimitStatus)
 careersRoutes.post('/generate-cv', ctrl.generateCV)
 careersRoutes.post('/salary-recommendation', ctrl.getSalaryRecommendation)
 

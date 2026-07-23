@@ -11,6 +11,7 @@ import {
 import { PipelineJob, EvaluationResult, RECOMENDACION_CONFIG, SCORE_COLOR } from '../../types/careers'
 import { COUNTRIES } from '../../lib/countries'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
+import EvaluationLimitBanner from '../../components/careers/EvaluationLimitBanner'
 
 
 interface OfferClickData {
@@ -274,6 +275,7 @@ export default function CareersPipeline() {
       })
       qc.invalidateQueries({ queryKey: ['careers-tracker'] })
       qc.invalidateQueries({ queryKey: ['careers-stats'] })
+      qc.invalidateQueries({ queryKey: ['careers-eval-limit'] })
       if (url) removeMut.mutate(url)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown }; status?: number }; message?: string }
@@ -288,6 +290,7 @@ export default function CareersPipeline() {
         msg = e?.message || t('careersPipeline.genericError')
       }
       setState({ loading: false, error: msg })
+      qc.invalidateQueries({ queryKey: ['careers-eval-limit'] })
     }
   }
 
@@ -307,6 +310,8 @@ export default function CareersPipeline() {
         <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t('careersPipeline.title')}</h2>
         <p className="text-[var(--text-tertiary)] mt-1">{t('careersPipeline.subtitle')}</p>
       </div>
+
+      <EvaluationLimitBanner />
 
       {/* Evaluación directa */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">

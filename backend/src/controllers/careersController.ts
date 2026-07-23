@@ -270,20 +270,90 @@ const TRIAL_EVAL_TOTAL_OVERRIDES: Record<string, number> = {
   'juanaranc@gmail.com': 25,
   'yarymora1975@gmail.com': 20,
 }
-const EVAL_LIMIT_MESSAGE = 'Acercándose al límite de evaluaciones diarias, intenta mañana nuevamente'
+const EVAL_DAILY_LIMIT_MESSAGE = 'Límite de evaluaciones diarias excedido, intenta en 24hrs'
+const EVAL_TOTAL_LIMIT_MESSAGE = 'Alcanzaste el límite de evaluaciones de tu prueba gratuita'
 
-async function checkEvaluationLimit(userEmail: string, userId: string): Promise<void> {
-  const sub = await getSubscriptionStatus(userId)
-  if (sub.status !== 'trial') return // solo se limita durante el trial
+interface EvalLimitInfo {
+  applies: boolean
+  dailyLimit: number
+  dailyUsed: number
+  totalLimit: number
+  totalUsed: number
+  dailyBlocked: boolean
+  totalBlocked: boolean
+  resetsAt: string
+}
 
+function nextUtcMidnight(): string {
+  const d = new Date()
+  d.setUTCHours(24, 0, 0, 0)
+  return d.toISOString()
+}
+
+async function getEvaluationLimitInfo(userEmail: string, userId: string): Promise<EvalLimitInfo> {
   const totalLimit = TRIAL_EVAL_TOTAL_OVERRIDES[userEmail.toLowerCase()] ?? TRIAL_EVAL_TOTAL_LIMIT
+  const sub = await getSubscriptionStatus(userId)
+  if (sub.status !== 'trial') {
+    return { applies: false, dailyLimit: TRIAL_EVAL_DAILY_LIMIT, dailyUsed: 0, totalLimit, totalUsed: 0, dailyBlocked: false, totalBlocked: false, resetsAt: nextUtcMidnight() }
+  }
+
   const tracker = await svc.readTracker(userEmail)
   const today = new Date().toISOString().split('T')[0]
-  const todayCount = tracker.filter(e => e.fecha === today).length
+  const dailyUsed = tracker.filter(e => e.fecha === today).length
+  const totalUsed = tracker.length
 
-  if (tracker.length >= totalLimit || todayCount >= TRIAL_EVAL_DAILY_LIMIT) {
-    throw Object.assign(new Error(EVAL_LIMIT_MESSAGE), { status: 429, isEvalLimit: true })
+  return {
+    applies: true,
+    dailyLimit: TRIAL_EVAL_DAILY_LIMIT,
+    dailyUsed,
+    totalLimit,
+    totalUsed,
+    dailyBlocked: dailyUsed >= TRIAL_EVAL_DAILY_LIMIT,
+    totalBlocked: totalUsed >= totalLimit,
+    resetsAt: nextUtcMidnight(),
   }
+}
+
+export const getEvaluationLimitStatus = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    res.json(await getEvaluationLimitInfo(userEmail, userId))
+  } catch (err: unknown) {
+    res.status((err as {status?:number}).status ?? 500).json({ error: (err as Error).message })
+  }
+}
+
+// Reserva el cupo ANTES de scrapear/llamar a la IA (puede tardar 10-30s) — si el
+// cupo se chequeara recién al guardar la entrada al final, dos evaluaciones casi
+// simultáneas (ej. el usuario clickeando varias filas de la Cola de Evaluación
+// seguidas) leerían el mismo conteo desactualizado y ambas pasarían el límite.
+// Reservar de inmediato acota la ventana de carrera al tiempo de este insert, no
+// a todo el request. Si la evaluación falla o no identifica la oferta, se borra
+// la reserva (ver catch/422 en evaluateJob) para no gastarle cupo al usuario.
+async function reserveEvaluationSlot(userEmail: string, userId: string): Promise<string | null> {
+  const info = await getEvaluationLimitInfo(userEmail, userId)
+  if (!info.applies) return null
+
+  if (info.totalBlocked) {
+    throw Object.assign(new Error(EVAL_TOTAL_LIMIT_MESSAGE), { status: 429, isEvalLimit: true })
+  }
+  if (info.dailyBlocked) {
+    throw Object.assign(new Error(EVAL_DAILY_LIMIT_MESSAGE), { status: 429, isEvalLimit: true })
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+  const placeholder = await svc.addTrackerEntry({
+    fecha: today,
+    empresa: 'Evaluando…',
+    rol: '',
+    score: null,
+    estado: 'Evaluada',
+    pdf: false,
+    reportSlug: null,
+    url: '',
+    notas: '',
+  }, userEmail)
+  return placeholder.id
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -519,8 +589,12 @@ export const listReports = async (req: Request, res: Response) => {
 // ── Evaluate ──────────────────────────────────────────────────────────────────
 
 export const evaluateJob = async (req: Request, res: Response) => {
+  let reservationId: string | null = null
+  let userEmail: string | undefined
   try {
-    const { email: userEmail, userId } = await getUser(req)
+    const user = await getUser(req)
+    userEmail = user.email
+    const userId = user.userId
     await requireActiveSubscription(userId)
     const { jd: jdRaw, url, empresa, rol, force } = req.body
     if (!jdRaw && !url) return res.status(400).json({ error: 'Se requiere el texto de la oferta (jd) o una URL' })
@@ -553,7 +627,7 @@ export const evaluateJob = async (req: Request, res: Response) => {
       }
     }
 
-    await checkEvaluationLimit(userEmail, userId)
+    reservationId = await reserveEvaluationSlot(userEmail, userId)
 
     // Intentar scrapear la URL si el JD está vacío o es solo una referencia corta
     let scrapedContent = ''
@@ -824,6 +898,7 @@ PRIMERO incluye EXACTAMENTE este JSON con los datos clave (completo, sin cortar)
     // (empresa por sí sola no basta: el modelo a veces adivina el dueño del portal como
     // "empresa" aunque no haya podido leer la oferta real.)
     if (!finalRol || meta.score === undefined || meta.score === null) {
+      if (reservationId) { try { await svc.deleteTrackerEntry(reservationId, userEmail) } catch { /* noop */ } }
       return res.status(422).json({
         error: 'Oferta no identificada: no fue posible evaluarla a partir de la URL. Intenta con otra URL, o pega el texto completo de la oferta en "Pegar texto del JD".',
       })
@@ -859,7 +934,7 @@ ${fullText}
 `
     await svc.saveReport(reportSlug, reportContent, userEmail)
 
-    const entry = await svc.addTrackerEntry({
+    const entryFields = {
       fecha: today,
       empresa: finalEmpresa || 'Empresa no especificada',
       rol: finalRol || 'Cargo no especificado',
@@ -874,13 +949,25 @@ ${fullText}
       salario_usd: (meta.salario_usd as string) || undefined,
       pais: finalCountry.nombre,
       moneda: finalCountry.moneda,
-    }, userEmail)
+    }
+    // Si ya se reservó el cupo (trial), actualiza esa misma fila en vez de crear una
+    // nueva — de lo contrario quedaría duplicada (la reserva + esta).
+    let entry: svc.TrackerEntry
+    if (reservationId) {
+      await svc.updateTrackerEntry(reservationId, entryFields, userEmail)
+      entry = { id: reservationId, ...entryFields }
+    } else {
+      entry = await svc.addTrackerEntry(entryFields, userEmail)
+    }
 
     if (url) await svc.removeFromPipeline(url, userEmail)
 
     res.json({ ok: true, entry, reportSlug, meta, report: reportContent })
   } catch (err: unknown) {
     console.error('evaluateJob error:', err)
+    if (reservationId && userEmail) {
+      try { await svc.deleteTrackerEntry(reservationId, userEmail) } catch { /* noop */ }
+    }
     const e = err as { status?: number; isEvalLimit?: boolean; message?: string }
     if (!res.headersSent) {
       if (e.isEvalLimit) res.status(429).json({ error: e.message })

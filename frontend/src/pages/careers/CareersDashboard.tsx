@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
 import AndroidAppBanner from '../../components/AndroidAppBanner'
+import EvaluationLimitBanner from '../../components/careers/EvaluationLimitBanner'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
 import { CareerStats, TrackerEntry, ESTADO_CONFIG, SCORE_COLOR } from '../../types/careers'
@@ -181,6 +182,7 @@ export default function CareersDashboard() {
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Ergania</h2>
           <p className="text-[var(--text-tertiary)] mt-1">{t('dashboard.subtitle')}</p>
+          <div className="mt-3"><EvaluationLimitBanner /></div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
           <button

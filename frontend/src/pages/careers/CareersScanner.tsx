@@ -392,10 +392,12 @@ export default function CareersScanner() {
       setConfirmation({ ...result, url })
       qc.invalidateQueries({ queryKey: ['careers-tracker'] })
       qc.invalidateQueries({ queryKey: ['careers-stats'] })
+      qc.invalidateQueries({ queryKey: ['careers-eval-limit'] })
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: unknown } } }
       const rawErr = e?.response?.data?.error
       setEvalError(typeof rawErr === 'string' && rawErr ? rawErr : t('careersPipeline.genericError'))
+      qc.invalidateQueries({ queryKey: ['careers-eval-limit'] })
     }
     finally { setEvaluatingUrl(null) }
   }, [qc, t])
