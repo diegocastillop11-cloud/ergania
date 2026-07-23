@@ -139,7 +139,7 @@
     }
   },
   "landing": {
-    "nav": { "features": "Funciones", "pricing": "Precios", "login": "Iniciar sesión", "tryNow": "Probar ahora" },
+    "nav": { "features": "Funciones", "pricing": "Precios", "faq": "Preguntas frecuentes", "login": "Iniciar sesión", "tryNow": "Probar ahora" },
     "hero": {
       "badge": "IA para tu búsqueda laboral",
       "title1": "Encuentra tu trabajo ideal.",

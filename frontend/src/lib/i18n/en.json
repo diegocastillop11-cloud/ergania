@@ -139,7 +139,7 @@
     }
   },
   "landing": {
-    "nav": { "features": "Features", "pricing": "Pricing", "login": "Log in", "tryNow": "Try now" },
+    "nav": { "features": "Features", "pricing": "Pricing", "faq": "FAQ", "login": "Log in", "tryNow": "Try now" },
     "hero": {
       "badge": "AI for your job search",
       "title1": "Find your ideal job.",

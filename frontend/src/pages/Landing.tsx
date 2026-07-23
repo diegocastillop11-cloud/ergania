@@ -170,6 +170,7 @@ export default function Landing() {
           <div className="lp-hide-sm" style={{ display: 'flex', gap: 32 }}>
             <a href="#como-funciona" className="lp-nav-link">{t('landing.nav.features')}</a>
             <a href="#precios"       className="lp-nav-link">{t('landing.nav.pricing')}</a>
+            <Link to="/preguntas"    className="lp-nav-link">{t('landing.nav.faq')}</Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, border: `1px solid ${C.line}`, borderRadius: 8, padding: 2 }}>
@@ -412,6 +413,7 @@ export default function Landing() {
           <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap', justifyContent: 'center' }}>
             <a href="#como-funciona" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.features')}</a>
             <a href="#precios" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.pricing')}</a>
+            <Link to="/preguntas" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.faq')}</Link>
             <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.footer.privacy')}</Link>
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(241,242,251,.28)' }}>
