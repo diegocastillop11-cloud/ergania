@@ -258,6 +258,34 @@ async function requireActiveSubscription(userId: string): Promise<void> {
   }
 }
 
+// Límite de evaluaciones en trial — detectado 2026-07-23: varios usuarios evaluando
+// 15-22 ofertas en los 3 días de trial (cada evaluación gasta un web_search real).
+// Estándar nuevo: 4 por día, 12 en total en el trial. Los 3 emails de abajo ya habían
+// superado ese tope cuando se aplicó la regla — se les da un techo total mayor en vez
+// de cortarlos en seco, con el mismo límite diario de 4 para lo que les queda de trial.
+const TRIAL_EVAL_DAILY_LIMIT = 4
+const TRIAL_EVAL_TOTAL_LIMIT = 12
+const TRIAL_EVAL_TOTAL_OVERRIDES: Record<string, number> = {
+  'rfideli88@gmail.com': 25,
+  'juanaranc@gmail.com': 25,
+  'yarymora1975@gmail.com': 20,
+}
+const EVAL_LIMIT_MESSAGE = 'Acercándose al límite de evaluaciones diarias, intenta mañana nuevamente'
+
+async function checkEvaluationLimit(userEmail: string, userId: string): Promise<void> {
+  const sub = await getSubscriptionStatus(userId)
+  if (sub.status !== 'trial') return // solo se limita durante el trial
+
+  const totalLimit = TRIAL_EVAL_TOTAL_OVERRIDES[userEmail.toLowerCase()] ?? TRIAL_EVAL_TOTAL_LIMIT
+  const tracker = await svc.readTracker(userEmail)
+  const today = new Date().toISOString().split('T')[0]
+  const todayCount = tracker.filter(e => e.fecha === today).length
+
+  if (tracker.length >= totalLimit || todayCount >= TRIAL_EVAL_DAILY_LIMIT) {
+    throw Object.assign(new Error(EVAL_LIMIT_MESSAGE), { status: 429, isEvalLimit: true })
+  }
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export const getStats = async (req: Request, res: Response) => {
@@ -524,6 +552,8 @@ export const evaluateJob = async (req: Request, res: Response) => {
         }
       }
     }
+
+    await checkEvaluationLimit(userEmail, userId)
 
     // Intentar scrapear la URL si el JD está vacío o es solo una referencia corta
     let scrapedContent = ''
@@ -851,7 +881,11 @@ ${fullText}
     res.json({ ok: true, entry, reportSlug, meta, report: reportContent })
   } catch (err: unknown) {
     console.error('evaluateJob error:', err)
-    if (!res.headersSent) res.status((err as {status?:number}).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    const e = err as { status?: number; isEvalLimit?: boolean; message?: string }
+    if (!res.headersSent) {
+      if (e.isEvalLimit) res.status(429).json({ error: e.message })
+      else res.status(e.status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    }
   }
 }
 

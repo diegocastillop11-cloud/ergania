@@ -247,6 +247,7 @@ export default function CareersScanner() {
   const [searchInfo, setSearchInfo] = useState<{ queries: string[]; keywords_positivas: string[] } | null>(null)
   const [evaluatingUrl, setEvaluatingUrl] = useState<string | null>(null)
   const [evalResult, setEvalResult] = useState<{ titulo: string; score: number; recomendacion: string } | null>(null)
+  const [evalError, setEvalError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<EvaluationConfirmation | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -370,6 +371,7 @@ export default function CareersScanner() {
 
   const evaluarOferta = useCallback(async (url: string, titulo: string, empresa: string, razon: string, ubicacion: string) => {
     setEvaluatingUrl(url)
+    setEvalError(null)
     try {
       const { data } = await api.post('/evaluate', {
         url,
@@ -390,9 +392,13 @@ export default function CareersScanner() {
       setConfirmation({ ...result, url })
       qc.invalidateQueries({ queryKey: ['careers-tracker'] })
       qc.invalidateQueries({ queryKey: ['careers-stats'] })
-    } catch { /* ignore */ }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: unknown } } }
+      const rawErr = e?.response?.data?.error
+      setEvalError(typeof rawErr === 'string' && rawErr ? rawErr : t('careersPipeline.genericError'))
+    }
     finally { setEvaluatingUrl(null) }
-  }, [qc])
+  }, [qc, t])
 
   const portalList = Object.values(portalEvents).slice().sort((a, b) => (b.seenAt || 0) - (a.seenAt || 0))
   const doneCount = portalList.filter(p => p.encontradas !== undefined || p.error).length
@@ -479,6 +485,13 @@ export default function CareersScanner() {
               {t('careersScanner.summary.goEvaluateNote1')} <strong className="text-[var(--text-primary)]">{t('careersScanner.summary.goEvaluateNoteLink')}</strong> {t('careersScanner.summary.goEvaluateNote2')}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Error de evaluación rápida (ej. límite diario de evaluaciones en trial) */}
+      {evalError && (
+        <div className="bg-red-900/20 border border-red-800/40 rounded-xl p-4">
+          <p className="text-red-400 text-sm">{evalError}</p>
         </div>
       )}
 
