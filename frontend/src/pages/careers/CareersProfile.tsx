@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   User, FileText, Save, Loader2, Check, Edit3,
   EyeOff, ChevronDown, ChevronUp, AlertCircle, MessageSquare,
-  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket, Download, X, Languages,
+  Linkedin, Copy, CheckCircle2, Sparkles, Upload, Rocket, Download, X, Languages, Clock,
 } from 'lucide-react'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
@@ -203,6 +203,7 @@ export default function CareersProfile() {
   // ── Import CV state ───────────────────────────────────────────────────────
   const [cvImporting, setCvImporting] = useState(false)
   const [cvImportError, setCvImportError] = useState('')
+  const [cvImportTransient, setCvImportTransient] = useState(false)
   const [cvImportSuccess, setCvImportSuccess] = useState(false)
 
   const handleImportCv = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,6 +212,7 @@ export default function CareersProfile() {
     e.target.value = ''
     setCvImporting(true)
     setCvImportError('')
+    setCvImportTransient(false)
     setCvImportSuccess(false)
     try {
       const provider = loadLlmProvider()
@@ -288,8 +290,9 @@ export default function CareersProfile() {
       setTimeout(() => setCvImportSuccess(false), 4000)
       analyzeCompatibility()
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string }
+      const e = err as { response?: { data?: { error?: string; transient?: boolean } }; message?: string }
       setCvImportError(e?.response?.data?.error || e?.message || 'Error al importar CV')
+      setCvImportTransient(!!e?.response?.data?.transient)
     } finally {
       setCvImporting(false)
     }
@@ -546,7 +549,17 @@ export default function CareersProfile() {
         </p>
       </div>
 
-      {cvImportError && (
+      {cvImportError && cvImportTransient && (
+        <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4 flex items-start gap-3">
+          <Clock size={18} className="text-blue-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-blue-300 text-sm font-medium">Un momento, no es nada de tu lado</p>
+            <p className="text-blue-400 text-xs mt-1">{cvImportError}</p>
+          </div>
+          <button onClick={() => setCvImportError('')} className="ml-auto text-blue-500 hover:text-blue-300 text-xs">✕</button>
+        </div>
+      )}
+      {cvImportError && !cvImportTransient && (
         <div className="bg-red-900/20 border border-red-700/50 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
           <div>

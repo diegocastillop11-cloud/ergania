@@ -31,6 +31,8 @@
     "dangerZone": "Danger zone",
     "deleteAccount": "Delete account",
     "deleteAccountDesc": "This permanently deletes your account and all your data. This cannot be undone.",
+    "deleteAccountPrivacyLinkPre": "Worried about what happens to your data? Check our",
+    "deleteAccountPrivacyLinkText": "Privacy Policy",
     "deleteAccountReasonLabel": "Tell us why you're leaving (required)",
     "deleteAccountReasonPlaceholder": "E.g. no longer job hunting, found another tool, etc.",
     "deleteAccountConfirmLabel": "Type ELIMINAR to confirm",

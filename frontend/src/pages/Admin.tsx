@@ -855,6 +855,16 @@ function BulkEmailFields({ form, setForm }: { form: BulkEmailFormState; setForm:
         placeholder="Cuerpo del correo. Deja una línea en blanco entre párrafos. Las líneas que empiecen con '- ' se muestran como lista."
         value={form.cuerpo} onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))} rows={8}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono" />
+      <p className="text-[11px] text-gray-500">
+        Tags disponibles (se reemplazan por el dato real de cada destinatario al enviar — funcionan en título, asunto, cuerpo y botones):{' '}
+        <code className="text-gray-400">{'{{nombre}}'}</code>{', '}
+        <code className="text-gray-400">{'{{plan}}'}</code>{', '}
+        <code className="text-gray-400">{'{{monto}}'}</code>{', '}
+        <code className="text-gray-400">{'{{fecha}}'}</code>{', '}
+        <code className="text-gray-400">{'{{proxima_renovacion}}'}</code>{', '}
+        <code className="text-gray-400">{'{{dias_trial}}'}</code>{', '}
+        <code className="text-gray-400">{'{{producto}}'}</code>. Si no hay dato para ese destinatario, el tag se borra en vez de mostrarse tal cual.
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input placeholder="Texto botón principal (opcional)" value={form.cta1_texto} onChange={e => setForm(f => ({ ...f, cta1_texto: e.target.value }))}
           className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />

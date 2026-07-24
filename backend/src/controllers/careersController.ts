@@ -96,8 +96,10 @@ function getClientForProvider(provider: LlmProvider, userApiKey?: string) {
   throw new Error(`Proveedor no reconocido: ${provider}`)
 }
 
-/** Convierte errores técnicos de IA en mensajes entendibles para el usuario */
-function friendlyAiError(err: unknown, provider?: LlmProvider): string {
+/** Convierte errores técnicos de IA en mensajes entendibles para el usuario.
+ * `transient=true` marca errores que no son culpa ni responsabilidad del usuario
+ * (sobrecarga, cuota del servidor, red) — el frontend los muestra sin alarma roja. */
+function classifyAiError(err: unknown, provider?: LlmProvider): { message: string; transient: boolean } {
   const e = err as { status?: number; message?: string; error?: { message?: string }; headers?: Record<string, string> }
   const status = e?.status
   const msg = e?.message || ''
@@ -118,21 +120,21 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
     : 'Gemini (gratis en aistudio.google.com)'
 
   if (status === 401 || status === 403 || msg.includes('401') || msg.includes('403') || apiMsg.toLowerCase().includes('api key') || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('invalid')) {
-    return `API Key de ${activeProvider} inválida o sin permisos (${status ?? 'auth error'}). Verifica tu key en el Dashboard → Configuración de IA.`
+    return { message: `API Key de ${activeProvider} inválida o sin permisos (${status ?? 'auth error'}). Verifica tu key en el Dashboard → Configuración de IA.`, transient: false }
   }
   if (status === 429 || msg.includes('429') || apiMsg.toLowerCase().includes('rate') || apiMsg.toLowerCase().includes('quota')) {
     const isTokenLimit    = apiMsg.toLowerCase().includes('token') || apiMsg.toLowerCase().includes('tpm')
     const isQuotaExceeded = apiMsg.toLowerCase().includes('quota') || apiMsg.toLowerCase().includes('exceeded') || apiMsg.toLowerCase().includes('billing')
     if (isQuotaExceeded) {
-      return `Cuota diaria agotada en ${activeProvider}. Cambia a ${freeAlternative} en Dashboard → Configuración de IA.`
+      return { message: `Cuota diaria agotada en ${activeProvider}. Cambia a ${freeAlternative} en Dashboard → Configuración de IA.`, transient: true }
     }
     if (isTokenLimit) {
-      return `${activeProvider}: límite de tokens por minuto. Espera 60s y reintenta, o cambia a ${freeAlternative} en el Dashboard.`
+      return { message: `${activeProvider}: límite de tokens por minuto. Espera 60s y reintenta, o cambia a ${freeAlternative} en el Dashboard.`, transient: true }
     }
     if (provider === 'gemini') {
-      return `Gemini: límite de requests alcanzado (15 req/min en tier gratuito). Espera 1 minuto y reintenta. Si persiste, cambia a Groq (gratis, sin límites prácticos) en Dashboard → Configuración de IA.`
+      return { message: `Gemini: límite de requests alcanzado (15 req/min en tier gratuito). Espera 1 minuto y reintenta. Si persiste, cambia a Groq (gratis, sin límites prácticos) en Dashboard → Configuración de IA.`, transient: true }
     }
-    return `Límite de requests de ${activeProvider} alcanzado. Espera 1 minuto y reintenta, o cambia a ${freeAlternative} en el Dashboard.`
+    return { message: `Límite de requests de ${activeProvider} alcanzado. Espera 1 minuto y reintenta, o cambia a ${freeAlternative} en el Dashboard.`, transient: true }
   }
   // Créditos agotados en la cuenta del servidor (nuestra cuenta, no la del usuario) —
   // Anthropic devuelve esto como 400 con "credit balance is too low" en el mensaje.
@@ -142,27 +144,31 @@ function friendlyAiError(err: unknown, provider?: LlmProvider): string {
   const lowerMsg    = msg.toLowerCase()
   if (lowerApiMsg.includes('credit balance') || lowerMsg.includes('credit balance')
     || ((lowerApiMsg.includes('credit') || lowerMsg.includes('credit')) && (lowerApiMsg.includes('low') || lowerMsg.includes('low')))) {
-    return 'El servicio de IA no está disponible en este momento. Ya lo sabemos y lo estamos resolviendo — por favor intenta de nuevo más tarde.'
+    return { message: 'Estamos con alta demanda en este momento y tu solicitud no se pudo procesar — no es un problema con tu cuenta ni con tu archivo. Ya lo sabemos y lo estamos resolviendo. Prueba de nuevo en unos minutos.', transient: true }
   }
   if (status === 400) {
-    return `Error en la solicitud a ${activeProvider} (400).${apiMsg ? ` ${apiMsg}` : ' Puede ser un problema con el modelo o el formato.'}`
+    return { message: `Error en la solicitud a ${activeProvider} (400).${apiMsg ? ` ${apiMsg}` : ' Puede ser un problema con el modelo o el formato.'}`, transient: false }
   }
   if (status === 404) {
     if (provider === 'gemini') {
-      return `Gemini: API key inválida o sin acceso al modelo (404). Verifica que tu key sea de Google AI Studio (aistudio.google.com) y que empiece con "AIzaSy".`
+      return { message: `Gemini: API key inválida o sin acceso al modelo (404). Verifica que tu key sea de Google AI Studio (aistudio.google.com) y que empiece con "AIzaSy".`, transient: false }
     }
-    return `Modelo de ${activeProvider} no encontrado (404). Verifica tu API key o cambia de proveedor en el Dashboard.`
+    return { message: `Modelo de ${activeProvider} no encontrado (404). Verifica tu API key o cambia de proveedor en el Dashboard.`, transient: false }
   }
   // 500/529: Anthropic reporta sobrecarga temporal de su lado — no es un bug nuestro,
   // conviene decirle al usuario que reintente en vez de mostrarle un error técnico.
   if (status === 500 || status === 529 || lowerMsg.includes('overloaded') || lowerApiMsg.includes('overloaded')) {
-    return `El servicio de ${activeProvider} está temporalmente sobrecargado. Intenta de nuevo en unos minutos.`
+    return { message: `El servicio de ${activeProvider} está temporalmente sobrecargado. Intenta de nuevo en unos minutos.`, transient: true }
   }
   // Sin status HTTP (falla de red/conexión antes de llegar a la API)
   if (!status && (lowerMsg.includes('timeout') || lowerMsg.includes('econn') || lowerMsg.includes('network') || lowerMsg.includes('fetch failed'))) {
-    return `No se pudo conectar con ${activeProvider}. Revisa tu conexión e intenta de nuevo.`
+    return { message: `No se pudo conectar con ${activeProvider}. Revisa tu conexión e intenta de nuevo.`, transient: true }
   }
-  return apiMsg || msg || `Error desconocido al llamar a ${activeProvider}`
+  return { message: apiMsg || msg || `Error desconocido al llamar a ${activeProvider}`, transient: false }
+}
+
+function friendlyAiError(err: unknown, provider?: LlmProvider): string {
+  return classifyAiError(err, provider).message
 }
 
 
@@ -3025,7 +3031,7 @@ ${rawText.substring(0, 8000)}`
     res.json({ ok: true, data: parsed })
   } catch (err: unknown) {
     const provider = getProviderFromRequest(req)
-    const msg = friendlyAiError(err, normalizeProvider(provider))
-    res.status((err as {status?:number}).status ?? 500).json({ error: msg })
+    const { message, transient } = classifyAiError(err, normalizeProvider(provider))
+    res.status((err as {status?:number}).status ?? 500).json({ error: message, transient })
   }
 }

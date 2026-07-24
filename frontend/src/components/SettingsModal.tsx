@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { X, Settings, Sun, Moon, AlertTriangle, Loader2 } from 'lucide-react'
 import { useTheme } from '../lib/ThemeContext'
 import { useTranslation, Language } from '../lib/i18n/LanguageContext'
@@ -114,6 +114,13 @@ export default function SettingsModal({ onClose }: Props) {
             ) : (
               <div className="space-y-3 bg-red-950/10 border border-red-900/40 rounded-xl p-4">
                 <p className="text-xs text-[var(--text-tertiary)]">{t('settingsModal.deleteAccountDesc')}</p>
+
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  {t('settingsModal.deleteAccountPrivacyLinkPre')}{' '}
+                  <Link to="/privacidad" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                    {t('settingsModal.deleteAccountPrivacyLinkText')}
+                  </Link>
+                </p>
 
                 <div>
                   <label className="text-xs text-[var(--text-tertiary)] mb-1.5 block">

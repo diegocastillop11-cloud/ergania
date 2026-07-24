@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { supabaseAdmin } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
 import * as subscriptionSvc from '../services/subscriptionService'
@@ -93,6 +93,15 @@ async function getAdminUser(req: Request) {
   const { data, error } = await supabaseAdmin.auth.getUser(token)
   if (error || !data.user) return null
   return data.user
+}
+
+/** Gate de defensa en profundidad para todas las rutas admin — cada handler
+ * ya valida isAdmin() por su cuenta, pero esto evita que un handler nuevo
+ * quede expuesto si alguien olvida copiar el chequeo. */
+export async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  next()
 }
 
 export async function getStats(req: Request, res: Response) {
@@ -679,6 +688,77 @@ function escBulk(s: string | null | undefined) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// Merge fields de los correos masivos: {{nombre}}, {{monto}}, {{plan}},
+// {{fecha}}, {{proxima_renovacion}}, {{dias_trial}}, {{producto}}. Un tag sin
+// dato disponible para ese destinatario (ej. {{monto}} para alguien sin pagos
+// registrados) se borra en vez de mandarse literal — más limpio para el
+// usuario final que ver "{{monto}}" en el correo.
+function renderMergeFields(text: string | null | undefined, vars: Record<string, string>): string {
+  return (text || '').replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_, key: string) => vars[key.toLowerCase()] ?? '')
+}
+
+const MERGE_FIELD_SAMPLE: Record<string, string> = {
+  nombre: 'Nombre de ejemplo',
+  producto: 'Ergania',
+  plan: 'Ergania — Plan mensual',
+  monto: '$9.990 CLP',
+  fecha: new Date().toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
+  proxima_renovacion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
+  dias_trial: '2',
+}
+
+// Carga en batch (no un query por destinatario, un envío puede llegar a 300)
+// los datos reales para reemplazar los merge fields de arriba por persona.
+async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, Record<string, string>>> {
+  if (!supabaseAdmin || emails.length === 0) return {}
+
+  const [usersRes, perfilesRes, subsRes, receiptsRes] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    supabaseAdmin.from('perfiles').select('user_email, nombre').eq('is_active', true).in('user_email', emails),
+    supabaseAdmin.from('subscriptions').select('user_id, current_period_end, trial_ends_at'),
+    supabaseAdmin.from('payment_receipts').select('user_email, monto, moneda, plan, fecha').in('user_email', emails).order('fecha', { ascending: false }),
+  ])
+
+  const emailSet = new Set(emails)
+  const userIdByEmail: Record<string, string> = {}
+  for (const u of usersRes.data?.users ?? []) {
+    if (u.email && emailSet.has(u.email)) userIdByEmail[u.email] = u.id
+  }
+  const nombreByEmail: Record<string, string> = {}
+  for (const p of perfilesRes.data ?? []) nombreByEmail[p.user_email] = p.nombre
+
+  const subByUserId: Record<string, any> = {}
+  for (const s of subsRes.data ?? []) subByUserId[s.user_id] = s
+
+  // Ordenado por fecha desc arriba, así que la primera fila por email es la más reciente.
+  const latestReceiptByEmail: Record<string, any> = {}
+  for (const r of receiptsRes.data ?? []) {
+    if (!latestReceiptByEmail[r.user_email]) latestReceiptByEmail[r.user_email] = r
+  }
+
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })
+
+  const result: Record<string, Record<string, string>> = {}
+  for (const email of emails) {
+    const sub = subByUserId[userIdByEmail[email]]
+    const receipt = latestReceiptByEmail[email]
+    const daysLeft = sub?.trial_ends_at
+      ? Math.max(0, Math.ceil((new Date(sub.trial_ends_at).getTime() - Date.now()) / 86400000))
+      : undefined
+
+    result[email] = {
+      nombre: nombreByEmail[email] || email.split('@')[0],
+      producto: 'Ergania',
+      plan: receipt?.plan || 'Ergania — Plan mensual',
+      monto: receipt ? `$${Number(receipt.monto).toLocaleString('es-CL')} ${receipt.moneda}` : '',
+      fecha: receipt?.fecha ? fmtDate(receipt.fecha) : fmtDate(new Date().toISOString()),
+      proxima_renovacion: sub?.current_period_end ? fmtDate(sub.current_period_end) : '',
+      dias_trial: daysLeft !== undefined ? String(daysLeft) : '',
+    }
+  }
+  return result
+}
+
 function renderBulkEmailBody(cuerpo: string): string {
   const blocks = (cuerpo || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean)
   return blocks.map(block => {
@@ -695,28 +775,32 @@ function buildBulkEmailHtml(email: {
   titulo: string; cuerpo: string
   cta1_texto: string | null; cta1_url: string | null
   cta2_texto: string | null; cta2_url: string | null
-}): string {
+}, vars: Record<string, string> = {}): string {
   // Estilo deliberadamente "plano" (sin botón con fondo de color, sin header
   // con línea de marca) — un botón tipo marketing es una de las señales que
   // más pesa para que Gmail clasifique el correo como Promociones en vez de
   // Principal. La frase de darte de baja se mantiene: protege ante reportes
   // de spam aunque reste algo de chance de caer en Principal.
-  const cta1 = email.cta1_texto && email.cta1_url ? `
+  const titulo = renderMergeFields(email.titulo, vars)
+  const cuerpo = renderMergeFields(email.cuerpo, vars)
+  const cta1Texto = email.cta1_texto ? renderMergeFields(email.cta1_texto, vars) : email.cta1_texto
+  const cta2Texto = email.cta2_texto ? renderMergeFields(email.cta2_texto, vars) : email.cta2_texto
+  const cta1 = cta1Texto && email.cta1_url ? `
       <p style="margin:20px 0;">
         <a href="${escBulk(email.cta1_url)}" style="color:#C4633A;text-decoration:underline;font-weight:bold;">
-          ${escBulk(email.cta1_texto)}
+          ${escBulk(cta1Texto)}
         </a>
       </p>` : ''
-  const cta2 = email.cta2_texto && email.cta2_url ? `
+  const cta2 = cta2Texto && email.cta2_url ? `
       <p style="margin:0 0 20px;">
         <a href="${escBulk(email.cta2_url)}" style="color:#C4633A;text-decoration:underline;">
-          ${escBulk(email.cta2_texto)}
+          ${escBulk(cta2Texto)}
         </a>
       </p>` : ''
   return `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#333;">
-      <p style="font-weight:bold;font-size:16px;margin:0 0 16px;">${escBulk(email.titulo)}</p>
-      ${renderBulkEmailBody(email.cuerpo)}
+      <p style="font-weight:bold;font-size:16px;margin:0 0 16px;">${escBulk(titulo)}</p>
+      ${renderBulkEmailBody(cuerpo)}
       ${cta1}
       ${cta2}
       <p style="font-size:12px;color:#999;margin-top:24px;">
@@ -796,7 +880,10 @@ export async function getBulkEmailPreview(req: Request, res: Response) {
 
   const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
   if (error || !data) return res.status(404).json({ error: 'Correo no encontrado' })
-  res.json({ subject: data.asunto, html: buildBulkEmailHtml(data) })
+  res.json({
+    subject: renderMergeFields(data.asunto, MERGE_FIELD_SAMPLE),
+    html: buildBulkEmailHtml(data, MERGE_FIELD_SAMPLE),
+  })
 }
 
 export async function listBulkEmailSent(req: Request, res: Response) {
@@ -816,7 +903,11 @@ export async function listBulkEmailSent(req: Request, res: Response) {
 // Resend — no hay colas/workers en este proyecto (serverless function única),
 // así que un envío manual corre dentro de la misma request del botón
 // "Enviar correo", y uno programado corre dentro de la misma request del cron.
-async function sendBulkEmailBatch(bulkEmailId: string, subject: string, html: string, emails: string[]) {
+async function sendBulkEmailBatch(bulkEmailId: string, bulkEmail: {
+  asunto: string; titulo: string; cuerpo: string
+  cta1_texto: string | null; cta1_url: string | null
+  cta2_texto: string | null; cta2_url: string | null
+}, emails: string[]) {
   if (!supabaseAdmin) throw new Error('Sin conexión a base de datos')
 
   const { data: already } = await supabaseAdmin
@@ -826,6 +917,8 @@ async function sendBulkEmailBatch(bulkEmailId: string, subject: string, html: st
     .in('email', emails)
   const alreadySent = new Set((already ?? []).map((r: any) => r.email))
 
+  const mergeDataByEmail = await loadMergeDataForEmails(emails.filter(e => !alreadySent.has(e)))
+
   const { sendEmail } = await import('../services/emailService')
   const sent: string[] = []
   const skipped: string[] = []
@@ -834,6 +927,9 @@ async function sendBulkEmailBatch(bulkEmailId: string, subject: string, html: st
   for (const email of emails) {
     if (alreadySent.has(email)) { skipped.push(email); continue }
     try {
+      const vars = mergeDataByEmail[email] || {}
+      const subject = renderMergeFields(bulkEmail.asunto, vars)
+      const html = buildBulkEmailHtml(bulkEmail, vars)
       await sendEmail(email, subject, html)
       await supabaseAdmin.from('bulk_email_log').insert({ campaign: bulkEmailId, email })
       sent.push(email)
@@ -858,7 +954,7 @@ export async function sendBulkEmail(req: Request, res: Response) {
   const { data: bulkEmail, error: fetchErr } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
   if (fetchErr || !bulkEmail) return res.status(404).json({ error: 'Correo no encontrado' })
 
-  const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail.asunto, buildBulkEmailHtml(bulkEmail), emails)
+  const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail, emails)
   res.json(result)
 }
 
@@ -964,7 +1060,7 @@ export async function runScheduledBulkEmails(req: Request, res: Response) {
       const { data: bulkEmail } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', row.bulk_email_id).single()
       if (!bulkEmail) throw new Error('Correo asociado no existe')
       const emails = await loadTrialCandidates(row.max_evals)
-      const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail.asunto, buildBulkEmailHtml(bulkEmail), emails)
+      const result = await sendBulkEmailBatch(bulkEmail.id, bulkEmail, emails)
       await supabaseAdmin.from('scheduled_emails').update({ status: 'sent', sent_at: new Date().toISOString(), result }).eq('id', row.id)
       results.push({ id: row.id, ...result })
     } catch (err: unknown) {

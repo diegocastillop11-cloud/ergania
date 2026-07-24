@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  requireAdminAuth,
   getStats, setUserTestFlag, deleteUser, replyToMessage, getMessageThread,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listFaqs, createFaq, updateFaq, deleteFaq,
@@ -13,6 +14,12 @@ import {
 } from '../controllers/adminController'
 
 const router = Router()
+
+// Autenticado por CRON_SECRET (llamado por un cron job, no por una sesión de
+// usuario) — debe quedar antes del gate de sesión admin de abajo.
+router.get('/bulk-email/run-scheduled', runScheduledBulkEmails)
+
+router.use(requireAdminAuth)
 
 router.get('/stats', getStats)
 
@@ -51,7 +58,6 @@ router.post('/bulk-emails/:id/send', sendBulkEmail)
 router.get('/bulk-emails/:id/scheduled', listScheduledEmails)
 router.post('/bulk-emails/:id/scheduled', createScheduledEmail)
 router.delete('/scheduled/:id', deleteScheduledEmail)
-router.get('/bulk-email/run-scheduled', runScheduledBulkEmails)
 
 router.get('/gastos', listGastos)
 router.post('/gastos', createGasto)

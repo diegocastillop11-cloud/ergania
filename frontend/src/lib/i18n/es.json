@@ -31,6 +31,8 @@
     "dangerZone": "Zona de peligro",
     "deleteAccount": "Eliminar cuenta",
     "deleteAccountDesc": "Esta acción borra tu cuenta y todos tus datos de forma permanente. No se puede deshacer.",
+    "deleteAccountPrivacyLinkPre": "¿Te preocupa qué pasa con tus datos? Revisa nuestra",
+    "deleteAccountPrivacyLinkText": "Política de Privacidad",
     "deleteAccountReasonLabel": "Cuéntanos por qué te vas (obligatorio)",
     "deleteAccountReasonPlaceholder": "Ej: ya no estoy buscando trabajo, encontré otra herramienta, etc.",
     "deleteAccountConfirmLabel": "Escribe ELIMINAR para confirmar",
