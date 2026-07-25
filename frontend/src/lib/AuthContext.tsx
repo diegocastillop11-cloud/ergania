@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 import { translateAuthError } from './authErrors'
 import { signInWithGoogleNative } from './nativeAuth'
+import { SUBSCRIPTION_CACHE_KEY } from '../hooks/useSubscription'
 
 interface AuthContextType {
   user:    User | null
@@ -51,6 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT') {
         if (!userSignOut.current) sessionStorage.setItem('ergania:sessionClosed', '1')
         userSignOut.current = false
+        // No dejar el estado de suscripción de este usuario cacheado para el
+        // próximo que inicie sesión en la misma pestaña/equipo
+        sessionStorage.removeItem(SUBSCRIPTION_CACHE_KEY)
       }
     })
 
