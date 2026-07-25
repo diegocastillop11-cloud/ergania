@@ -161,12 +161,20 @@ export async function sendPendingSignupDigest() {
 
 export async function getSubscriptionStatus(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
-  let { data } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from('subscriptions')
     .select('*')
     .eq('user_id', userId)
     .single()
 
+  // PGRST116 = no rows found — caso normal si aún no se creó la fila.
+  // Cualquier otro error (DB caída, timeout) debe propagarse: si lo tratamos
+  // como "sin suscripción" el usuario ve la pantalla de cobro sin haber
+  // vencido de verdad.
+  if (error && error.code !== 'PGRST116') {
+    console.error('[sub/status] error:', error.message, error.code)
+    throw new Error(`DB error: ${error.message}`)
+  }
   if (!data) return { status: 'none' as const, daysLeft: 0 }
 
   // Cuenta exenta (admin/test) — siempre activa sin pago
@@ -523,11 +531,19 @@ export async function reconcileMercadoPagoPayments() {
 export async function cancelSubscription(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
 
-  const { data: sub } = await supabaseAdmin
+  const { data: sub, error: selectErr } = await supabaseAdmin
     .from('subscriptions')
     .select('payment_provider, paypal_subscription_id')
     .eq('user_id', userId)
     .single()
+
+  // Un error real acá (no "sin fila") no puede tratarse en silencio: si el
+  // usuario es de PayPal y no detectamos el provider, se salta la cancelación
+  // en PayPal y sigue cobrando cada mes aunque la app diga "cancelado".
+  if (selectErr && selectErr.code !== 'PGRST116') {
+    console.error('[cancel] error leyendo subscription:', selectErr.message, selectErr.code)
+    throw new Error(`DB error: ${selectErr.message}`)
+  }
 
   if (sub?.payment_provider === 'paypal' && sub.paypal_subscription_id) {
     try {
