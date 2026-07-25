@@ -1475,6 +1475,20 @@ export default function Admin() {
     loadStats()
   }
 
+  // is_exempt sí da acceso activo permanente sin pago (a diferencia de is_test,
+  // que solo excluye de métricas — ver getSubscriptionStatus en el backend)
+  const toggleExemptFlag = async (u: { id: string; email: string; sub: any }) => {
+    if (!session) return
+    const willBeExempt = !u.sub?.is_exempt
+    if (willBeExempt && !window.confirm(`¿Dar acceso permanente sin pago a ${u.email}?`)) return
+    await fetch(`${API_BASE}/api/admin/users/${u.id}/exempt`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isExempt: willBeExempt }),
+    })
+    loadStats()
+  }
+
   const deleteUserAccount = async (u: { id: string; email: string }) => {
     if (!session) return
     if (!window.confirm(`¿Eliminar la cuenta de ${u.email}? Esta acción no se puede deshacer.`)) return
@@ -1775,10 +1789,11 @@ export default function Admin() {
                     })
                     .map(u => {
                     const isTest = !!u.sub?.is_test
-                    // Cuentas de prueba no vencen ni deben leerse como el estado real de
-                    // la suscripción — se muestran siempre como Activo y sin fecha.
-                    const s = isTest ? STATUS_LABEL.active : (STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' })
-                    const vence = isTest ? null : (u.sub?.current_period_end ?? u.sub?.trial_ends_at)
+                    const isExempt = !!u.sub?.is_exempt
+                    // Cuentas de prueba o exentas no vencen ni deben leerse como el estado
+                    // real de la suscripción — se muestran siempre como Activo y sin fecha.
+                    const s = (isTest || isExempt) ? STATUS_LABEL.active : (STATUS_LABEL[u.sub?.status] ?? { label: '—', color: 'text-gray-600' })
+                    const vence = (isTest || isExempt) ? null : (u.sub?.current_period_end ?? u.sub?.trial_ends_at)
                     return (
                       <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                         <td className="px-5 py-3 text-white font-medium">{u.fullName || <span className="text-gray-600">—</span>}</td>
@@ -1790,6 +1805,9 @@ export default function Admin() {
                             )}
                             {isTest && (
                               <span className="bg-gray-700 text-gray-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Prueba</span>
+                            )}
+                            {isExempt && (
+                              <span className="bg-blue-900/60 text-blue-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Exento</span>
                             )}
                           </div>
                         </td>
@@ -1818,6 +1836,13 @@ export default function Admin() {
                             className={`p-1 ${isTest ? 'text-yellow-400 hover:text-gray-500' : 'text-gray-500 hover:text-yellow-400'}`}
                           >
                             <FlaskConical size={14} />
+                          </button>
+                          <button
+                            onClick={() => toggleExemptFlag(u)}
+                            title={isExempt ? 'Quitar acceso permanente sin pago' : 'Dar acceso permanente sin pago'}
+                            className={`p-1 ${isExempt ? 'text-blue-400 hover:text-gray-500' : 'text-gray-500 hover:text-blue-400'}`}
+                          >
+                            <Crown size={14} />
                           </button>
                           <button onClick={() => deleteUserAccount(u)} title="Eliminar usuario" className="p-1 text-gray-500 hover:text-red-400">
                             <Trash2 size={14} />

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import {
   requireAdminAuth,
-  getStats, setUserTestFlag, deleteUser, replyToMessage, getMessageThread,
+  getStats, setUserTestFlag, setUserExemptFlag, deleteUser, replyToMessage, getMessageThread,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
   listFaqs, createFaq, updateFaq, deleteFaq,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
@@ -24,6 +24,7 @@ router.use(requireAdminAuth)
 router.get('/stats', getStats)
 
 router.patch('/users/:id/test', setUserTestFlag)
+router.patch('/users/:id/exempt', setUserExemptFlag)
 router.delete('/users/:id', deleteUser)
 
 router.post('/messages/:id/reply', replyToMessage)

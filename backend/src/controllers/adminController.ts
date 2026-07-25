@@ -506,6 +506,24 @@ export async function setUserTestFlag(req: Request, res: Response) {
   res.json({ ok: true })
 }
 
+// Cuenta exenta: acceso activo permanente sin pago (getSubscriptionStatus la
+// devuelve siempre 'active'). Distinto de is_test, que solo excluye de métricas
+// pero sigue exigiendo pago — usar esto para cuentas internas/de prueba que sí
+// deben tener acceso siempre.
+export async function setUserExemptFlag(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { isExempt } = req.body ?? {}
+  const { error } = await supabaseAdmin
+    .from('subscriptions')
+    .update({ is_exempt: !!isExempt })
+    .eq('user_id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+}
+
 export async function deleteUser(req: Request, res: Response) {
   const admin = await getAdminUser(req)
   if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
