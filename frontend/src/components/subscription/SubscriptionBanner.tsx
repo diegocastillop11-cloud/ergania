@@ -17,7 +17,8 @@ export default function SubscriptionBanner({ sub }: Props) {
   // PayPal es Subscriptions (cobro automático) — no lo necesita.
   const renewalSoon = sub.status === 'active' && sub.daysLeft !== null && sub.daysLeft <= 3 && sub.paymentProvider !== 'paypal'
   const pendingInTrial = sub.status === 'pending_payment' && sub.daysLeft !== null && sub.daysLeft > 0
-  if (sub.loading || (sub.status === 'active' && !renewalSoon)) return null
+  // loadError sin estado confirmado: no mostrar nada hasta saber el estado real
+  if (sub.loading || (sub.loadError && sub.status === 'none') || (sub.status === 'active' && !renewalSoon)) return null
   if ((sub.status === 'trial' || renewalSoon || pendingInTrial) && dismissed) return null
 
   const loadingCheckout = loadingProvider !== null

@@ -6,6 +6,7 @@ export type SubscriptionState = {
   status: ComputedStatus['status']
   daysLeft: number | null
   isActive: boolean   // trial, active, o pending_payment dentro del trial
+  loadError: boolean  // el chequeo de estado falló (red/backend) — no es lo mismo que "vencido"
   paymentProvider?: 'mercadopago' | 'paypal'
   paymentSuspended: boolean
   openCheckout: () => Promise<void>
@@ -15,16 +16,21 @@ export type SubscriptionState = {
 }
 
 export function useSubscription(): SubscriptionState {
-  const [loading, setLoading]   = useState(true)
-  const [computed, setComputed] = useState<ComputedStatus>({ status: 'none', daysLeft: null })
+  const [loading, setLoading]     = useState(true)
+  const [computed, setComputed]   = useState<ComputedStatus | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
     try {
       const { computed } = await fetchSubscriptionStatus()
       setComputed(computed)
+      setLoadError(false)
     } catch {
-      // Not fatal — show as expired so the banner appears
-      setComputed({ status: 'expired', daysLeft: 0 })
+      // Falla transitoria (red, backend caído) — NO asumimos "vencido": eso
+      // bloquearía a un usuario que sí está pagando por un simple hiccup.
+      // Mantenemos el último estado conocido y solo marcamos el error para
+      // no mostrarle el cobro hasta poder confirmar el estado real.
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -47,18 +53,25 @@ export function useSubscription(): SubscriptionState {
     await load()
   }
 
+  const status = computed?.status ?? 'none'
+
   // pending_payment (checkout iniciado pero no confirmado) no bloquea mientras
   // le queden días del trial original — solo se le pide pagar cuando se le acaben
-  const isActive = computed.status === 'trial' || computed.status === 'active'
-    || (computed.status === 'pending_payment' && (computed.daysLeft ?? 0) > 0)
+  const confirmedActive = status === 'trial' || status === 'active'
+    || (status === 'pending_payment' && (computed?.daysLeft ?? 0) > 0)
+
+  // Si nunca se pudo cargar el estado real (loadError y sin datos previos),
+  // no bloqueamos por las dudas — un error de carga no es lo mismo que estar vencido.
+  const isActive = computed === null && loadError ? true : confirmedActive
 
   return {
     loading,
-    status: computed.status,
-    daysLeft: computed.daysLeft,
+    status,
+    daysLeft: computed?.daysLeft ?? null,
     isActive,
-    paymentProvider: computed.paymentProvider,
-    paymentSuspended: computed.paymentSuspended ?? false,
+    loadError,
+    paymentProvider: computed?.paymentProvider,
+    paymentSuspended: computed?.paymentSuspended ?? false,
     openCheckout,
     openPayPalCheckout,
     cancel,

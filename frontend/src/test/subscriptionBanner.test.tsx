@@ -18,6 +18,7 @@ const base: SubscriptionState = {
   status: 'active',
   daysLeft: null,
   isActive: true,
+  loadError: false,
   paymentSuspended: false,
   openCheckout: vi.fn(),
   openPayPalCheckout: vi.fn(),
