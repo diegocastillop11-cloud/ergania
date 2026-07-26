@@ -78,13 +78,13 @@ export default function Privacy() {
             <li><strong style={{ color: C.ink }}>Supabase</strong> — autenticación y almacenamiento de tu cuenta y datos de perfil.</li>
             <li><strong style={{ color: C.ink }}>Anthropic (Claude)</strong> — procesamiento de IA sobre tu CV y perfil.</li>
             <li><strong style={{ color: C.ink }}>MercadoPago y PayPal</strong> — procesamiento de pagos de tu suscripción.</li>
-            <li><strong style={{ color: C.ink }}>Google AdSense</strong> — muestra anuncios en nuestra página de inicio pública para financiar el servicio (ver sección de Cookies abajo).</li>
+            <li><strong style={{ color: C.ink }}>Google AdSense</strong> — muestra anuncios en la sección de Recursos del sitio para financiar el servicio (ver sección de Cookies abajo).</li>
           </ul>
         </Section>
 
         <Section title="Cookies y publicidad">
           <p style={{ marginBottom: 12 }}>
-            Nuestra página de inicio (ergania.com) usa Google AdSense para mostrar anuncios.
+            La sección de Recursos de ergania.com (ergania.com/recursos) usa Google AdSense para mostrar anuncios.
             Google y sus socios publicitarios pueden usar cookies y tecnologías similares para
             mostrar anuncios en base a tus visitas a este y otros sitios, y para medir su
             rendimiento.

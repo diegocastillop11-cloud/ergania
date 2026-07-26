@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Allow: /preguntas
+Allow: /privacidad
+Allow: /recursos
+
+# Pantallas funcionales/de redirección sin contenido de publicador —
+# no deben indexarse ni evaluarse para revisión de AdSense
+Disallow: /reset-password
+Disallow: /subscription
+Disallow: /dashboard
+Disallow: /busqueda
+Disallow: /scanner
+Disallow: /pipeline
+Disallow: /postulaciones
+Disallow: /tracker
+Disallow: /portals
+Disallow: /profile
+Disallow: /admin
+
+Sitemap: https://ergania.com/sitemap.xml

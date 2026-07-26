@@ -1,13 +1,10 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { Smartphone } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { CosmicButton } from '../components/ui/cosmic-button'
 import { logApkDownload } from '../lib/logApkDownload'
 import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME } from '../lib/appVersion'
-
-const ADSENSE_CLIENT = 'ca-pub-2632840688699034'
 
 const C = {
   heroA:    '#1E1B4B',
@@ -47,18 +44,6 @@ export default function Landing() {
   const { user, loading } = useAuth()
   const { t, language, setLanguage } = useTranslation()
   const cosmicNav = useCosmicNav()
-
-  useEffect(() => {
-    if (loading || user) return
-    if (document.querySelector(`script[data-adsbygoogle-client="${ADSENSE_CLIENT}"]`)) return
-    const script = document.createElement('script')
-    script.async = true
-    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`
-    script.crossOrigin = 'anonymous'
-    script.dataset.adsbygoogleClient = ADSENSE_CLIENT
-    document.head.appendChild(script)
-    return () => { script.remove() }
-  }, [loading, user])
 
   if (!loading && user) return <Navigate to="/dashboard" replace />
 
@@ -171,6 +156,7 @@ export default function Landing() {
             <a href="#como-funciona" className="lp-nav-link">{t('landing.nav.features')}</a>
             <a href="#precios"       className="lp-nav-link">{t('landing.nav.pricing')}</a>
             <Link to="/preguntas"    className="lp-nav-link">{t('landing.nav.faq')}</Link>
+            <Link to="/recursos"     className="lp-nav-link">Recursos</Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, border: `1px solid ${C.line}`, borderRadius: 8, padding: 2 }}>
@@ -414,6 +400,7 @@ export default function Landing() {
             <a href="#como-funciona" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.features')}</a>
             <a href="#precios" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.pricing')}</a>
             <Link to="/preguntas" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.faq')}</Link>
+            <Link to="/recursos" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>Recursos</Link>
             <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.footer.privacy')}</Link>
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(241,242,251,.28)' }}>

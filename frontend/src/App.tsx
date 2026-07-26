@@ -7,6 +7,8 @@ import Preguntas from './pages/Preguntas'
 import ResetPassword from './pages/ResetPassword'
 import Landing from './pages/Landing'
 import Privacy from './pages/Privacy'
+import RecursosIndex from './pages/RecursosIndex'
+import RecursosArticle from './pages/RecursosArticle'
 import Subscription from './pages/Subscription'
 import SubscriptionCallback from './pages/SubscriptionCallback'
 import CareersDashboard from './pages/careers/CareersDashboard'
@@ -53,6 +55,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Root />} />
       <Route path="/privacidad" element={<Privacy />} />
+      <Route path="/recursos" element={<RecursosIndex />} />
+      <Route path="/recursos/:slug" element={<RecursosArticle />} />
       <Route path="/login" element={<Login />} />
       <Route path="/preguntas" element={<Preguntas />} />
       <Route path="/reset-password" element={<ResetPassword />} />
