@@ -159,6 +159,36 @@ export async function sendPendingSignupDigest() {
   return { pending: data.length, sent: users.length }
 }
 
+// Decisión pura (sin DB) de qué status "cuenta" de verdad, dada una fila de
+// subscriptions — misma lógica de fechas que getSubscriptionStatus, pero sin
+// side effects. Existe para que el panel admin (getStats) muestre el mismo
+// estado real que ve el usuario, en vez del status crudo guardado en la fila
+// (que puede quedar desactualizado hasta que ese usuario vuelve a entrar).
+export function computeEffectiveStatus(
+  data: { status: string; is_exempt?: boolean | null; trial_ends_at?: string | null; current_period_end?: string | null },
+  now: Date = new Date()
+): string {
+  if (data.is_exempt === true) return 'active'
+
+  if (data.status === 'trial') {
+    return data.trial_ends_at && now > new Date(data.trial_ends_at) ? 'expired' : 'trial'
+  }
+
+  if (data.status === 'active') {
+    return data.current_period_end && now > new Date(data.current_period_end) ? 'expired' : 'active'
+  }
+
+  if (data.status === 'pending_payment' && data.trial_ends_at && now <= new Date(data.trial_ends_at)) {
+    return 'pending_payment'
+  }
+
+  if (data.status === 'cancelled' && data.current_period_end) {
+    return now <= new Date(data.current_period_end) ? 'active' : 'expired'
+  }
+
+  return data.status
+}
+
 export async function getSubscriptionStatus(userId: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
   let { data, error } = await supabaseAdmin

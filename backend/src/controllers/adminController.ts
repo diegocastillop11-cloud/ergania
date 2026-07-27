@@ -124,7 +124,10 @@ export async function getStats(req: Request, res: Response) {
   ])
 
   const users = usersRes.data?.users ?? []
-  const subs  = subsRes.data ?? []
+  // Status "real" (respeta current_period_end/trial_ends_at), no el crudo
+  // guardado en la fila — evita que el panel muestre "Cancelado"/"Trial" para
+  // cuentas que en verdad siguen con acceso (ver computeEffectiveStatus).
+  const subs  = (subsRes.data ?? []).map((s: any) => ({ ...s, status: subscriptionSvc.computeEffectiveStatus(s) }))
   const msgs  = messagesRes.data ?? []
   const receipts = receiptsRes.data ?? []
   const deletionRequests = (deletionsRes.data ?? []).map((d: any) => ({
