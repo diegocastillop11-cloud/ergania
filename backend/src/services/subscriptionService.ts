@@ -225,6 +225,24 @@ export async function getSubscriptionStatus(userId: string) {
     }
   }
 
+  // Cancelado (el usuario canceló la renovación automática): igual que con
+  // 'active', mantiene acceso hasta que venza el período ya pagado — no se
+  // le corta en seco solo por haber cancelado. Detectado 2026-07-26: un
+  // usuario canceló minutos después de pagar y perdía acceso al instante
+  // pese a haber pagado el mes completo.
+  if (data.status === 'cancelled' && data.current_period_end) {
+    const end = new Date(data.current_period_end)
+    if (now <= end) {
+      const daysLeft = calendarDaysUntil(end, now)
+      return {
+        status: 'active' as const, daysLeft, currentPeriodEnd: data.current_period_end,
+        paymentProvider: data.payment_provider, paymentSuspended: data.payment_suspended ?? false,
+      }
+    }
+    await supabaseAdmin.from('subscriptions').update({ status: 'expired' }).eq('user_id', userId)
+    return { status: 'expired' as const, daysLeft: 0 }
+  }
+
   return { status: data.status as 'expired' | 'cancelled' | 'pending_payment', daysLeft: 0 }
 }
 
