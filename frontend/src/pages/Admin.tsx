@@ -889,6 +889,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
+  const [audience, setAudience] = useState<'trial' | 'expired'>('trial')
   const [maxEvals, setMaxEvals] = useState(1)
   const [sentEmails, setSentEmails] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -923,10 +924,12 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
   useEffect(() => { if (open) loadAux() }, [open, email.id])
 
   const MIN_ACCOUNT_AGE_MS = 24 * 60 * 60 * 1000
-  const candidates = userList.filter(u =>
-    u.sub?.status === 'trial' && !u.sub?.is_test && u.evaluationsCount <= maxEvals
-    && Date.now() - new Date(u.createdAt).getTime() > MIN_ACCOUNT_AGE_MS
-  )
+  const candidates = userList.filter(u => {
+    if (u.sub?.is_test) return false
+    if (audience === 'expired') return u.sub?.status === 'expired'
+    return u.sub?.status === 'trial' && u.evaluationsCount <= maxEvals
+      && Date.now() - new Date(u.createdAt).getTime() > MIN_ACCOUNT_AGE_MS
+  })
 
   // Al cambiar el filtro, selecciona por defecto a los candidatos que aún no
   // recibieron este correo — así el envío nunca parte seleccionando a quien
@@ -934,7 +937,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
   useEffect(() => {
     setSelected(new Set(candidates.filter(u => !sentEmails.has(u.email)).map(u => u.email)))
     setSendResult(null)
-  }, [maxEvals, userList.length, sentEmails.size])
+  }, [audience, maxEvals, userList.length, sentEmails.size])
 
   const toggle = (addr: string) => {
     setSelected(prev => {
@@ -1159,16 +1162,31 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 
           {/* Envío manual ahora */}
           <div>
-            <label className="text-xs text-gray-400 flex items-center gap-2 mb-2">
-              Mostrar usuarios en trial con
-              <select value={maxEvals} onChange={e => setMaxEvals(Number(e.target.value))}
+            <label className="text-xs text-gray-400 flex items-center gap-2 mb-2 flex-wrap">
+              Audiencia
+              <select value={audience} onChange={e => setAudience(e.target.value as 'trial' | 'expired')}
                 className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500">
-                <option value={0}>0 ofertas evaluadas</option>
-                <option value={1}>1 o menos ofertas evaluadas</option>
-                <option value={2}>2 o menos ofertas evaluadas</option>
-                <option value={3}>3 o menos ofertas evaluadas</option>
+                <option value="trial">Usuarios en trial</option>
+                <option value="expired">Trials expirados (no pagaron)</option>
               </select>
+              {audience === 'trial' && (
+                <>
+                  con
+                  <select value={maxEvals} onChange={e => setMaxEvals(Number(e.target.value))}
+                    className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value={0}>0 ofertas evaluadas</option>
+                    <option value={1}>1 o menos ofertas evaluadas</option>
+                    <option value={2}>2 o menos ofertas evaluadas</option>
+                    <option value={3}>3 o menos ofertas evaluadas</option>
+                  </select>
+                </>
+              )}
             </label>
+            {audience === 'expired' && (
+              <p className="text-[11px] text-gray-500 mb-2">
+                Trial vencido sin pago (excluye a quienes cancelaron después de pagar — ese es un mensaje distinto).
+              </p>
+            )}
 
             <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <div className="flex items-center gap-3">
