@@ -616,6 +616,11 @@
     "evaluatingWithAi": "Evaluando con IA...",
     "analyzingOffer": "IA analizando oferta...",
     "analyzingBlocks": "Evaluando bloques A-G: match de CV, estrategia salarial, plan de entrevistas...",
+    "cvInstructionsForOffer": {
+      "label": "Instrucciones de redacción para el CV de esta oferta",
+      "desc": "Opcional. Qué querés que la IA destaque u omita al armar el CV específico de esta oferta — se suma a tus preferencias generales del Perfil y se aplica cuando prepares el kit de postulación.",
+      "placeholder": "Ej: Para este rol enfócate en mi experiencia con SQL Server, no menciones el proyecto de marketing."
+    },
     "queueTitle": "Cola de Evaluación",
     "emptyQueue": "No hay ofertas en cola. Agrega URLs arriba.",
     "filters": {

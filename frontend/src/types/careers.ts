@@ -14,6 +14,7 @@ export interface TrackerEntry {
   salario_usd?: string
   perfil_id?: string
   perfil_nombre?: string
+  cv_instructions?: string
 }
 
 export type EstadoJob =

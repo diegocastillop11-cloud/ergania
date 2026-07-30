@@ -616,6 +616,11 @@
     "evaluatingWithAi": "Evaluating with AI...",
     "analyzingOffer": "AI analyzing offer...",
     "analyzingBlocks": "Evaluating blocks A-G: resume match, salary strategy, interview plan...",
+    "cvInstructionsForOffer": {
+      "label": "CV writing instructions for this offer",
+      "desc": "Optional. What you want the AI to highlight or leave out when building the CV for this specific offer — adds to your general Profile preferences and applies when you prepare the application kit.",
+      "placeholder": "E.g: For this role focus on my SQL Server experience, don't mention the marketing project."
+    },
     "queueTitle": "Evaluation Queue",
     "emptyQueue": "No offers in the queue. Add URLs above.",
     "filters": {

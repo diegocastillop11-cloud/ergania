@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, Zap, ExternalLink, Clock, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, AlertTriangle, XCircle, Loader2, Copy, FileText
+  CheckCircle2, AlertCircle, AlertTriangle, XCircle, Loader2, Copy, FileText, MessageSquare
 } from 'lucide-react'
 import { PipelineJob, EvaluationResult, RECOMENDACION_CONFIG, SCORE_COLOR } from '../../types/careers'
 import { COUNTRIES } from '../../lib/countries'
@@ -202,6 +202,7 @@ export default function CareersPipeline() {
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [jdMode, setJdMode] = useState<'url' | 'text'>('url')
   const [paisEval, setPaisEval] = useState('')
+  const [cvInstructionsForOffer, setCvInstructionsForOffer] = useState('')
   const [evalStates, setEvalStates] = useState<Record<string, EvalState>>({})
   const [directEval, setDirectEval] = useState<EvalState>({ loading: false, result: null, error: null })
   const [confirmation, setConfirmation] = useState<{ titulo: string; score: number; recomendacion: string; url: string } | null>(null)
@@ -243,7 +244,7 @@ export default function CareersPipeline() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['careers-pipeline'] }),
   })
 
-  const evaluate = async (url?: string, jd?: string, key?: string, force?: boolean) => {
+  const evaluate = async (url?: string, jd?: string, key?: string, force?: boolean, cvInstructions?: string) => {
     const stateKey = key || 'direct'
     const setState = (s: Partial<EvalState>) => {
       if (stateKey === 'direct') {
@@ -261,6 +262,7 @@ export default function CareersPipeline() {
       if (jd) payload.jd = jd
       if (paisEval) payload.pais = paisEval
       if (force) payload.force = 'true'
+      if (cvInstructions?.trim()) payload.cvInstructions = cvInstructions.trim()
 
       const { data } = await api.post<EvaluationResult>('/evaluate', payload)
       setState({ loading: false, result: data })
@@ -296,11 +298,13 @@ export default function CareersPipeline() {
 
   const handleDirectEval = () => {
     if (jdMode === 'url' && newUrl.startsWith('http')) {
-      evaluate(newUrl.trim(), undefined, 'direct')
+      evaluate(newUrl.trim(), undefined, 'direct', undefined, cvInstructionsForOffer)
       setNewUrl('')
+      setCvInstructionsForOffer('')
     } else if (jdMode === 'text' && jdText.trim()) {
-      evaluate(undefined, jdText.trim(), 'direct')
+      evaluate(undefined, jdText.trim(), 'direct', undefined, cvInstructionsForOffer)
       setJdText('')
+      setCvInstructionsForOffer('')
     }
   }
 
@@ -413,6 +417,21 @@ export default function CareersPipeline() {
             </div>
           </div>
         )}
+
+        <div className="mt-4 pt-4 border-t border-[var(--border-alt)]">
+          <label className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <MessageSquare size={13} />
+            {t('careersPipeline.cvInstructionsForOffer.label')}
+          </label>
+          <p className="text-xs text-[var(--text-faint)] mb-2">{t('careersPipeline.cvInstructionsForOffer.desc')}</p>
+          <textarea
+            value={cvInstructionsForOffer}
+            onChange={e => setCvInstructionsForOffer(e.target.value)}
+            placeholder={t('careersPipeline.cvInstructionsForOffer.placeholder')}
+            rows={3}
+            className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+          />
+        </div>
 
         {directEval.error && (
           <div className="mt-3 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">

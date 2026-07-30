@@ -54,6 +54,7 @@ export interface TrackerEntry {
   moneda?: string
   perfil_id?: string
   perfil_nombre?: string
+  cv_instructions?: string
 }
 
 export interface PipelineJob {
@@ -755,6 +756,7 @@ async function dbReadTracker(userEmail: string): Promise<TrackerEntry[]> {
     moneda: row.moneda || undefined,
     perfil_id: row.perfil_id || undefined,
     perfil_nombre: row.perfil_id ? perfilNombreById.get(row.perfil_id) : undefined,
+    cv_instructions: row.cv_instructions || undefined,
   }))
 }
 

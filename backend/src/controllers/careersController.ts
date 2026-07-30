@@ -955,6 +955,7 @@ ${fullText}
       salario_usd: (meta.salario_usd as string) || undefined,
       pais: finalCountry.nombre,
       moneda: finalCountry.moneda,
+      cv_instructions: (req.body?.cvInstructions as string)?.trim() || undefined,
     }
     // Si ya se reservó el cupo (trial), actualiza esa misma fila en vez de crear una
     // nueva — de lo contrario quedaría duplicada (la reserva + esta).
@@ -1319,7 +1320,6 @@ export const createApplication = async (req: Request, res: Response) => {
     const profile = await svc.readProfile(userEmail)
     const cand = (profile?.candidate as Record<string, string>) || {}
     const location = (profile?.location as Record<string, string>) || {}
-    const cvInstructions = (profile as Record<string, unknown>)?.cv_instructions as string | undefined
     const contactInfo = {
       city: cand.location || '',
       phone: cand.phone || '',
@@ -1337,6 +1337,16 @@ export const createApplication = async (req: Request, res: Response) => {
           e.empresa.toLowerCase() === empresa.toLowerCase() &&
           e.rol.toLowerCase() === rol.toLowerCase()
         )
+
+    // Combina las instrucciones generales del perfil con las que el usuario haya
+    // escrito puntualmente para esta oferta en Evaluar Oferta (Pipeline) — estas
+    // últimas pisan a las generales cuando entran en conflicto.
+    const profileCvInstructions = ((profile as Record<string, unknown>)?.cv_instructions as string | undefined)?.trim()
+    const offerCvInstructions = existingTrackerEntry?.cv_instructions?.trim()
+    const cvInstructions = [
+      profileCvInstructions,
+      offerCvInstructions ? `Instrucciones específicas para esta oferta (prioridad máxima, por sobre las preferencias generales de arriba si hay conflicto):\n${offerCvInstructions}` : undefined,
+    ].filter(Boolean).join('\n\n') || undefined
 
     const paisSeleccionado = (req.body?.pais as string) || existingTrackerEntry?.pais || location.country || DEFAULT_COUNTRY_NAME
     const country = getCountryConfig(paisSeleccionado)
