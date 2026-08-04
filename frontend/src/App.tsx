@@ -7,6 +7,7 @@ import Preguntas from './pages/Preguntas'
 import ResetPassword from './pages/ResetPassword'
 import Landing from './pages/Landing'
 import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import RecursosIndex from './pages/RecursosIndex'
 import RecursosArticle from './pages/RecursosArticle'
 import Subscription from './pages/Subscription'
@@ -20,6 +21,7 @@ import CareersScanner from './pages/careers/CareersScanner'
 import CareersPostulaciones from './pages/careers/CareersPostulaciones'
 import CareersBusqueda from './pages/careers/CareersBusqueda'
 import Admin from './pages/Admin'
+import TermsGate from './components/legal/TermsGate'
 
 function Root() {
   const { user, loading } = useAuth()
@@ -47,7 +49,11 @@ function ProtectedLayout() {
   )
 
   if (!user) return <Navigate to="/login" replace />
-  return <Layout />
+  return (
+    <TermsGate>
+      <Layout />
+    </TermsGate>
+  )
 }
 
 export default function App() {
@@ -55,6 +61,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Root />} />
       <Route path="/privacidad" element={<Privacy />} />
+      <Route path="/terminos" element={<Terms />} />
       <Route path="/recursos" element={<RecursosIndex />} />
       <Route path="/recursos/:slug" element={<RecursosArticle />} />
       <Route path="/login" element={<Login />} />

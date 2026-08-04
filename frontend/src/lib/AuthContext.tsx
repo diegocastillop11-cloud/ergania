@@ -16,6 +16,7 @@ interface AuthContextType {
   signOut: () => Promise<void>
   resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>
   updatePassword: (password: string) => Promise<{ error: string | null }>
+  acceptTerms: () => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -102,8 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? translateAuthError(error.message) : null }
   }
 
+  // Registro de la aceptación de Términos y Condiciones — se guarda en user_metadata
+  // (Supabase) con timestamp, como evidencia de consentimiento previo al uso del servicio.
+  // onAuthStateChange dispara USER_UPDATED y refresca `user` solo, sin acción adicional acá.
+  const acceptTerms = async () => {
+    const { error } = await supabase.auth.updateUser({ data: { terms_accepted_at: new Date().toISOString() } })
+    return { error: error ? translateAuthError(error.message) : null }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signInWithGoogle, signOut, resetPasswordForEmail, updatePassword }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signInWithGoogle, signOut, resetPasswordForEmail, updatePassword, acceptTerms }}>
       {children}
     </AuthContext.Provider>
   )

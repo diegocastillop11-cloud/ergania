@@ -75,7 +75,22 @@
     "forgotDescription": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
     "sendResetLink": "Enviar enlace",
     "resetLinkSentInfo": "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y spam).",
-    "backToLogin": "Volver a iniciar sesión"
+    "backToLogin": "Volver a iniciar sesión",
+    "termsCheckboxPrefix": "He leído y acepto los",
+    "termsCheckboxMiddle": "y la",
+    "termsRequired": "Debes aceptar los Términos y Condiciones para crear una cuenta",
+    "footerTerms": "Términos y Condiciones",
+    "footerPrivacy": "Política de Privacidad"
+  },
+  "termsGate": {
+    "title": "Antes de continuar",
+    "description": "Para usar Ergania necesitamos que aceptes nuestros Términos y Condiciones y nuestra Política de Privacidad.",
+    "checkboxPrefix": "He leído y acepto los",
+    "checkboxMiddle": "y la",
+    "termsLink": "Términos y Condiciones",
+    "privacyLink": "Política de Privacidad",
+    "continueButton": "Continuar",
+    "error": "No pudimos guardar tu aceptación, intenta nuevamente"
   },
   "resetPassword": {
     "title": "Nueva contraseña",
@@ -207,6 +222,7 @@
     },
     "footer": {
       "privacy": "Privacidad",
+      "terms": "Términos y Condiciones",
       "madeIn": "Hecho en Chile · 2026"
     }
   },
@@ -821,7 +837,10 @@
     "mercadoPagoError": "Error al conectar con MercadoPago",
     "payPalError": "Error al conectar con PayPal",
     "cancelError": "Error al cancelar",
-    "checkoutIncomplete": "No se pudo completar el pago, intenta nuevamente"
+    "checkoutIncomplete": "No se pudo completar el pago, intenta nuevamente",
+    "termsAcceptPrefix": "He leído y acepto los",
+    "termsAcceptLink": "Términos y Condiciones",
+    "termsAcceptSuffix": ", incluyendo la política de pagos y cancelación. Entiendo que mi acceso se activa de inmediato al confirmar el pago y que, en ese caso, renuncio a mi derecho a retracto conforme al artículo 3° bis de la Ley N° 19.496."
   },
   "subscriptionCallback": {
     "success": {
@@ -849,17 +868,12 @@
     "trialDaysLeft": "días restantes",
     "trialNote": "Prueba gratuita — {{when}}",
     "subscribeMonthly": "Suscribirse $9.990/mes",
-    "payPalMonthly": "Pay with PayPal $12.99/mo",
     "pendingNote": "Tu pago está pendiente de confirmación — mientras tanto sigues con tu prueba gratuita ({{when}})",
-    "mercadoPagoLabel": "Mercado Pago — $9.990/mes",
-    "payPalLabel": "PayPal — USD $12.99/mo",
+    "mercadoPagoLabel": "Continuar pago pendiente",
     "cancelled": "Suscripción cancelada",
     "expired": "Tu plan venció",
     "expiredNote": "Suscríbete para seguir usando Ergania. Puedes cancelar cuando quieras.",
-    "mercadoPagoShort": "Mercado Pago — $9.990/mes",
-    "payPalShort": "PayPal — $12.99/mo",
-    "mercadoPagoError": "Error al conectar con MercadoPago",
-    "payPalError": "Error al conectar con PayPal"
+    "subscribeCta": "Suscribirme"
   },
   "perfilSwitcher": {
     "changeProfileTitle": "Cambiar perfil activo",

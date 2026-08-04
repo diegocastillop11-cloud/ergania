@@ -402,6 +402,7 @@ export default function Landing() {
             <Link to="/preguntas" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.nav.faq')}</Link>
             <Link to="/recursos" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>Recursos</Link>
             <Link to="/privacidad" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.footer.privacy')}</Link>
+            <Link to="/terminos" style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: C.inkMuted, textDecoration: 'none' }}>{t('landing.footer.terms')}</Link>
           </div>
           <p style={{ fontFamily: sans, fontSize: 12, color: 'rgba(241,242,251,.28)' }}>
             {t('landing.footer.madeIn')}

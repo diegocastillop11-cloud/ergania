@@ -1,5 +1,6 @@
 import { Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, CreditCard, RefreshCw } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useSubscription } from '../hooks/useSubscription'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
@@ -23,6 +24,7 @@ export default function Subscription() {
   const [checkoutProvider, setCheckoutProvider] = useState<'mercadopago' | 'paypal' | null>(null)
   const [error, setError]                 = useState<string | null>(null)
   const [cancelled, setCancelled]         = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const checkoutLoading = checkoutProvider !== null
 
@@ -146,10 +148,25 @@ export default function Subscription() {
 
       {/* Acciones */}
       {canSubscribe && (
-        <div className="flex flex-col gap-2 mb-3">
+        <div className="flex flex-col gap-3 mb-3">
+          <label className="flex items-start gap-2.5 text-xs text-[var(--text-tertiary)] leading-relaxed cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 shrink-0"
+            />
+            <span>
+              {t('subscription.termsAcceptPrefix')}{' '}
+              <Link to="/terminos" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 font-semibold">
+                {t('subscription.termsAcceptLink')}
+              </Link>
+              {t('subscription.termsAcceptSuffix')}
+            </span>
+          </label>
           <button
             onClick={handleSubscribe}
-            disabled={checkoutLoading}
+            disabled={checkoutLoading || !termsAccepted}
             className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-[var(--text-primary)] font-bold py-3 rounded-xl transition-colors"
           >
             {checkoutProvider === 'mercadopago' ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
@@ -157,7 +174,7 @@ export default function Subscription() {
           </button>
           <button
             onClick={handleSubscribePayPal}
-            disabled={checkoutLoading}
+            disabled={checkoutLoading || !termsAccepted}
             className="w-full flex items-center justify-center gap-2 bg-[#003087] hover:bg-[#00256b] disabled:opacity-60 text-[var(--text-primary)] font-bold py-3 rounded-xl transition-colors"
           >
             {checkoutProvider === 'paypal' && <Loader2 size={15} className="animate-spin" />}

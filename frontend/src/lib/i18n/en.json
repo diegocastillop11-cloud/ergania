@@ -75,7 +75,22 @@
     "forgotDescription": "Enter your email and we'll send you a link to reset your password.",
     "sendResetLink": "Send link",
     "resetLinkSentInfo": "If an account exists with that email, we sent a link to reset your password. Check your inbox (and spam folder).",
-    "backToLogin": "Back to log in"
+    "backToLogin": "Back to log in",
+    "termsCheckboxPrefix": "I have read and accept the",
+    "termsCheckboxMiddle": "and the",
+    "termsRequired": "You must accept the Terms and Conditions to create an account",
+    "footerTerms": "Terms and Conditions",
+    "footerPrivacy": "Privacy Policy"
+  },
+  "termsGate": {
+    "title": "Before you continue",
+    "description": "To use Ergania we need you to accept our Terms and Conditions and our Privacy Policy.",
+    "checkboxPrefix": "I have read and accept the",
+    "checkboxMiddle": "and the",
+    "termsLink": "Terms and Conditions",
+    "privacyLink": "Privacy Policy",
+    "continueButton": "Continue",
+    "error": "We couldn't save your acceptance, please try again"
   },
   "resetPassword": {
     "title": "New password",
@@ -207,6 +222,7 @@
     },
     "footer": {
       "privacy": "Privacy",
+      "terms": "Terms & Conditions",
       "madeIn": "Made in Chile · 2026"
     }
   },
@@ -821,7 +837,10 @@
     "mercadoPagoError": "Error connecting to MercadoPago",
     "payPalError": "Error connecting to PayPal",
     "cancelError": "Error cancelling",
-    "checkoutIncomplete": "Payment could not be completed, please try again"
+    "checkoutIncomplete": "Payment could not be completed, please try again",
+    "termsAcceptPrefix": "I have read and accept the",
+    "termsAcceptLink": "Terms and Conditions",
+    "termsAcceptSuffix": ", including the payment and cancellation policy. I understand my access starts immediately once payment is confirmed, and that I waive my right of withdrawal for this digital service."
   },
   "subscriptionCallback": {
     "success": {
@@ -849,17 +868,12 @@
     "trialDaysLeft": "days left",
     "trialNote": "Free trial — {{when}}",
     "subscribeMonthly": "Subscribe $9,990/mo",
-    "payPalMonthly": "Pay with PayPal $12.99/mo",
     "pendingNote": "Your payment is pending confirmation — meanwhile you keep your free trial ({{when}})",
-    "mercadoPagoLabel": "Mercado Pago — $9,990/mo",
-    "payPalLabel": "PayPal — USD $12.99/mo",
+    "mercadoPagoLabel": "Continue pending payment",
     "cancelled": "Subscription cancelled",
     "expired": "Your plan expired",
     "expiredNote": "Subscribe to keep using Ergania. You can cancel anytime.",
-    "mercadoPagoShort": "Mercado Pago — $9,990/mo",
-    "payPalShort": "PayPal — $12.99/mo",
-    "mercadoPagoError": "Error connecting to MercadoPago",
-    "payPalError": "Error connecting to PayPal"
+    "subscribeCta": "Subscribe"
   },
   "perfilSwitcher": {
     "changeProfileTitle": "Switch active profile",

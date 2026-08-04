@@ -20,7 +20,7 @@ function GoogleIcon() {
 }
 
 export default function Login() {
-  const { signIn, signUp, signInWithGoogle, resetPasswordForEmail } = useAuth()
+  const { signIn, signUp, signInWithGoogle, resetPasswordForEmail, acceptTerms } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
@@ -32,6 +32,7 @@ export default function Login() {
   const [showPass,  setShowPass]  = useState(false)
   const [showConf,  setShowConf]  = useState(false)
   const [loading,   setLoading]   = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error,     setError]     = useState('')
   const [info,      setInfo]      = useState(() => {
@@ -44,7 +45,7 @@ export default function Login() {
 
   const [showContact, setShowContact] = useState(false)
 
-  const reset = (m: Mode) => { setMode(m); setError(''); setInfo(''); setConfirm('') }
+  const reset = (m: Mode) => { setMode(m); setError(''); setInfo(''); setConfirm(''); setTermsAccepted(false) }
 
   const handleGoogle = async () => {
     setError('')
@@ -65,6 +66,7 @@ export default function Login() {
     if (mode === 'register') {
       if (password !== confirm) return setError(t('login.passwordMismatch'))
       if (password.length < 6)  return setError(t('login.passwordTooShort'))
+      if (!termsAccepted)       return setError(t('login.termsRequired'))
     }
 
     setLoading(true)
@@ -76,7 +78,7 @@ export default function Login() {
     } else if (mode === 'register') {
       const { error, session } = await signUp(email, password)
       if (error) setError(error)
-      else if (session) navigate('/dashboard')
+      else if (session) { await acceptTerms(); navigate('/dashboard') }
       else setInfo(t('login.accountCreatedInfo'))
     } else {
       const { error } = await resetPasswordForEmail(email)
@@ -264,6 +266,28 @@ export default function Login() {
               </div>
             )}
 
+            {/* Aceptación de Términos — solo en registro */}
+            {mode === 'register' && (
+              <label className="flex items-start gap-2.5 text-xs text-[var(--text-tertiary)] leading-relaxed cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  {t('login.termsCheckboxPrefix')}{' '}
+                  <Link to="/terminos" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 font-semibold">
+                    {t('login.footerTerms')}
+                  </Link>{' '}
+                  {t('login.termsCheckboxMiddle')}{' '}
+                  <Link to="/privacidad" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 font-semibold">
+                    {t('login.footerPrivacy')}
+                  </Link>.
+                </span>
+              </label>
+            )}
+
             {/* Error */}
             {error && (
               <div className="flex items-start gap-2 bg-red-950 border border-red-800 rounded-xl px-3 py-2.5 text-sm text-red-300">
@@ -282,7 +306,7 @@ export default function Login() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading || (mode === 'register' && !!confirm && confirm !== password)}
+              disabled={loading || (mode === 'register' && ((!!confirm && confirm !== password) || !termsAccepted))}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-[var(--text-primary)] rounded-xl text-sm font-semibold transition-colors"
             >
               {loading
@@ -310,6 +334,14 @@ export default function Login() {
         <p className="text-center text-xs text-[var(--text-faint)] mt-6">
           {t('login.privacyNote')}
         </p>
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <Link to="/terminos" target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors">
+            {t('login.footerTerms')}
+          </Link>
+          <Link to="/privacidad" target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors">
+            {t('login.footerPrivacy')}
+          </Link>
+        </div>
 
       </div>
 
