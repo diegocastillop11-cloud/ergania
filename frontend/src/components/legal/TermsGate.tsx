@@ -8,24 +8,34 @@ interface Props {
   children: React.ReactNode
 }
 
-// Cubre cualquier vía de creación de cuenta (formulario o Google OAuth, donde no
-// hay un paso de formulario previo al redirect para poner un checkbox) y también
-// a usuarios existentes de antes de esta funcionalidad — a todos se les pide
-// aceptar una vez, quedando el consentimiento con timestamp en user_metadata.
+// Solo aplica a cuentas creadas desde que existe esta funcionalidad — usuarios
+// de antes de esa fecha quedan afuera del gate para no interrumpir su uso
+// normal de la app (no dan un consentimiento explícito retroactivo, pero
+// tampoco se les bloquea el acceso). Cubre registro por formulario (ya pide
+// el checkbox ahí mismo, esto solo actúa de red por si el flujo de
+// confirmación de correo lo salteó) y por Google OAuth, donde no hay paso de
+// formulario previo al redirect para poner un checkbox.
+const TERMS_GATE_LAUNCH = new Date('2026-08-04T00:00:00Z')
+
 export default function TermsGate({ children }: Props) {
   const { user, acceptTerms } = useAuth()
   const { t } = useTranslation()
   const [checked, setChecked] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [justAccepted, setJustAccepted] = useState(false)
 
-  if (!user || user.user_metadata?.terms_accepted_at) return <>{children}</>
+  const isNewAccount = !!user?.created_at && new Date(user.created_at) >= TERMS_GATE_LAUNCH
+  const alreadyAccepted = !!user?.user_metadata?.terms_accepted_at
+
+  if (!user || !isNewAccount || alreadyAccepted || justAccepted) return <>{children}</>
 
   const handleContinue = async () => {
     setLoading(true)
     setError('')
     const { error } = await acceptTerms()
     if (error) { setError(error); setLoading(false) }
+    else setJustAccepted(true)
   }
 
   return (
