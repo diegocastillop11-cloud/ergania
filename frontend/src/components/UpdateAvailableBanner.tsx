@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Download, X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
-import { ANDROID_APK_VERSION } from '../lib/appVersion'
+import { ANDROID_APK_VERSION, ANDROID_APK_URL } from '../lib/appVersion'
 import { logApkDownload } from '../lib/logApkDownload'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -38,7 +38,7 @@ export default function UpdateAvailableBanner() {
       <Download size={16} className="text-blue-400 shrink-0" />
       <p className="text-sm text-blue-200 flex-1">{t('layout.updateBanner.text')}</p>
       <a
-        href="https://ergania.com/ergania.apk"
+        href={ANDROID_APK_URL}
         target="_blank"
         rel="noopener noreferrer"
         onClick={logApkDownload}
