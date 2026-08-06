@@ -150,6 +150,13 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 7. **Después de cada push a `master` que incluya cambios en `frontend/`**, recompilar y
    actualizar el APK descargable — ver "App Android (APK descargable)" más abajo. Si el push
    es solo de `backend/`, no hace falta (el APK no lo incluye).
+8. **Nunca pushear cambios de código directo a `master`** (decisión de Diego, 2026-08-06): crear
+   una rama, pushear ahí, esperar el Preview deploy de Vercel, verificarlo, y recién ahí mergear
+   a `master`. Motivo: un push directo a `master` deploya a producción sin red de contención — si
+   algo sale mal, ya lo vieron usuarios reales. Nota: una rama nueva necesita sus env vars de
+   Preview agregadas a mano la primera vez (ver "Gotcha: env vars de Preview" más abajo).
+   Excepción acordada: cambios mecánicos de bajo riesgo que no tocan lógica ni UI (ej. resubir el
+   binario del APK a Blob, bump de versión, docs) pueden ir directo — si hay duda, preguntar.
 
 ## Stack
 
@@ -157,7 +164,7 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 - **Backend**: Express + TypeScript como Vercel Serverless Function · `backend/src/` · entry: `api/index.ts`
 - **Auth/DB**: Supabase (anon key en frontend, service role key en backend)
 - **Pagos**: MercadoPago Checkout Pro (no Preapproval)
-- **Deploy**: Vercel — push a `master` → deploy automático
+- **Deploy**: Vercel — push a `master` → deploy automático a producción
 
 ## App Android (APK descargable)
 
@@ -166,12 +173,18 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 significa que cualquier cambio de frontend que llegue a producción queda desactualizado dentro
 del APK hasta que se recompile y se resuba manualmente.
 
-El botón de descarga (`AndroidAppBanner.tsx`, `Landing.tsx`, ambos apuntan a `/ergania.apk`) sirve
-directo el archivo estático `frontend/public/ergania.apk` — no hay build automático, el archivo
-commiteado ES lo que se descarga. La versión que se muestra al usuario (botón "Descargar (v2.1)"
-y el nombre del archivo descargado, ej. `ergania_v2.1.apk`) sale de una constante manual en
-`frontend/src/lib/appVersion.ts` (`ANDROID_APK_VERSION`) — no se calcula sola, hay que subirla a
-mano (ver paso 0 abajo).
+**Actualizado 2026-08-06**: el APK YA NO se commitea al repo — pasó los 100MB que permite
+GitHub como archivo normal (el build creció de ~95.7MB a ~101.3MB y quedó bloqueado; el intento
+de esa sesión quedó atascado en el historial local y hubo que descartarlo con
+`git rebase --onto` porque nunca llegó a `origin`). Ahora vive en **Vercel Blob** (store
+`ergania-ci-test`, projecto conectado con `BLOB_READ_WRITE_TOKEN` en Production/Preview/
+Development) con pathname fijo `ergania.apk` — la URL pública
+(`ANDROID_APK_URL` en `frontend/src/lib/appVersion.ts`) NO cambia entre versiones, solo se
+sobreescribe el contenido. `AndroidAppBanner.tsx`, `Landing.tsx` y `UpdateAvailableBanner.tsx`
+importan esa constante en vez de apuntar a `/ergania.apk`. La versión que se muestra al usuario
+(botón "Descargar (v2.1)" y el nombre del archivo descargado, ej. `ergania_v2.1.apk`) sigue
+saliendo de una constante manual en `frontend/src/lib/appVersion.ts` (`ANDROID_APK_VERSION`) —
+no se calcula sola, hay que subirla a mano (ver paso 0 abajo).
 
 **Procedimiento** (repetir después de cada push a `master` que toque `frontend/`, regla 7 de
 "Reglas generales"):
@@ -188,11 +201,18 @@ mano (ver paso 0 abajo).
    `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`).
 2. Esperar a que termine (`gh run list --workflow=android-build.yml -L 1` para el run id, luego
    `gh run watch <run-id>`).
-3. `gh run download <run-id> -n ergania-android-apk -D <carpeta temporal>` y reemplazar
-   `frontend/public/ergania.apk` con el nuevo build.
-4. Commit y push a `master` (`chore(android): actualiza la APK descargable con el build más
-   reciente`) — este push no dispara un nuevo deploy relevante en Vercel más que servir el
-   archivo nuevo, pero sigue el mismo flujo de push directo.
+3. `gh run download <run-id> -n ergania-android-apk -D <carpeta temporal>` y subir el archivo a
+   Blob con pathname fijo (sobreescribe la versión anterior, la URL no cambia):
+   ```
+   vercel env pull .tmp_blob_env --environment=production --yes
+   BLOB_READ_WRITE_TOKEN=$(grep "^BLOB_READ_WRITE_TOKEN=" .tmp_blob_env | cut -d'"' -f2) \
+     vercel blob put <carpeta temporal>/app-release.apk --pathname ergania.apk --allow-overwrite true
+   rm .tmp_blob_env
+   ```
+   Este es un binario compilado, no código — no requiere pasar por rama/Preview (regla nueva de
+   abajo), sí sigue el flujo de push directo a `master` solo para el bump de versión (paso 0).
+4. Commit y push del bump de versión a `master` (`chore(android): sube versión a X.XX por ...`)
+   — este push no toca el APK en sí (ya está en Blob), solo las 3 constantes de versión.
 
 ## Arquitectura de auth
 

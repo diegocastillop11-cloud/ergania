@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { Smartphone, X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { logApkDownload } from '../lib/logApkDownload'
-import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME } from '../lib/appVersion'
+import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME, ANDROID_APK_URL } from '../lib/appVersion'
 
 const DISMISS_KEY = 'ergania:androidBannerDismissed'
 
@@ -23,7 +23,7 @@ export default function AndroidAppBanner() {
       <Smartphone size={16} className="text-emerald-400 shrink-0" />
       <p className="text-sm text-emerald-200 flex-1">{t('dashboard.androidBanner.text')}</p>
       <a
-        href="/ergania.apk"
+        href={ANDROID_APK_URL}
         download={ANDROID_APK_FILENAME}
         onClick={logApkDownload}
         className="text-xs font-semibold text-[var(--text-primary)] bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
