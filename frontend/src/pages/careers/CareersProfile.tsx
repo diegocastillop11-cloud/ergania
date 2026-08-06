@@ -519,7 +519,7 @@ export default function CareersProfile() {
             )}
             <input
               type="file"
-              accept=".pdf,.docx,.doc,.txt"
+              accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.webp"
               className="hidden"
               disabled={cvImporting}
               onChange={handleImportCv}
@@ -776,7 +776,7 @@ export default function CareersProfile() {
               )}
               <input
                 type="file"
-                accept=".pdf,.docx,.doc,.txt"
+                accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.webp"
                 className="hidden"
                 disabled={cvImporting}
                 onChange={handleImportCv}

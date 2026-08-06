@@ -236,7 +236,7 @@
     "saving": "Guardando...",
     "saveProfile": "Guardar Perfil",
     "aiNote1": "La IA lee estos datos para evaluar el match con cada oferta y personalizar tu CV. Mantén todo actualizado para mejores resultados.",
-    "aiNote2": "Puedes subir tu CV (PDF, DOCX o TXT) con el botón",
+    "aiNote2": "Puedes subir tu CV (PDF, DOCX, TXT o una foto/imagen) con el botón",
     "aiNote3": "para rellenar los campos automáticamente.",
     "importCvErrorTitle": "Error al importar CV",
     "compatibility": {

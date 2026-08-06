@@ -236,7 +236,7 @@
     "saving": "Saving...",
     "saveProfile": "Save Profile",
     "aiNote1": "The AI reads this data to evaluate the fit with each offer and personalize your resume. Keep everything up to date for better results.",
-    "aiNote2": "You can upload your resume (PDF, DOCX or TXT) with the",
+    "aiNote2": "You can upload your resume (PDF, DOCX, TXT or a photo/image) with the",
     "aiNote3": "button to fill in the fields automatically.",
     "importCvErrorTitle": "Error importing resume",
     "compatibility": {

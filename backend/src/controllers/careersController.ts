@@ -17,7 +17,7 @@ function findKnownCountry(nombre?: string | null) {
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const multer = require('multer') as typeof import('multer')
-export const uploadMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('cv')
+export const uploadMiddleware = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } }).single('cv')
 
 type LlmProvider = 'gemini' | 'groq' | 'anthropic' | 'openai'
 
@@ -2922,6 +2922,8 @@ export const scanPortals = async (req: Request, res: Response) => {
 
 // ── Parse CV ──────────────────────────────────────────────────────────────────
 
+const CV_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
 export const parseCv = async (req: Request, res: Response) => {
   try {
     const { email: userEmail, userId } = await getUser(req)
@@ -2931,8 +2933,11 @@ export const parseCv = async (req: Request, res: Response) => {
 
     let rawText = ''
     const mime = file.mimetype
+    const isImage = CV_IMAGE_MIMES.has(mime)
 
-    if (mime === 'application/pdf') {
+    if (isImage) {
+      // se extrae directamente de la imagen vía visión de Claude — sin OCR intermedio
+    } else if (mime === 'application/pdf') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
       const parsed = await pdfParse(file.buffer)
@@ -2948,15 +2953,27 @@ export const parseCv = async (req: Request, res: Response) => {
     } else if (mime === 'text/plain') {
       rawText = file.buffer.toString('utf-8')
     } else {
-      return res.status(400).json({ error: 'Formato no soportado. Sube un PDF, DOCX o TXT.' })
+      return res.status(400).json({ error: 'Formato no soportado. Sube un PDF, DOCX, TXT o una foto/imagen (JPG, PNG) de tu CV.' })
     }
 
-    if (!rawText.trim()) return res.status(400).json({ error: 'No se pudo extraer texto del archivo.' })
+    if (!isImage && !rawText.trim()) return res.status(400).json({ error: 'No se pudo extraer texto del archivo.' })
 
+    // La extracción desde imagen usa visión de Claude directamente — no pasa por el wrapper
+    // genérico multi-proveedor (getLlmClient), que solo tipa `content` como string.
     const client = getLlmClient(req)
-    const sourceLang = detectLanguage(rawText)
+    if (isImage && !process.env.ANTHROPIC_API_KEY) throw new Error('No hay API key de Anthropic configurada en el servidor.')
+    const visionClient = isImage ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY as string }) : null
+    const sourceLang = isImage ? null : detectLanguage(rawText)
 
-    const prompt = `Eres un extractor de datos de CVs para un buscador de empleo internacional. Analiza el siguiente CV y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
+    const idiomaInstruccion = isImage
+      ? '- IDIOMA (obligatorio): detecta el idioma original de la hoja de vida en la imagen y escribe "headline", "exit_story" y "cv_markdown" en ESE MISMO IDIOMA — NO traduzcas el contenido, solo extráelo y ordénalo.'
+      : `- IDIOMA (obligatorio): el CV original está en ${sourceLang === 'en' ? 'INGLÉS' : 'ESPAÑOL'}. Escribe "headline", "exit_story" y "cv_markdown" en ESE MISMO IDIOMA — NO traduzcas el contenido, solo extráelo y ordénalo.`
+
+    const contenidoInstruccion = isImage
+      ? '- CALIDAD DE IMAGEN (obligatorio): si alguna parte de la foto está borrosa, cortada o es ilegible, deja ese campo vacío en vez de adivinar — no inventes datos para completar huecos.'
+      : ''
+
+    const prompt = `Eres un extractor de datos de CVs para un buscador de empleo internacional. Analiza el ${isImage ? 'CV en la imagen adjunta' : 'siguiente CV'} y devuelve UN ÚNICO objeto JSON con esta estructura exacta (sin texto adicional, solo el JSON):
 
 {
   "candidate": {
@@ -3007,16 +3024,26 @@ Instrucciones:
 - "cv_markdown": el CV COMPLETO formateado en Markdown con toda la experiencia, educación, habilidades y logros
 - Si un campo no está disponible, deja string vacío o array vacío
 - No inventes información que no esté en el CV
-- IDIOMA (obligatorio): el CV original está en ${sourceLang === 'en' ? 'INGLÉS' : 'ESPAÑOL'}. Escribe "headline", "exit_story" y "cv_markdown" en ESE MISMO IDIOMA — NO traduzcas el contenido, solo extráelo y ordénalo.
+${idiomaInstruccion}${contenidoInstruccion ? `\n${contenidoInstruccion}` : ''}
+${isImage ? '' : `\nCV A ANALIZAR:\n${rawText.substring(0, 8000)}`}`
 
-CV A ANALIZAR:
-${rawText.substring(0, 8000)}`
-
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    const message = visionClient
+      ? await visionClient.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 4000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mime as 'image/jpeg' | 'image/png' | 'image/webp', data: file.buffer.toString('base64') } },
+              { type: 'text', text: prompt },
+            ],
+          }],
+        })
+      : await client.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: prompt }],
+        })
 
     const fullText = message.content
       .filter(b => b.type === 'text')
@@ -3037,7 +3064,7 @@ ${rawText.substring(0, 8000)}`
       }
     }
 
-    console.log(`[parse-cv] ${userEmail} — extraídos ${rawText.length} chars`)
+    console.log(`[parse-cv] ${userEmail} — extraídos ${isImage ? `imagen ${(file.buffer.length / 1024).toFixed(0)}KB` : `${rawText.length} chars`}`)
     res.json({ ok: true, data: parsed })
   } catch (err: unknown) {
     const provider = getProviderFromRequest(req)
