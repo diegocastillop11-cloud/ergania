@@ -181,7 +181,11 @@ de esa sesión quedó atascado en el historial local y hubo que descartarlo con
 `ergania-ci-test`, projecto conectado con `BLOB_READ_WRITE_TOKEN` en Production/Preview/
 Development) con pathname fijo `ergania.apk` — la URL pública
 (`ANDROID_APK_URL` en `frontend/src/lib/appVersion.ts`) NO cambia entre versiones, solo se
-sobreescribe el contenido. `AndroidAppBanner.tsx`, `Landing.tsx` y `UpdateAvailableBanner.tsx`
+sobreescribe el contenido. **Tamaño real medido 2026-08-10: ~6,3 MB** (tanto el binario en
+Blob como el que produce el workflow) — muy lejos de los ~101 MB de arriba, así que si ves
+6 MB no es un build truncado, es lo normal. Verificar antes de sobreescribir el Blob: que el
+`app-release.apk` descargado traiga `assets/public/assets/index-*.js` (el frontend compilado)
+y el bloque de firma (`grep -qa "APK Sig Block 42"`). `AndroidAppBanner.tsx`, `Landing.tsx` y `UpdateAvailableBanner.tsx`
 importan esa constante en vez de apuntar a `/ergania.apk`. La versión que se muestra al usuario
 (botón "Descargar (v2.1)" y el nombre del archivo descargado, ej. `ergania_v2.1.apk`) sigue
 saliendo de una constante manual en `frontend/src/lib/appVersion.ts` (`ANDROID_APK_VERSION`) —
