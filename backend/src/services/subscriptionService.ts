@@ -313,30 +313,34 @@ export async function createCheckoutLink(userId: string, userEmail: string) {
   return createCheckoutProLink(userId, userEmail)
 }
 
-// Cobro automático mensual. `external_reference` es la única forma confiable de
-// volver del evento de MP al usuario: los pagos recurrentes NO arrastran el
-// metadata de la suscripción original (ahí murió el intento anterior).
+// Cobro automático mensual: se manda al usuario al checkout del PLAN, no se
+// crea la suscripción por API.
+//
+// Probado contra la API real de MP (Chile, MLC) el 2026-08-10: `POST
+// /preapproval` con un preapproval_plan_id responde 400 "card_token_id is
+// required" — esa vía exige tokenizar la tarjeta en nuestro propio formulario,
+// que es un proyecto aparte. La variante sin plan asociado responde 500. La
+// única que funciona es el init_point del plan, donde MP se encarga del login
+// y de los datos de la tarjeta.
+//
+// El costo de esa vía: no podemos mandarle un external_reference, así que MP
+// no sabe de qué usuario nuestro se trata. La suscripción se asocia a la vuelta
+// (ver linkPreapprovalToUser), cuando MP devuelve al usuario a /subscription/
+// success con el preapproval_id y nosotros todavía sabemos quién es porque
+// está logueado. mp_payer_email queda como red de respaldo para el webhook.
 async function createPreapprovalLink(userId: string, userEmail: string) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
-
-  const preapproval = await mpFetch('/preapproval', 'POST', {
-    preapproval_plan_id: MP_PLAN_ID(),
-    payer_email: userEmail,
-    external_reference: userId,
-    reason: PLAN_NAME,
-    back_url: `${BACK_URL()}/subscription/success`,
-    status: 'pending',
-  })
 
   await supabaseAdmin.from('subscriptions').upsert(
     {
       user_id: userId, mp_payer_email: userEmail, status: 'pending_payment',
-      mp_preapproval_id: preapproval.id, payment_provider: 'mercadopago',
+      payment_provider: 'mercadopago',
     },
     { onConflict: 'user_id' }
   )
 
-  return { checkoutUrl: preapproval.init_point as string }
+  const plan = await mpFetch(`/preapproval_plan/${MP_PLAN_ID()}`, 'GET')
+  return { checkoutUrl: plan.init_point as string }
 }
 
 async function createCheckoutProLink(userId: string, userEmail: string) {
@@ -453,18 +457,29 @@ export async function handleWebhook(topic: string, id: string) {
   // Cambios de estado de la suscripción (autorizada, pausada, cancelada).
   if (topic === 'subscription_preapproval' || topic === 'preapproval') {
     const preapproval = await mpFetch(`/preapproval/${id}`, 'GET')
-    const userId = preapproval.external_reference || await buscarUsuarioPorPreapproval(id)
+    // Tres formas de saber de quién es, de la más confiable a la menos:
+    // la que MP nos devolvió (solo existe si algún día podemos mandar
+    // external_reference), la que asoció la app a la vuelta del checkout, y
+    // el correo con el que pagó.
+    const userId = preapproval.external_reference
+      || await buscarUsuarioPorPreapproval(id)
+      || await buscarUsuarioPorEmail(preapproval.payer_email)
     if (!userId) {
-      console.warn(`[webhook] preapproval ${id} sin external_reference ni fila asociada`)
+      console.warn(`[webhook] preapproval ${id} (pagador ${preapproval.payer_email}) no se pudo atribuir a ningún usuario`)
       return
     }
+    // Si llegamos por correo, dejamos la asociación hecha para los próximos
+    // eventos, que sí van a poder resolverse por preapproval_id.
+    await supabaseAdmin.from('subscriptions').update({
+      mp_preapproval_id: id, updated_at: new Date().toISOString(),
+    }).eq('user_id', userId)
 
     if (preapproval.status === 'authorized') {
       // El primer cobro llega aparte (topic subscription_authorized_payment,
-      // ~1h después según MP). Acá solo se deja registrada la autorización;
+      // ~1h después según MP). Acá solo se limpia la marca de problema;
       // activar sin plata recibida daría un mes gratis si el cargo se rechaza.
       await supabaseAdmin.from('subscriptions').update({
-        mp_preapproval_id: id, payment_suspended: false, updated_at: new Date().toISOString(),
+        payment_suspended: false, updated_at: new Date().toISOString(),
       }).eq('user_id', userId)
       return
     }
@@ -488,7 +503,18 @@ export async function handleWebhook(topic: string, id: string) {
   if (topic === 'subscription_authorized_payment') {
     const cuota = await mpFetch(`/authorized_payments/${id}`, 'GET')
     const preapprovalId = String(cuota.preapproval_id ?? '')
-    const userId = await buscarUsuarioPorPreapproval(preapprovalId)
+    let userId = await buscarUsuarioPorPreapproval(preapprovalId)
+    if (!userId && preapprovalId) {
+      // Mismo respaldo que arriba: si la suscripción nunca quedó asociada,
+      // se intenta por el correo del pagador antes de darla por perdida.
+      const preapproval = await mpFetch(`/preapproval/${preapprovalId}`, 'GET').catch(() => null)
+      userId = await buscarUsuarioPorEmail(preapproval?.payer_email)
+      if (userId) {
+        await supabaseAdmin.from('subscriptions').update({
+          mp_preapproval_id: preapprovalId, updated_at: new Date().toISOString(),
+        }).eq('user_id', userId)
+      }
+    }
     if (!userId) {
       console.warn(`[webhook] cuota ${id} del preapproval ${preapprovalId} sin fila asociada`)
       return
@@ -525,6 +551,58 @@ async function buscarUsuarioPorPreapproval(preapprovalId: string): Promise<strin
     .eq('mp_preapproval_id', preapprovalId)
     .maybeSingle()
   return data?.user_id
+}
+
+// Respaldo para cuando la suscripción todavía no quedó asociada (el usuario
+// cerró la pestaña antes de volver del checkout). Solo sirve si pagó con la
+// misma dirección con la que se registró en Ergania.
+async function buscarUsuarioPorEmail(email?: string): Promise<string | undefined> {
+  if (!supabaseAdmin || !email) return undefined
+  const { data } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id')
+    .eq('mp_payer_email', email)
+    .eq('status', 'pending_payment')
+    .maybeSingle()
+  return data?.user_id
+}
+
+// Asocia una suscripción de MP a un usuario nuestro. Hace falta porque el
+// checkout del plan no admite external_reference (ver createPreapprovalLink):
+// MP nos devuelve al usuario con el preapproval_id en la URL y recién ahí,
+// con la sesión de Ergania a mano, sabemos de quién es.
+//
+// El endpoint que llama a esto está autenticado, pero igual se valida que la
+// suscripción sea de NUESTRO plan y que no esté ya tomada por otra cuenta —
+// si no, cualquiera podría adueñarse de la suscripción pagada por otro.
+export async function linkPreapprovalToUser(userId: string, preapprovalId: string) {
+  if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
+  if (!preapprovalId) throw new Error('preapproval_id requerido')
+
+  const preapproval = await mpFetch(`/preapproval/${preapprovalId}`, 'GET')
+
+  if (MP_PLAN_ID() && preapproval.preapproval_plan_id !== MP_PLAN_ID()) {
+    throw new Error('La suscripción no corresponde al plan de Ergania')
+  }
+
+  const dueñoActual = await buscarUsuarioPorPreapproval(preapprovalId)
+  if (dueñoActual && dueñoActual !== userId) {
+    console.warn(`[link] preapproval ${preapprovalId} ya es del usuario ${dueñoActual}; lo pidió ${userId}`)
+    throw new Error('Esa suscripción ya está asociada a otra cuenta')
+  }
+
+  await supabaseAdmin.from('subscriptions').update({
+    mp_preapproval_id: preapprovalId,
+    mp_payer_email: preapproval.payer_email ?? undefined,
+    payment_provider: 'mercadopago',
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', userId)
+
+  // Si MP ya cobró la primera cuota, no esperamos al webhook para dar acceso.
+  const cobro = await buscarCobroDePreapproval(preapprovalId).catch(() => undefined)
+  if (cobro) await registrarPagoAprobado(userId, cobro)
+
+  return { status: preapproval.status as string, cobrado: !!cobro }
 }
 
 // Llamado por Vercel Cron una vez al día: avisa a subs activas que vencen en ≤3 días,

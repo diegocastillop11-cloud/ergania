@@ -81,6 +81,24 @@ export async function createPayPalCheckout(req: Request, res: Response) {
   }
 }
 
+// Lo llama la página de retorno de MP con el preapproval_id que viene en la
+// URL. Es el momento en que sabemos a la vez quién es el usuario (sesión de
+// Ergania) y cuál es su suscripción en MP — el checkout del plan no permite
+// mandar esa relación de ida.
+export async function linkPreapproval(req: Request, res: Response) {
+  try {
+    const user = await getUserFromToken(req)
+    const preapprovalId = String(req.body?.preapproval_id || '').trim()
+    if (!preapprovalId) throw new Error('preapproval_id requerido')
+    const result = await svc.linkPreapprovalToUser(user.id, preapprovalId)
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[link-preapproval] catch:', msg)
+    res.status(400).json({ error: msg })
+  }
+}
+
 export async function cancelSub(req: Request, res: Response) {
   try {
     const user = await getUserFromToken(req)

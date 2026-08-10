@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
+import { linkPreapproval } from '../lib/subscriptionApi'
 
 type CallbackType = 'success' | 'failure' | 'pending'
 
@@ -36,10 +37,27 @@ export default function SubscriptionCallback() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const [params] = useSearchParams()
 
   const type = (pathname.split('/').pop() ?? 'failure') as CallbackType
   const cfg = CONFIG[type] ?? CONFIG.failure
   const Icon = cfg.icon
+
+  // El checkout de suscripción de MP no acepta external_reference, así que
+  // esta vuelta es donde se une el pago con la cuenta: acá sabemos quién es
+  // el usuario (sesión propia) y MP nos pasa su preapproval_id en la URL.
+  // MP escribe algunos parámetros con guion y otros con guion bajo, así que
+  // se aceptan las dos formas antes que perder la asociación por un carácter.
+  const preapprovalId = params.get('preapproval_id') || params.get('preapproval-id')
+
+  useEffect(() => {
+    if (!preapprovalId) return
+    linkPreapproval(preapprovalId).catch(err => {
+      // No se le muestra al usuario: el webhook y el reconciliador son la red
+      // de atrás. Pero tiene que quedar en consola para poder diagnosticarlo.
+      console.error('[subscription-callback] no se pudo asociar la suscripción:', err)
+    })
+  }, [preapprovalId])
 
   useEffect(() => {
     const timer = setTimeout(() => navigate(cfg.redirect, { replace: true }), cfg.delay)

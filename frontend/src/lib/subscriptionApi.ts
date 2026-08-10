@@ -41,6 +41,11 @@ export async function startPayPalCheckout(): Promise<{ checkoutUrl: string }> {
   return data
 }
 
+export async function linkPreapproval(preapprovalId: string): Promise<{ status: string; cobrado: boolean }> {
+  const { data } = await api.post('/link-preapproval', { preapproval_id: preapprovalId })
+  return data
+}
+
 export async function cancelSubscription(): Promise<void> {
   await api.post('/cancel')
 }

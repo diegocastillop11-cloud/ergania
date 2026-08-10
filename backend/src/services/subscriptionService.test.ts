@@ -120,9 +120,11 @@ describe('handleWebhook — cobro recurrente (Preapproval)', () => {
 
     await handleWebhook('subscription_preapproval', 'pre-3')
 
-    const cambio = cambiosEn('user-autorizado').at(-1)
-    expect(cambio?.values.status).toBeUndefined()
-    expect(cambio?.values.mp_preapproval_id).toBe('pre-3')
+    const cambios = cambiosEn('user-autorizado')
+    expect(cambios.some(c => c.values.mp_preapproval_id === 'pre-3')).toBe(true)
+    // Ningún cambio puede haber activado la cuenta: MP todavía no cobró nada.
+    expect(cambios.every(c => c.values.status === undefined)).toBe(true)
+    expect(inserts).toHaveLength(0)
   })
 
   it('cancelar en MP deja la fila cancelada', async () => {
