@@ -46,9 +46,15 @@ export default function SubscriptionCallback() {
   // El checkout de suscripción de MP no acepta external_reference, así que
   // esta vuelta es donde se une el pago con la cuenta: acá sabemos quién es
   // el usuario (sesión propia) y MP nos pasa su preapproval_id en la URL.
-  // MP escribe algunos parámetros con guion y otros con guion bajo, así que
-  // se aceptan las dos formas antes que perder la asociación por un carácter.
-  const preapprovalId = params.get('preapproval_id') || params.get('preapproval-id')
+  // MP no es consistente con el nombre: en una vuelta real (2026-08-10) mandó
+  // el id de la suscripción en `external_reference`, y mezcla guion con guion
+  // bajo entre parámetros. Se aceptan todas las variantes porque perder la
+  // asociación por el nombre de un parámetro deja a alguien que pagó sin
+  // acceso. El backend valida que el id sea una suscripción de nuestro plan,
+  // así que aceptar de más no abre ningún hueco.
+  const preapprovalId = params.get('preapproval_id')
+    || params.get('preapproval-id')
+    || params.get('external_reference')
 
   useEffect(() => {
     if (!preapprovalId) return

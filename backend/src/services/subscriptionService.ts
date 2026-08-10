@@ -380,12 +380,16 @@ async function createCheckoutProLink(userId: string, userEmail: string) {
 async function registrarPagoAprobado(
   userId: string,
   pago: { id: string; monto: number; payerEmail?: string },
-  opciones: { notificarAdmin: boolean } = { notificarAdmin: true }
+  opciones: { notificarAdmin: boolean; hasta?: string } = { notificarAdmin: true }
 ) {
   if (!supabaseAdmin) throw new Error('supabaseAdmin no inicializado')
 
-  const periodEnd = new Date()
-  periodEnd.setDate(periodEnd.getDate() + 30)
+  // En una suscripción, MP dice exactamente cuándo vuelve a cobrar; usar esa
+  // fecha en vez de sumar 30 días evita que la app corte el acceso un día
+  // antes (o lo regale un día de más) respecto de lo que el usuario paga.
+  const periodEnd = opciones.hasta ? new Date(opciones.hasta) : (() => {
+    const d = new Date(); d.setDate(d.getDate() + 30); return d
+  })()
 
   await supabaseAdmin.from('subscriptions').update({
     status: 'active',
@@ -435,11 +439,14 @@ export async function handleWebhook(topic: string, id: string) {
     const payment = await mpFetch(`/v1/payments/${id}`, 'GET')
     if (payment.status !== 'approved') return
 
-    // metadata.user_id solo viene en los pagos de Checkout Pro. Los de una
-    // suscripción traen el preapproval en su lugar; se resuelve por la fila.
+    // metadata.user_id solo viene en los pagos de Checkout Pro. En los de una
+    // suscripción el metadata llega VACÍO (verificado con un pago real el
+    // 2026-08-10): el único lugar donde MP deja el preapproval es
+    // point_of_interaction.transaction_data.subscription_id.
     let userId: string | undefined = payment.metadata?.user_id
-    if (!userId && payment.metadata?.preapproval_id) {
-      userId = await buscarUsuarioPorPreapproval(String(payment.metadata.preapproval_id))
+    const subscriptionId = payment.point_of_interaction?.transaction_data?.subscription_id
+    if (!userId && subscriptionId) {
+      userId = await buscarUsuarioPorPreapproval(String(subscriptionId))
     }
     if (!userId) {
       console.warn(`[webhook] pago ${id} aprobado sin user_id resoluble — no se activó ninguna cuenta`)
@@ -475,11 +482,19 @@ export async function handleWebhook(topic: string, id: string) {
     }).eq('user_id', userId)
 
     if (preapproval.status === 'authorized') {
-      // El primer cobro llega aparte (topic subscription_authorized_payment,
-      // ~1h después según MP). Acá solo se limpia la marca de problema;
-      // activar sin plata recibida daría un mes gratis si el cargo se rechaza.
+      // Verificado con un pago real el 2026-08-10: en el checkout del plan MP
+      // cobra al instante y recién entonces deja la suscripción 'authorized',
+      // con next_payment_date un mes más adelante. Así que 'authorized' ya
+      // significa plata recibida y da acceso. La boleta y el correo NO se
+      // emiten acá: los emite el webhook del pago, que sí trae el monto y el
+      // id reales — si no, saldrían dos boletas por el mismo cobro.
       await supabaseAdmin.from('subscriptions').update({
-        payment_suspended: false, updated_at: new Date().toISOString(),
+        status: 'active',
+        current_period_end: preapproval.next_payment_date
+          ? new Date(preapproval.next_payment_date).toISOString()
+          : undefined,
+        payment_suspended: false,
+        updated_at: new Date().toISOString(),
       }).eq('user_id', userId)
       return
     }
@@ -553,8 +568,10 @@ async function buscarUsuarioPorPreapproval(preapprovalId: string): Promise<strin
   return data?.user_id
 }
 
-// Respaldo para cuando la suscripción todavía no quedó asociada (el usuario
-// cerró la pestaña antes de volver del checkout). Solo sirve si pagó con la
+// Último respaldo para cuando la suscripción no quedó asociada (el usuario
+// cerró la pestaña antes de volver del checkout). Rara vez va a servir: en el
+// checkout del plan MP devuelve payer_email vacío (verificado 2026-08-10), así
+// que solo sirve si algún evento sí lo trae y además el usuario pagó con la
 // misma dirección con la que se registró en Ergania.
 async function buscarUsuarioPorEmail(email?: string): Promise<string | undefined> {
   if (!supabaseAdmin || !email) return undefined
@@ -591,18 +608,25 @@ export async function linkPreapprovalToUser(userId: string, preapprovalId: strin
     throw new Error('Esa suscripción ya está asociada a otra cuenta')
   }
 
+  const activa = preapproval.status === 'authorized'
+
   await supabaseAdmin.from('subscriptions').update({
     mp_preapproval_id: preapprovalId,
-    mp_payer_email: preapproval.payer_email ?? undefined,
     payment_provider: 'mercadopago',
+    // La suscripción ya está pagada (ver el comentario del webhook): se da
+    // acceso acá mismo, sin esperar al webhook. La boleta la sigue emitiendo
+    // el webhook del pago, que es el único que sabe el monto y el id reales.
+    ...(activa ? {
+      status: 'active',
+      payment_suspended: false,
+      ...(preapproval.next_payment_date
+        ? { current_period_end: new Date(preapproval.next_payment_date).toISOString() }
+        : {}),
+    } : {}),
     updated_at: new Date().toISOString(),
   }).eq('user_id', userId)
 
-  // Si MP ya cobró la primera cuota, no esperamos al webhook para dar acceso.
-  const cobro = await buscarCobroDePreapproval(preapprovalId).catch(() => undefined)
-  if (cobro) await registrarPagoAprobado(userId, cobro)
-
-  return { status: preapproval.status as string, cobrado: !!cobro }
+  return { status: preapproval.status as string, activa }
 }
 
 // Llamado por Vercel Cron una vez al día: avisa a subs activas que vencen en ≤3 días,
@@ -771,22 +795,43 @@ export async function reconcileMercadoPagoPayments() {
     // Cada fila se consulta según su flujo: Checkout Pro deja una preference
     // con merchant orders; Preapproval no tiene preference, hay que preguntarle
     // a la suscripción si ya cobró alguna cuota.
-    let cobro: { id: string; monto: number } | undefined
     try {
-      cobro = row.mp_preapproval_id
-        ? await buscarCobroDePreapproval(row.mp_preapproval_id as string)
-        : await buscarCobroDePreference(row.mp_preference_id as string)
+      if (row.mp_preapproval_id) {
+        const sub = await mpFetch(`/preapproval/${row.mp_preapproval_id}`, 'GET')
+        if (sub.status !== 'authorized') continue
+
+        // Sin boleta: acá no tenemos el id ni el monto del cobro (el objeto
+        // preapproval no los expone — summarized viene en null incluso con un
+        // cobro real). La boleta la emite el webhook del pago; esto solo
+        // devuelve el acceso a alguien que pagó y se quedó afuera.
+        await supabaseAdmin.from('subscriptions').update({
+          status: 'active',
+          payment_suspended: false,
+          ...(sub.next_payment_date
+            ? { current_period_end: new Date(sub.next_payment_date).toISOString() }
+            : {}),
+          updated_at: new Date().toISOString(),
+        }).eq('user_id', row.user_id)
+
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(row.user_id)
+        fixed.push({
+          email: userData?.user?.email || 'desconocido', provider: 'mercadopago',
+          amount: PLAN_AMOUNT, moneda: PLAN_CURRENCY, refId: String(row.mp_preapproval_id),
+        })
+        continue
+      }
+
+      const cobro = await buscarCobroDePreference(row.mp_preference_id as string)
+      if (!cobro) continue
+
+      const { userEmail, monto } = await registrarPagoAprobado(
+        row.user_id, { id: cobro.id, monto: cobro.monto }, { notificarAdmin: false }
+      )
+      fixed.push({ email: userEmail, provider: 'mercadopago', amount: monto, moneda: PLAN_CURRENCY, refId: cobro.id })
     } catch (err) {
       console.error(`[reconcile/mp] no se pudo consultar al usuario ${row.user_id}:`, err instanceof Error ? err.message : err)
       continue
     }
-    if (!cobro) continue
-
-    const { userEmail, monto } = await registrarPagoAprobado(
-      row.user_id, { id: cobro.id, monto: cobro.monto }, { notificarAdmin: false }
-    )
-
-    fixed.push({ email: userEmail, provider: 'mercadopago', amount: monto, moneda: PLAN_CURRENCY, refId: cobro.id })
   }
 
   return { checked: candidates?.length ?? 0, fixed }
@@ -801,25 +846,6 @@ async function buscarCobroDePreference(prefId: string) {
   return approved ? { id: String(approved.id), monto: approved.transaction_amount ?? 0 } : undefined
 }
 
-async function buscarCobroDePreapproval(preapprovalId: string) {
-  if (!preapprovalId) return undefined
-  const preapproval = await mpFetch(`/preapproval/${preapprovalId}`, 'GET')
-  if (!preapproval.summarized?.charged_quantity) return undefined
-
-  const search: { results?: { id: number; status: string; transaction_amount?: number; payment?: { id: number; status: string } }[] } =
-    await mpFetch(`/authorized_payments/search?preapproval_id=${preapprovalId}`, 'GET')
-
-  const cobrada = search.results?.find(c => c.status === 'processed' && c.payment?.status === 'approved')
-  if (!cobrada) {
-    // MP dice que cobró pero no pudimos identificar la cuota. No se activa a
-    // ciegas (la boleta quedaría con monto inventado); queda el aviso para
-    // revisarlo a mano antes de que el usuario reclame.
-    console.warn(`[reconcile/mp] preapproval ${preapprovalId} con ${preapproval.summarized.charged_quantity} cuota(s) cobrada(s) pero sin cuota identificable — revisar a mano`)
-    return undefined
-  }
-
-  return { id: String(cobrada.payment?.id ?? cobrada.id), monto: cobrada.transaction_amount ?? PLAN_AMOUNT }
-}
 
 // Checkout Pro no tiene nada que cancelar del lado del proveedor — es pago
 // manual, no hay cobro automático que apagar. PayPal y el Preapproval de MP sí

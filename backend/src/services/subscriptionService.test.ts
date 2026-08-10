@@ -111,19 +111,29 @@ describe('handleWebhook — cobro recurrente (Preapproval)', () => {
     expect(inserts).toHaveLength(0)
   })
 
-  // MP cobra la primera cuota ~1h DESPUÉS de autorizar. Si autorizar activara
-  // la cuenta, quien autorice con una tarjeta sin fondos tendría un mes gratis.
-  it('autorizar la suscripción todavía no da acceso — el acceso lo da el cobro', async () => {
+  // Verificado con un pago real (2026-08-10): en el checkout del plan MP cobra
+  // al instante y recién ahí deja la suscripción 'authorized'. Por eso
+  // 'authorized' ya da acceso, y el vencimiento sale de next_payment_date en
+  // vez de sumar 30 días a ojo.
+  it('autorizar la suscripción da acceso hasta la fecha del próximo cobro', async () => {
     mockMercadoPago({
-      '/preapproval/pre-3': { id: 'pre-3', status: 'authorized', external_reference: 'user-autorizado' },
+      '/preapproval/pre-3': {
+        id: 'pre-3', status: 'authorized', external_reference: 'user-autorizado',
+        next_payment_date: '2026-09-10T12:50:26.000-04:00',
+      },
     })
 
     await handleWebhook('subscription_preapproval', 'pre-3')
 
     const cambios = cambiosEn('user-autorizado')
     expect(cambios.some(c => c.values.mp_preapproval_id === 'pre-3')).toBe(true)
-    // Ningún cambio puede haber activado la cuenta: MP todavía no cobró nada.
-    expect(cambios.every(c => c.values.status === undefined)).toBe(true)
+
+    const activacion = cambios.find(c => c.values.status === 'active')
+    expect(activacion?.values.current_period_end).toBe('2026-09-10T16:50:26.000Z')
+    expect(activacion?.values.payment_suspended).toBe(false)
+
+    // La boleta la emite el webhook del pago, que sí sabe monto e id reales.
+    // Si se emitiera acá también, saldrían dos por el mismo cobro.
     expect(inserts).toHaveLength(0)
   })
 
@@ -178,14 +188,16 @@ describe('handleWebhook — Checkout Pro (los clientes que ya venían)', () => {
     expect(inserts).toHaveLength(0)
   })
 
-  // Los pagos recurrentes no arrastran metadata.user_id — el bug exacto que
-  // hizo fallar el intento anterior.
-  it('un pago sin metadata.user_id se resuelve por el preapproval', async () => {
+  // Verificado con un pago real (2026-08-10): en un cobro de suscripción el
+  // metadata llega VACÍO. El único lugar donde MP deja el preapproval es
+  // point_of_interaction.transaction_data.subscription_id. Buscarlo en
+  // metadata — como hacía la primera versión — no encuentra nunca nada.
+  it('un pago de suscripción se resuelve por point_of_interaction', async () => {
     filas = { user_id: 'user-por-preapproval' }
     mockMercadoPago({
       '/v1/payments/99003': {
-        id: 99003, status: 'approved', transaction_amount: 9990,
-        metadata: { preapproval_id: 'pre-9' },
+        id: 99003, status: 'approved', transaction_amount: 9990, metadata: {},
+        point_of_interaction: { transaction_data: { subscription_id: 'pre-9' } },
       },
     })
 
