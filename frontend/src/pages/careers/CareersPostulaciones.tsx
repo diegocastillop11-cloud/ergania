@@ -11,6 +11,7 @@ import {
   Pencil, Save, Check, MessagesSquare,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
+import { InterviewGuidePanel } from '../../components/interview/InterviewGuidePanel'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 async function downloadPdf(appId: string, filename: string) {
@@ -1392,6 +1393,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
   const [fullApp, setFullApp] = useState<Application | null>(null)
   const [showCv, setShowCv] = useState(false)
   const [showPrep, setShowPrep] = useState(false)
+  const [showLegacyPrep, setShowLegacyPrep] = useState(false)
   const [showQnA, setShowQnA] = useState(false)
   const [showSimulator, setShowSimulator] = useState(false)
   const [showApply, setShowApply] = useState(false)
@@ -1469,7 +1471,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
                   <CheckCircle2 size={10} /> {t('careersPostulaciones.card.pdfReady')}
                 </span>
               )}
-              {appSummary.interviewPrep && (
+              {(appSummary.hasGuide || appSummary.interviewPrep) && (
                 <span className="text-[10px] text-violet-400 flex items-center gap-1">
                   <Brain size={10} /> {t('careersPostulaciones.card.prepReady')}
                 </span>
@@ -1492,7 +1494,7 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-900/40 hover:bg-violet-800/60 border border-violet-800/50 text-violet-300 rounded-lg text-xs font-medium transition-colors"
             >
               <Brain size={11} />
-              {appSummary.interviewPrep ? t('careersPostulaciones.card.viewPrep') : t('careersPostulaciones.card.preparePrep')}
+              {appSummary.hasGuide ? t('careersPostulaciones.card.viewPrep') : t('careersPostulaciones.card.preparePrep')}
             </button>
             <button
               onClick={openQnA}
@@ -1574,9 +1576,17 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
         />
       )}
       {showPrep && fullApp && (
-        <InterviewPrepPanel
+        <InterviewGuidePanel
           app={fullApp}
           onClose={() => setShowPrep(false)}
+          onGenerated={guide => setFullApp(a => a ? { ...a, interviewGuide: guide } : a)}
+          onViewLegacy={fullApp.interviewPrep ? () => { setShowPrep(false); setShowLegacyPrep(true) } : undefined}
+        />
+      )}
+      {showLegacyPrep && fullApp && (
+        <InterviewPrepPanel
+          app={fullApp}
+          onClose={() => setShowLegacyPrep(false)}
           onGenerated={prep => setFullApp(a => a ? { ...a, interviewPrep: prep } : a)}
         />
       )}

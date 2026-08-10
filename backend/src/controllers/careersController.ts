@@ -50,13 +50,13 @@ function normalizeProvider(_raw?: string): LlmProvider {
   return (process.env.DEFAULT_LLM_PROVIDER as LlmProvider) || 'anthropic'
 }
 
-function getProviderFromRequest(req: Request): LlmProvider {
+export function getProviderFromRequest(req: Request): LlmProvider {
   const rawBodyProvider = typeof req.body?.llmProvider === 'string' ? req.body.llmProvider : undefined
   const rawQueryProvider = typeof req.query.llmProvider === 'string' ? req.query.llmProvider : undefined
   return normalizeProvider(rawBodyProvider || rawQueryProvider)
 }
 
-function getLlmClient(req: Request) {
+export function getLlmClient(req: Request) {
   const provider = getProviderFromRequest(req)
   // Accept user-provided API key from body (POST) OR query param (GET/SSE endpoints like /scan)
   const fromBody  = typeof req.body?.userApiKey === 'string' ? req.body.userApiKey.trim() : ''
@@ -167,7 +167,7 @@ function classifyAiError(err: unknown, provider?: LlmProvider): { message: strin
   return { message: apiMsg || msg || `Error desconocido al llamar a ${activeProvider}`, transient: false }
 }
 
-function friendlyAiError(err: unknown, provider?: LlmProvider): string {
+export function friendlyAiError(err: unknown, provider?: LlmProvider): string {
   return classifyAiError(err, provider).message
 }
 
@@ -234,7 +234,7 @@ function validateUrl(rawUrl: string): void {
     throw new Error('URL no permitida')
 }
 
-async function getUser(req: Request): Promise<{ email: string; userId: string }> {
+export async function getUser(req: Request): Promise<{ email: string; userId: string }> {
   const auth = req.headers['authorization']
   const rawToken = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined
   if (!rawToken) {
@@ -253,11 +253,11 @@ async function getUser(req: Request): Promise<{ email: string; userId: string }>
   return { email: data.user!.email!, userId: data.user!.id }
 }
 
-async function getUserEmail(req: Request): Promise<string> {
+export async function getUserEmail(req: Request): Promise<string> {
   return (await getUser(req)).email
 }
 
-async function requireActiveSubscription(userId: string): Promise<void> {
+export async function requireActiveSubscription(userId: string): Promise<void> {
   const sub = await getSubscriptionStatus(userId)
   if (sub.status !== 'trial' && sub.status !== 'active') {
     throw Object.assign(new Error('Suscripción requerida para usar esta función'), { status: 402 })

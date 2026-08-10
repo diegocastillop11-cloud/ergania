@@ -108,6 +108,25 @@ export const SCORE_COLOR = (score: number | null): string => {
   return 'text-red-400'
 }
 
+/** Datos de la entrevista que el usuario entrega a mano — la IA no puede saberlos. */
+export interface InterviewMeta {
+  entrevistadores?: string
+  fecha?: string
+  hora?: string
+  modalidad?: string
+  tipo?: string
+}
+
+/** La guía se renderiza en el backend (un solo builder para preview, .html y PDF), así que
+ *  el frontend solo necesita saber que existe y de cuándo es. */
+export interface InterviewGuide {
+  version: number
+  generatedAt: string
+  empresa: string
+  rol: string
+  idioma: 'es' | 'en'
+}
+
 export interface Application {
   id: string
   fecha: string
@@ -120,6 +139,9 @@ export interface Application {
   cvPdfFilename?: string
   estado: string
   interviewPrep?: string
+  interviewGuide?: InterviewGuide
+  interviewMeta?: InterviewMeta
+  hasGuide?: boolean            // solo viene en el listado; el detalle trae interviewGuide
   coverLetter?: string
   idioma?: 'es' | 'en'
   score?: number | null

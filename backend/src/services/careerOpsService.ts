@@ -7,6 +7,7 @@ import { promisify } from 'util'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { PDF_EMBEDDED_FONT_CSS } from './pdfFonts'
+import type { InterviewGuide, InterviewNotes, InterviewMeta, EmpresaInfo } from './interviewGuideService'
 
 // Cargar .env aquí también por si este módulo se inicializa antes que config/supabase.ts
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
@@ -572,7 +573,11 @@ export interface Application {
   idioma?: 'es' | 'en' // idioma del CV generado (detectado del JD o elegido por el usuario)
   cvPdfFilename?: string
   estado: string
-  interviewPrep?: string
+  interviewPrep?: string        // guía markdown legacy — ya no se genera, se sigue mostrando
+  interviewGuide?: InterviewGuide
+  interviewNotes?: InterviewNotes
+  interviewMeta?: InterviewMeta
+  hasGuide?: boolean            // solo en el listado — evita mandar la guía entera por fila
   coverLetter?: string
   score?: number | null
   notas?: string
@@ -1056,12 +1061,17 @@ async function dbReadApplications(userEmail: string): Promise<Omit<Application, 
   if (!supabase) return []
   const { data, error } = await supabase
     .from('applications')
-    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep", idioma, pais, moneda')
+    // guideVersion en vez de "interviewGuide" entero: el listado solo necesita saber SI hay
+    // guía, y traer el JSON completo de cada postulación serían cientos de KB por request.
+    .select('id, fecha, empresa, rol, url, "cvTex", "cvPdfFilename", estado, score, notas, "interviewPrep", "interviewMeta", guideVersion:"interviewGuide"->version, idioma, pais, moneda')
     .eq('user_email', userEmail)
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
-  return (data || []) as Omit<Application, 'cvHtml'>[]
+  return (data || []).map(row => {
+    const { guideVersion, ...rest } = row as Record<string, unknown>
+    return { ...rest, hasGuide: guideVersion != null } as Omit<Application, 'cvHtml'>
+  })
 }
 
 async function dbGetApplication(userEmail: string, id: string): Promise<Application | null> {
@@ -1080,7 +1090,8 @@ async function dbSaveApplication(userEmail: string, app: Application): Promise<v
   if (!supabase) throw new Error('Supabase no está configurado')
   // coverLetter se excluye del upsert hasta que exista la columna en Supabase.
   // Para agregarla: ALTER TABLE applications ADD COLUMN "coverLetter" text;
-  const { coverLetter: _cl, ...appForDb } = app
+  // hasGuide es derivado del listado, no una columna: mandarlo al upsert rompería el insert.
+  const { coverLetter: _cl, hasGuide: _hg, ...appForDb } = app
   const { error } = await supabase.from('applications').upsert({ user_email: userEmail, ...appForDb })
   if (error) throw new Error(error.message)
 }
@@ -1107,6 +1118,24 @@ async function dbFindApplicationByUrlOrRole(userEmail: string, url: string | und
     .limit(1)
   if (error) throw new Error(error.message)
   return (data && data[0]) || null
+}
+
+/** Investigación de empresa ya pagada (web_search) en otra postulación del mismo usuario a la
+ *  misma empresa. Devuelve null si no hay, o si la que hay no encontró datos. */
+export async function findEmpresaResearch(userEmail: string, empresa: string): Promise<EmpresaInfo | null> {
+  if (!dbEnabled() || !supabase || !empresa?.trim()) return null
+  const { data, error } = await supabase
+    .from('applications')
+    .select('"interviewGuide"')
+    .eq('user_email', normalizeUserEmail(userEmail))
+    .eq('empresa', empresa)
+    .not('interviewGuide', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+  if (error) return null
+
+  const info = (data?.[0] as { interviewGuide?: InterviewGuide } | undefined)?.interviewGuide?.empresaInfo
+  return info?.investigada && info.resumen ? info : null
 }
 
 async function dbGetNextApplicationId(userEmail: string): Promise<string> {

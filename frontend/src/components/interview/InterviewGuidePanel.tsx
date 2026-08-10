@@ -1,0 +1,295 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { api } from '../../lib/api'
+import { saveBlob } from '../../lib/downloadFile'
+import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
+import { getKeyForProvider } from '../../lib/userApiKeys'
+import {
+  Brain, Loader2, X, Download, FileCode2, Sparkles, RefreshCw, Search,
+} from 'lucide-react'
+import type { Application, InterviewMeta } from '../../types/careers'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
+
+const EMPTY_META: InterviewMeta = { entrevistadores: '', fecha: '', hora: '', modalidad: '', tipo: '' }
+
+function fileBase(app: Application): string {
+  const clean = (s: string) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
+  return `Guia_Entrevista_${clean(app.empresa)}_${clean(app.rol)}`
+}
+
+export function InterviewGuidePanel({
+  app, onClose, onGenerated, onViewLegacy,
+}: {
+  app: Application
+  onClose: () => void
+  onGenerated: (guide: NonNullable<Application['interviewGuide']>) => void
+  /** Solo se ofrece cuando la postulación tiene una guía markdown vieja y ninguna nueva. */
+  onViewLegacy?: () => void
+}) {
+  const { t } = useTranslation()
+  const [html, setHtml] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [loadingGuide, setLoadingGuide] = useState(!!app.interviewGuide)
+  const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(!app.interviewGuide)
+  const [meta, setMeta] = useState<InterviewMeta>({ ...EMPTY_META, ...(app.interviewMeta || {}) })
+  const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
+  const [reinvestigar, setReinvestigar] = useState(false)
+  const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const errMsg = useCallback((err: unknown, fallback: string) => {
+    return (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      || (err as Error)?.message
+      || fallback
+  }, [])
+
+  // Guía ya generada: se pide el HTML al backend en vez de armarlo acá — así el preview,
+  // el .html descargado y el PDF salen del mismo builder y no pueden divergir.
+  useEffect(() => {
+    if (!app.interviewGuide) return
+    let cancelled = false
+    setLoadingGuide(true)
+    api.get(`/applications/${app.id}/interview-guide`)
+      .then(({ data }) => { if (!cancelled) setHtml(data.html) })
+      .catch(err => { if (!cancelled) setError(errMsg(err, t('careersPostulaciones.interviewGuide.loadError'))) })
+      .finally(() => { if (!cancelled) setLoadingGuide(false) })
+    return () => { cancelled = true }
+  }, [app.id, app.interviewGuide, errMsg, t])
+
+  // Las notas se escriben dentro del iframe y viajan por postMessage: así el HTML no
+  // necesita el token de auth (se descarga y se comparte, no puede llevar credenciales).
+  useEffect(() => {
+    const onMessage = async (e: MessageEvent) => {
+      if (e.data?.type !== 'ergania:guide-notes') return
+      try {
+        await api.patch(`/applications/${app.id}/interview-guide/notes`, { notes: e.data.notes })
+        iframeRef.current?.contentWindow?.postMessage({ type: 'ergania:notes-saved' }, '*')
+      } catch (err) {
+        console.error('No se pudieron guardar las notas', err)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [app.id])
+
+  const generate = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const userApiKey = getKeyForProvider(llmProvider)
+      const { data } = await api.post(`/applications/${app.id}/interview-guide`, {
+        llmProvider,
+        idioma: lang,
+        meta,
+        reinvestigar,
+        ...(userApiKey ? { userApiKey } : {}),
+      })
+      setHtml(data.html)
+      setShowForm(false)
+      setReinvestigar(false)
+      onGenerated(data.guide)
+    } catch (err: unknown) {
+      setError(errMsg(err, t('careersPostulaciones.interviewGuide.genericError')))
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const download = async (kind: 'html' | 'pdf') => {
+    setError('')
+    try {
+      const { data } = await api.get(`/applications/${app.id}/interview-guide/${kind}`, { responseType: 'blob' })
+      await saveBlob(data, `${fileBase(app)}.${kind}`)
+    } catch (err: unknown) {
+      setError(errMsg(err, t('careersPostulaciones.interviewGuide.downloadError')))
+      console.error(err)
+    }
+  }
+
+  const field = (key: keyof InterviewMeta, label: string, placeholder: string) => (
+    <div>
+      <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
+        {label}
+      </label>
+      <input
+        type="text"
+        value={meta[key] || ''}
+        onChange={e => setMeta(m => ({ ...m, [key]: e.target.value }))}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none focus:border-violet-500"
+      />
+    </div>
+  )
+
+  const hasGuide = !!html && !showForm
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-5xl h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between gap-3 p-4 border-b border-[var(--border-default)] shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2 truncate">
+              <Brain size={16} className="text-violet-400 shrink-0" />
+              {t('careersPostulaciones.interviewGuide.titlePrefix')} {app.empresa}
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+              {t('careersPostulaciones.interviewGuide.subtitle')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {hasGuide && (
+              <>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs"
+                  title={t('careersPostulaciones.interviewGuide.regenerateTitle')}
+                >
+                  <RefreshCw size={13} /> {t('careersPostulaciones.interviewGuide.regenerate')}
+                </button>
+                <button
+                  onClick={() => download('html')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
+                  title={t('careersPostulaciones.interviewGuide.downloadHtmlTitle')}
+                >
+                  <FileCode2 size={13} /> HTML
+                </button>
+                <button
+                  onClick={() => download('pdf')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs"
+                >
+                  <Download size={13} /> PDF
+                </button>
+              </>
+            )}
+            <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {error && (
+            <div className="m-4 p-3 bg-red-900/30 border border-red-800 rounded-xl text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          {loading && (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+              <Loader2 size={32} className="text-violet-400 animate-spin" />
+              <div>
+                <p className="text-[var(--text-primary)] font-medium">
+                  {t('careersPostulaciones.interviewGuide.loadingTitle')}
+                </p>
+                <p className="text-[var(--text-tertiary)] text-sm mt-1 max-w-md">
+                  {t('careersPostulaciones.interviewGuide.loadingNote')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading && showForm && (
+            <div className="p-5 max-w-2xl mx-auto">
+              <div className="flex items-start gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-violet-900/30 flex items-center justify-center shrink-0">
+                  <Sparkles size={20} className="text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-[var(--text-primary)] font-semibold">
+                    {t('careersPostulaciones.interviewGuide.readyTitle')}
+                  </p>
+                  <p className="text-[var(--text-tertiary)] text-sm mt-1">
+                    {t('careersPostulaciones.interviewGuide.readyDesc')}
+                  </p>
+                </div>
+              </div>
+
+              {onViewLegacy && !app.interviewGuide && (
+                <div className="mb-4 p-3 bg-amber-900/20 border border-amber-800/50 rounded-xl text-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span>{t('careersPostulaciones.interviewGuide.legacyNotice')}</span>
+                  <button onClick={onViewLegacy} className="underline hover:text-amber-100 shrink-0">
+                    {t('careersPostulaciones.card.viewPrep')}
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-[var(--bg-surface-alt)]/50 border border-[var(--border-alt)] rounded-xl p-4 mb-4">
+                <p className="text-xs text-[var(--text-tertiary)] mb-4">
+                  {t('careersPostulaciones.interviewGuide.metaHint')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {field('entrevistadores', t('careersPostulaciones.interviewGuide.fieldInterviewers'), t('careersPostulaciones.interviewGuide.phInterviewers'))}
+                  {field('tipo', t('careersPostulaciones.interviewGuide.fieldType'), t('careersPostulaciones.interviewGuide.phType'))}
+                  {field('fecha', t('careersPostulaciones.interviewGuide.fieldDate'), t('careersPostulaciones.interviewGuide.phDate'))}
+                  {field('hora', t('careersPostulaciones.interviewGuide.fieldTime'), t('careersPostulaciones.interviewGuide.phTime'))}
+                </div>
+                <div className="mt-3">
+                  {field('modalidad', t('careersPostulaciones.interviewGuide.fieldFormat'), t('careersPostulaciones.interviewGuide.phFormat'))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs">
+                    <button
+                      onClick={() => setLang('es')}
+                      className={`px-3 py-1.5 ${lang === 'es' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                    >ES</button>
+                    <button
+                      onClick={() => setLang('en')}
+                      className={`px-3 py-1.5 ${lang === 'en' ? 'bg-sky-700 text-[var(--text-primary)]' : 'bg-[var(--bg-surface-alt)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`}
+                    >EN</button>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-[var(--text-tertiary)] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reinvestigar}
+                      onChange={e => setReinvestigar(e.target.checked)}
+                      className="accent-violet-500"
+                    />
+                    <Search size={12} />
+                    {t('careersPostulaciones.interviewGuide.researchAgain')}
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {html && (
+                    <button
+                      onClick={() => setShowForm(false)}
+                      className="px-4 py-2.5 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    >
+                      {t('careersPostulaciones.interviewGuide.cancel')}
+                    </button>
+                  )}
+                  <button
+                    onClick={generate}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-[var(--text-primary)] rounded-xl font-medium"
+                  >
+                    <Brain size={16} /> {t('careersPostulaciones.interviewGuide.generateButton')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!loading && !showForm && loadingGuide && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 size={28} className="text-violet-400 animate-spin" />
+            </div>
+          )}
+
+          {!loading && hasGuide && !loadingGuide && (
+            <iframe
+              ref={iframeRef}
+              srcDoc={html}
+              className="w-full h-full bg-white border-0"
+              title={t('careersPostulaciones.interviewGuide.titlePrefix')}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
