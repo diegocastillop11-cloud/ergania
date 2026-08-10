@@ -95,7 +95,41 @@ if (!planId) {
   }
 }
 
-// 3. Estado de una suscripción concreta (para después de pagar de prueba).
+// 3. Crear una suscripción de prueba: mismo payload que arma la app en
+//    createPreapprovalLink, para que un error de payload salte acá y no en
+//    la cara del primer usuario que intente pagar.
+if (process.argv[2] === '--crear') {
+  const email = process.argv[3]
+  console.log('\n3. Crear suscripción de prueba')
+  if (!email) {
+    mal('Falta el correo: node scripts/mp-preapproval-smoke.mjs --crear <email-del-comprador-de-prueba>')
+    process.exit(1)
+  }
+  const res = await fetch('https://api.mercadopago.com/preapproval', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      preapproval_plan_id: planId,
+      payer_email: email,
+      external_reference: 'usuario-de-prueba',
+      reason: 'Ergania — Plan mensual',
+      back_url: 'https://ergania.com/subscription/success',
+      status: 'pending',
+    }),
+  })
+  const text = await res.text()
+  if (!res.ok) {
+    mal(`MP rechazó la suscripción: ${res.status} ${text.slice(0, 400)}`)
+    process.exit(1)
+  }
+  const creada = JSON.parse(text)
+  ok(`suscripción creada: ${creada.id} (status ${creada.status})`)
+  console.log(`\n  Abrí este link con la cuenta de COMPRADOR de prueba y pagá con una tarjeta de prueba:\n  ${creada.init_point}`)
+  console.log(`\n  Después revisá cómo quedó con:\n  node scripts/mp-preapproval-smoke.mjs ${creada.id}\n`)
+  process.exit(0)
+}
+
+// 4. Estado de una suscripción concreta (para después de pagar de prueba).
 const preapprovalId = process.argv[2]
 if (preapprovalId) {
   console.log('\n3. Suscripción de prueba')
@@ -115,4 +149,7 @@ if (preapprovalId) {
 console.log(problemas === 0
   ? '\nTodo en orden.\n'
   : `\n${problemas} problema(s) — resolverlos ANTES de mergear a master.\n`)
-process.exit(problemas === 0 ? 0 : 1)
+// exitCode en vez de process.exit(): salir de golpe con sockets de fetch aún
+// abiertos hace que Node tire un "Assertion failed" en Windows que parece un
+// error del script sin serlo.
+process.exitCode = problemas === 0 ? 0 : 1
