@@ -10,7 +10,10 @@ function verifyMPSignature(req: Request): boolean {
 
   const sig = req.headers['x-signature'] as string | undefined
   const reqId = req.headers['x-request-id'] as string | undefined
-  const dataId = (req.query['data.id'] || req.query.id) as string | undefined
+  // Las notificaciones de suscripción llegan como POST con el id en el body,
+  // no en la query. Sin este fallback la firma no valida nunca y los cobros
+  // recurrentes se descartan en silencio.
+  const dataId = (req.query['data.id'] || req.query.id || req.body?.data?.id) as string | undefined
   if (!sig || !reqId || !dataId) return false
 
   const ts = sig.match(/ts=(\d+)/)?.[1]
@@ -228,12 +231,16 @@ export async function webhook(req: Request, res: Response) {
     return res.sendStatus(200) // 200 para evitar reintentos de MP
   }
   try {
-    const topic = (req.query.topic || req.query.type) as string
-    const id    = (req.query.id || req.query['data.id']) as string
+    const topic = (req.query.topic || req.query.type || req.body?.type) as string
+    const id    = (req.query.id || req.query['data.id'] || req.body?.data?.id) as string
     if (topic && id) await svc.handleWebhook(topic, id)
+    else console.warn('[webhook] notificación sin topic/id:', JSON.stringify({ query: req.query, body: req.body }))
     res.sendStatus(200)
-  } catch {
-    res.sendStatus(200) // always 200 to avoid MP retries on logic errors
+  } catch (err) {
+    // El 200 evita que MP reintente en loop, pero sin este log un cobro que
+    // falla al procesarse no deja rastro en ningún lado.
+    console.error('[webhook] catch:', err instanceof Error ? err.message : err)
+    res.sendStatus(200)
   }
 }
 

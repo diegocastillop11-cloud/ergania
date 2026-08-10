@@ -831,6 +831,7 @@
     "priceUsd": "USD $12.99 / month with PayPal",
     "subscribeMercadoPago": "Subscribe — $9,990/mo with Mercado Pago",
     "subscribePayPal": "Pay with PayPal — USD $12.99/mo",
+    "autoRenewNote": "Your subscription renews automatically every month until you cancel. You can cancel anytime from this page.",
     "cancelSubscription": "Cancel subscription",
     "cancelConfirm": "Cancel subscription? You'll lose access at the end of the current period.",
     "cancelledNote": "Subscription cancelled. You can subscribe again anytime.",

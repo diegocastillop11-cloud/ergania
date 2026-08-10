@@ -8,9 +8,15 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import SubscriptionBanner from '../components/subscription/SubscriptionBanner'
 import type { SubscriptionState } from '../hooks/useSubscription'
 import { LanguageProvider } from '../lib/i18n/LanguageContext'
+import { MemoryRouter } from 'react-router-dom'
 
+// El banner usa <Link>, que sin Router de por medio revienta al renderizar.
 function renderBanner(sub: SubscriptionState) {
-  return render(<LanguageProvider><SubscriptionBanner sub={sub} /></LanguageProvider>)
+  return render(
+    <MemoryRouter>
+      <LanguageProvider><SubscriptionBanner sub={sub} /></LanguageProvider>
+    </MemoryRouter>
+  )
 }
 
 const base: SubscriptionState = {
@@ -20,6 +26,7 @@ const base: SubscriptionState = {
   isActive: true,
   loadError: false,
   paymentSuspended: false,
+  mpAutoRenew: true,
   openCheckout: vi.fn(),
   openPayPalCheckout: vi.fn(),
   cancel: vi.fn(),

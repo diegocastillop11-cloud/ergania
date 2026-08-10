@@ -57,6 +57,10 @@ export interface SubscriptionRecord {
   current_period_end: string | null
   payment_provider?: 'mercadopago' | 'paypal'
   payment_suspended?: boolean
+  // Distinguen los dos flujos de MP: quien ya pagó por Checkout Pro (pago
+  // manual) tiene mp_payment_id sin mp_preapproval_id. Ver createCheckoutLink.
+  mp_payment_id?: string | null
+  mp_preapproval_id?: string | null
 }
 
 export interface ComputedStatus {
