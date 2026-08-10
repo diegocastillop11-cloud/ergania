@@ -858,6 +858,7 @@
     },
     "redirecting": "Redirecting...",
     "linking": "Confirming your subscription...",
+    "linkErrorTitle": "Your subscription isn't active yet",
     "linkError": "Your payment went through, but we couldn't activate it automatically. Try again; if it keeps failing, contact us and we'll activate it manually. You won't be charged twice.",
     "retry": "Try again"
   },

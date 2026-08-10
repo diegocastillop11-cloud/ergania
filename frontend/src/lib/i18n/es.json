@@ -858,6 +858,7 @@
     },
     "redirecting": "Redirigiendo...",
     "linking": "Confirmando tu suscripción...",
+    "linkErrorTitle": "Falta activar tu suscripción",
     "linkError": "Tu pago se procesó, pero no pudimos activarlo automáticamente. Reintenta; si sigue igual, escríbenos desde Contacto y lo activamos a mano. No se te va a cobrar de nuevo.",
     "retry": "Reintentar"
   },

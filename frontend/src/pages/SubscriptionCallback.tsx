@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, Loader2, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { linkPreapproval } from '../lib/subscriptionApi'
 import { supabase } from '../lib/supabase'
@@ -102,15 +102,27 @@ export default function SubscriptionCallback() {
     return () => clearTimeout(timer)
   }, [navigate, cfg.redirect, cfg.delay, asociacion])
 
-  return (
-    <div className={`min-h-screen bg-gradient-to-b ${cfg.bg} flex items-center justify-center p-4`}>
-      <div className={`max-w-sm w-full bg-[var(--bg-surface)] border ${cfg.border} rounded-2xl p-8 text-center shadow-2xl`}>
-        <Icon size={48} className={`${cfg.color} mx-auto mb-4`} />
-        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">{t(`subscriptionCallback.${type in CONFIG ? type : 'failure'}.title`)}</h1>
-        <p className="text-[var(--text-tertiary)] text-sm">{t(`subscriptionCallback.${type in CONFIG ? type : 'failure'}.msg`)}</p>
+  // En error no se puede seguir mostrando "¡Pago recibido, suscripción activa!"
+  // arriba del aviso de que NO se pudo activar: el usuario leería dos cosas
+  // opuestas en la misma tarjeta y no sabría cuál creer.
+  const enError = asociacion === 'error'
+  const IconoFinal = enError ? AlertTriangle : Icon
 
-        {asociacion === 'error' ? (
-          <div className="mt-6 text-xs leading-relaxed">
+  return (
+    <div className={`min-h-screen bg-gradient-to-b ${enError ? CONFIG.pending.bg : cfg.bg} flex items-center justify-center p-4`}>
+      <div className={`max-w-sm w-full bg-[var(--bg-surface)] border ${enError ? CONFIG.pending.border : cfg.border} rounded-2xl p-8 text-center shadow-2xl`}>
+        <IconoFinal size={48} className={`${enError ? CONFIG.pending.color : cfg.color} mx-auto mb-4`} />
+        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+          {enError
+            ? t('subscriptionCallback.linkErrorTitle')
+            : t(`subscriptionCallback.${type in CONFIG ? type : 'failure'}.title`)}
+        </h1>
+        {!enError && (
+          <p className="text-[var(--text-tertiary)] text-sm">{t(`subscriptionCallback.${type in CONFIG ? type : 'failure'}.msg`)}</p>
+        )}
+
+        {enError ? (
+          <div className="mt-4 text-xs leading-relaxed">
             <p className="text-orange-300">{t('subscriptionCallback.linkError')}</p>
             <button
               onClick={() => window.location.reload()}
