@@ -35,13 +35,31 @@ function asArray<T>(v: unknown): T[] {
   return Array.isArray(v) ? v as T[] : []
 }
 
+// La tool web_search devuelve el texto citado envuelto en <cite index="6-1,6-2">…</cite>.
+// Al escaparlo para el HTML esas etiquetas se veían literales dentro de la guía. Se limpian
+// acá, en la entrada, para que el JSON que se guarda ya esté sin marcado.
+export function stripCitations(s: string): string {
+  return s
+    .replace(/<\/?cite\b[^>]*>/gi, '')
+    .replace(/\[\d+(?:[,-]\s*\d+)*\]/g, '')   // variante "[1]" / "[2, 3]" que a veces usa
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([.,;:)])/g, '$1')
+}
+
+/** Para texto que viene del modelo. */
 function asString(v: unknown): string {
+  return typeof v === 'string' ? stripCitations(v) : ''
+}
+
+/** Para texto que escribe el usuario (notas, datos de la entrevista): se guarda tal cual —
+ *  limpiarle corchetes o espacios sería mangonear lo que él escribió. */
+function asRawString(v: unknown): string {
   return typeof v === 'string' ? v : ''
 }
 
 function cleanMeta(raw: unknown): InterviewMeta {
   const m = (raw || {}) as Record<string, unknown>
-  const take = (k: string) => asString(m[k]).trim().slice(0, 300)
+  const take = (k: string) => asRawString(m[k]).trim().slice(0, 300)
   return {
     entrevistadores: take('entrevistadores'),
     fecha: take('fecha'),
@@ -53,7 +71,7 @@ function cleanMeta(raw: unknown): InterviewMeta {
 
 function cleanNotes(raw: unknown): InterviewNotes {
   const n = (raw || {}) as Record<string, unknown>
-  const take = (k: string) => asString(n[k]).slice(0, 8000)
+  const take = (k: string) => asRawString(n[k]).slice(0, 8000)
   return {
     entrevistadorPrincipal: take('entrevistadorPrincipal'),
     tono: take('tono'),

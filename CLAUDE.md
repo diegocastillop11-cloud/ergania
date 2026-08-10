@@ -336,7 +336,18 @@ Archivos clave:
 ## Landing page
 
 - Ruta pública `/` → `frontend/src/pages/Landing.tsx`
-- Diseño Variante B: crema (#FAF7F2) + terracota (#C4633A) + Playfair Display
+- **Identidad actual (verificada 2026-08-10): paleta "cósmica" oscura.** La constante `C` al
+  inicio de `Landing.tsx` es la fuente de verdad: índigo profundo (`#0B1330` panel, `#1E1B4B`
+  hero, `#070A16` footer), tinta clara (`#F1F2FB` / `#B7BAE0` / `#7C82AE`) y acento en
+  gradiente azul→violeta (`#60A5FA` → `#A78BFA`), con cian `#22D3EE` de apoyo. Tipografías
+  Space Grotesk (display) + Source Sans Pro (texto), cargadas por red desde Google Fonts en
+  `index.html` — cualquier artefacto que deba funcionar sin internet (ej. la guía de
+  entrevista descargable) tiene que caer a un stack de sistema y llevar la identidad en el
+  color, no en la fuente.
+- La app autenticada usa sus propios tokens en `src/index.css` (`--bg-app`, `--bg-surface`,
+  `--text-primary`…), con temas dark/light por `data-theme`.
+- ~~Variante B: crema (#FAF7F2) + terracota (#C4633A) + Playfair Display~~ — quedó obsoleta
+  con el rediseño; esos valores ya no existen en el código.
 - Usuarios ya autenticados → redirect automático a `/dashboard`
 - Copy: español neutro profesional chileno (no argentino — sin voseo)
 
