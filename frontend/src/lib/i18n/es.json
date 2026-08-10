@@ -856,7 +856,10 @@
       "title": "Pago en proceso",
       "msg": "Tu pago está siendo procesado. Te avisaremos cuando se confirme. Redirigiendo..."
     },
-    "redirecting": "Redirigiendo..."
+    "redirecting": "Redirigiendo...",
+    "linking": "Confirmando tu suscripción...",
+    "linkError": "Tu pago se procesó, pero no pudimos activarlo automáticamente. Reintenta; si sigue igual, escríbenos desde Contacto y lo activamos a mano. No se te va a cobrar de nuevo.",
+    "retry": "Reintentar"
   },
   "subscriptionBanner": {
     "renewalToday": "hoy",
