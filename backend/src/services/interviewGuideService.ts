@@ -223,6 +223,34 @@ const EN: Dict = {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+// La tool web_search envuelve el texto citado en <cite index="6-1,6-2">…</cite>. Como acá se
+// escapa todo el HTML, esas etiquetas se leían literales dentro del párrafo.
+export function stripCitations(s: string): string {
+  return s
+    .replace(/<\/?cite\b[^>]*>/gi, '')
+    .replace(/\[\d+(?:[,-]\s*\d+)*\]/g, '')   // variante "[1]" / "[2, 3]" que a veces usa
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([.,;:)])/g, '$1')
+}
+
+function deepStrip<T>(v: T): T {
+  if (typeof v === 'string') return stripCitations(v) as unknown as T
+  if (Array.isArray(v)) return v.map(deepStrip) as unknown as T
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v)) out[k] = deepStrip(val)
+    return out as unknown as T
+  }
+  return v
+}
+
+/** Se limpia al RENDERIZAR, no solo al generar: las guías creadas antes del fix quedaron
+ *  guardadas con el marcado adentro y obligar a regenerarlas costaría tokens por un bug de
+ *  presentación. `meta` queda fuera: eso lo escribió el usuario y no se le toca. */
+function sanitizeGuide(g: InterviewGuide): InterviewGuide {
+  return { ...deepStrip(g), meta: g.meta }
+}
+
 function esc(s: unknown): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -655,7 +683,8 @@ export interface BuildOptions {
   notes?: InterviewNotes
 }
 
-export function buildInterviewGuideHtml(g: InterviewGuide, opts: BuildOptions): string {
+export function buildInterviewGuideHtml(rawGuide: InterviewGuide, opts: BuildOptions): string {
+  const g = sanitizeGuide(rawGuide)
   const T = g.idioma === 'en' ? EN : ES
   const notes = opts.notes || {}
   const editable = opts.mode === 'app'

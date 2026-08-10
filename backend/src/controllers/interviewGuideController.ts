@@ -6,6 +6,7 @@ import {
   getUser, getUserEmail, requireActiveSubscription,
   getLlmClient, getProviderFromRequest, friendlyAiError,
 } from './careersController'
+import { stripCitations } from '../services/interviewGuideService'
 import type { InterviewGuide, InterviewMeta, InterviewNotes, EmpresaInfo } from '../services/interviewGuideService'
 
 // El modelo a veces envuelve el JSON en ```json, a veces en ``` pelado, a veces lo escupe
@@ -35,18 +36,8 @@ function asArray<T>(v: unknown): T[] {
   return Array.isArray(v) ? v as T[] : []
 }
 
-// La tool web_search devuelve el texto citado envuelto en <cite index="6-1,6-2">…</cite>.
-// Al escaparlo para el HTML esas etiquetas se veían literales dentro de la guía. Se limpian
-// acá, en la entrada, para que el JSON que se guarda ya esté sin marcado.
-export function stripCitations(s: string): string {
-  return s
-    .replace(/<\/?cite\b[^>]*>/gi, '')
-    .replace(/\[\d+(?:[,-]\s*\d+)*\]/g, '')   // variante "[1]" / "[2, 3]" que a veces usa
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([.,;:)])/g, '$1')
-}
-
-/** Para texto que viene del modelo. */
+/** Para texto que viene del modelo. También se limpia al renderizar (ver sanitizeGuide), pero
+ *  se hace acá además para que el JSON que queda guardado ya esté sin marcado de citas. */
 function asString(v: unknown): string {
   return typeof v === 'string' ? stripCitations(v) : ''
 }
