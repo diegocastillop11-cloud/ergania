@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchSubscriptionStatus, startCheckout, startPayPalCheckout, cancelSubscription, ComputedStatus } from '../lib/subscriptionApi'
+import { fetchSubscriptionStatus, startCheckout, startPayPalCheckout, cancelSubscription, ComputedStatus, SubscriptionRecord } from '../lib/subscriptionApi'
 
 // Último estado CONFIRMADO por el backend, cacheado por pestaña. Sin esto, cada
 // recarga de página arranca con computed=null — y si justo esa carga falla por
@@ -30,6 +30,9 @@ export type SubscriptionState = {
   loadError: boolean  // el chequeo de estado falló (red/backend) — no es lo mismo que "vencido"
   paymentProvider?: 'mercadopago' | 'paypal'
   paymentSuspended: boolean
+  // Si al suscribirse el cobro va a quedar recurrente. Falso solo para los
+  // clientes que ya pagaron por Checkout Pro, que siguen renovando a mano.
+  mpAutoRenew: boolean
   openCheckout: () => Promise<void>
   openPayPalCheckout: () => Promise<void>
   cancel: () => Promise<void>
@@ -39,12 +42,14 @@ export type SubscriptionState = {
 export function useSubscription(): SubscriptionState {
   const [loading, setLoading]     = useState(true)
   const [computed, setComputed]   = useState<ComputedStatus | null>(null)
+  const [record, setRecord]       = useState<SubscriptionRecord | null>(null)
   const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const { computed } = await fetchSubscriptionStatus()
+      const { computed, subscription } = await fetchSubscriptionStatus()
       setComputed(computed)
+      setRecord(subscription)
       setLoadError(false)
       writeCachedStatus(computed)
     } catch {
@@ -103,6 +108,9 @@ export function useSubscription(): SubscriptionState {
     loadError,
     paymentProvider: effective?.paymentProvider,
     paymentSuspended: effective?.paymentSuspended ?? false,
+    // Ante la duda (aún no cargó el registro) se asume recurrente, que es el
+    // caso de todos los usuarios nuevos.
+    mpAutoRenew: !(record?.mp_payment_id && !record?.mp_preapproval_id),
     openCheckout,
     openPayPalCheckout,
     cancel,

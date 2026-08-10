@@ -180,6 +180,11 @@ export default function Subscription() {
             {checkoutProvider === 'paypal' && <Loader2 size={15} className="animate-spin" />}
             {t('subscription.subscribePayPal')}
           </button>
+          {sub.mpAutoRenew && (
+            <p className="text-xs text-[var(--text-tertiary)] leading-relaxed px-1">
+              {t('subscription.autoRenewNote')}
+            </p>
+          )}
         </div>
       )}
 

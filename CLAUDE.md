@@ -163,7 +163,8 @@ implementar el paywall ni la promoción todavía — es una nota de producto par
 - **Frontend**: React + Vite + TailwindCSS · `frontend/src/`
 - **Backend**: Express + TypeScript como Vercel Serverless Function · `backend/src/` · entry: `api/index.ts`
 - **Auth/DB**: Supabase (anon key en frontend, service role key en backend)
-- **Pagos**: MercadoPago Checkout Pro (no Preapproval)
+- **Pagos**: MercadoPago (Preapproval para usuarios nuevos, Checkout Pro para los que ya
+  pagaron así) + PayPal Subscriptions
 - **Deploy**: Vercel — push a `master` → deploy automático a producción
 
 ## App Android (APK descargable)

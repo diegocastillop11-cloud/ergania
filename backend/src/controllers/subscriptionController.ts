@@ -10,7 +10,10 @@ function verifyMPSignature(req: Request): boolean {
 
   const sig = req.headers['x-signature'] as string | undefined
   const reqId = req.headers['x-request-id'] as string | undefined
-  const dataId = (req.query['data.id'] || req.query.id) as string | undefined
+  // Las notificaciones de suscripción llegan como POST con el id en el body,
+  // no en la query. Sin este fallback la firma no valida nunca y los cobros
+  // recurrentes se descartan en silencio.
+  const dataId = (req.query['data.id'] || req.query.id || req.body?.data?.id) as string | undefined
   if (!sig || !reqId || !dataId) return false
 
   const ts = sig.match(/ts=(\d+)/)?.[1]
@@ -74,6 +77,24 @@ export async function createPayPalCheckout(req: Request, res: Response) {
     res.json(result)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Error'
+    res.status(400).json({ error: msg })
+  }
+}
+
+// Lo llama la página de retorno de MP con el preapproval_id que viene en la
+// URL. Es el momento en que sabemos a la vez quién es el usuario (sesión de
+// Ergania) y cuál es su suscripción en MP — el checkout del plan no permite
+// mandar esa relación de ida.
+export async function linkPreapproval(req: Request, res: Response) {
+  try {
+    const user = await getUserFromToken(req)
+    const preapprovalId = String(req.body?.preapproval_id || '').trim()
+    if (!preapprovalId) throw new Error('preapproval_id requerido')
+    const result = await svc.linkPreapprovalToUser(user.id, preapprovalId)
+    res.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error'
+    console.error('[link-preapproval] catch:', msg)
     res.status(400).json({ error: msg })
   }
 }
@@ -228,12 +249,16 @@ export async function webhook(req: Request, res: Response) {
     return res.sendStatus(200) // 200 para evitar reintentos de MP
   }
   try {
-    const topic = (req.query.topic || req.query.type) as string
-    const id    = (req.query.id || req.query['data.id']) as string
+    const topic = (req.query.topic || req.query.type || req.body?.type) as string
+    const id    = (req.query.id || req.query['data.id'] || req.body?.data?.id) as string
     if (topic && id) await svc.handleWebhook(topic, id)
+    else console.warn('[webhook] notificación sin topic/id:', JSON.stringify({ query: req.query, body: req.body }))
     res.sendStatus(200)
-  } catch {
-    res.sendStatus(200) // always 200 to avoid MP retries on logic errors
+  } catch (err) {
+    // El 200 evita que MP reintente en loop, pero sin este log un cobro que
+    // falla al procesarse no deja rastro en ningún lado.
+    console.error('[webhook] catch:', err instanceof Error ? err.message : err)
+    res.sendStatus(200)
   }
 }
 

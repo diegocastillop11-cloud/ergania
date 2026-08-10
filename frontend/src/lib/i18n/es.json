@@ -831,6 +831,7 @@
     "priceUsd": "USD $12.99 / mes con PayPal",
     "subscribeMercadoPago": "Suscribirse — $9.990/mes con Mercado Pago",
     "subscribePayPal": "Pay with PayPal — USD $12.99/mo",
+    "autoRenewNote": "La suscripción se renueva automáticamente cada mes hasta que la canceles. Puedes cancelarla cuando quieras desde esta misma página.",
     "cancelSubscription": "Cancelar suscripción",
     "cancelConfirm": "¿Cancelar suscripción? Perderás el acceso al finalizar el período actual.",
     "cancelledNote": "Suscripción cancelada. Puedes volver a suscribirte cuando quieras.",
@@ -855,7 +856,11 @@
       "title": "Pago en proceso",
       "msg": "Tu pago está siendo procesado. Te avisaremos cuando se confirme. Redirigiendo..."
     },
-    "redirecting": "Redirigiendo..."
+    "redirecting": "Redirigiendo...",
+    "linking": "Confirmando tu suscripción...",
+    "linkErrorTitle": "Falta activar tu suscripción",
+    "linkError": "Tu pago se procesó, pero no pudimos activarlo automáticamente. Reintenta; si sigue igual, escríbenos desde Contacto y lo activamos a mano. No se te va a cobrar de nuevo.",
+    "retry": "Reintentar"
   },
   "subscriptionBanner": {
     "renewalToday": "hoy",
