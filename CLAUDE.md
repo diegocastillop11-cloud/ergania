@@ -215,6 +215,43 @@ no se calcula sola, hay que subirla a mano (ver paso 0 abajo).
 4. Commit y push del bump de versión a `master` (`chore(android): sube versión a X.XX por ...`)
    — este push no toca el APK en sí (ya está en Blob), solo las 3 constantes de versión.
 
+## MercadoPago: cómo funciona de verdad (verificado con un pago real, 2026-08-10)
+
+La documentación de MP describe varios flujos y es fácil implementar el que no corresponde.
+Esto se verificó pagando $9.990 reales contra un preview. **No cambiar nada de esto sin volver
+a probar con plata real** — todos estos puntos fallan en silencio.
+
+- **La suscripción NO se puede crear por API.** `POST /preapproval` con `preapproval_plan_id`
+  responde `400 card_token_id is required` (exige tokenizar la tarjeta en un formulario propio);
+  sin plan asociado responde `500`. La única vía en Chile es mandar al usuario al `init_point`
+  del **plan** (`GET /preapproval_plan/{id}`), donde MP pone el login y la tarjeta.
+- **Por esa vía no se puede mandar `external_reference`**, así que MP no sabe qué usuario
+  nuestro es. La relación se arma a la vuelta: MP redirige al `back_url` con el `preapproval_id`
+  y el frontend llama `POST /subscription/link-preapproval` (ver `SubscriptionCallback.tsx`).
+  Esa ruta es **pública**, así que hay que esperar a que Supabase restaure la sesión antes de
+  llamar — si no, la petición sale sin token y el pago queda sin asociar.
+- **MP mezcla los nombres de los parámetros** de vuelta: se vio el id de la suscripción bajo
+  `external_reference`, y otros parámetros con guion (`preference-id`) en vez de guion bajo. La
+  página de retorno acepta todas las variantes a propósito.
+- **En un cobro de suscripción, `metadata` llega vacío.** El preapproval solo aparece en
+  `point_of_interaction.transaction_data.subscription_id`. `payer_email` del preapproval también
+  viene vacío.
+- **`status: 'authorized'` ya significa que MP cobró** (en este flujo cobra al instante, no
+  "~1h después" como dice la doc de otro flujo). `next_payment_date` da el vencimiento exacto —
+  usarlo en vez de sumar 30 días.
+- **`summarized` viene todo en `null`** y `/authorized_payments/search` devuelve `[]` aun con un
+  cobro real. No construir nada sobre esos campos.
+- **El plan queda atado a la cuenta que lo creó y su `back_url` no se puede cambiar.** Cambiar de
+  cuenta MP, o de dominio, obliga a crear un plan nuevo y actualizar `MP_PREAPPROVAL_PLAN_ID`.
+- **El webhook debe apuntar a `https://www.ergania.com/...`**: el ápex devuelve `308` y muchos
+  emisores de webhooks no siguen redirects. Eventos necesarios: **Pagos (legacy)** y **Planes y
+  suscripciones**; el resto solo ensucia los logs.
+- `MP_WEBHOOK_SECRET` está **sin configurar** a propósito desde el cambio de cuenta: un secreto
+  que no coincida hace que el código descarte todas las notificaciones en silencio. Al
+  configurarlo hay que verificar con un pago real que sigan llegando.
+- Verificar la configuración con `node scripts/mp-preapproval-smoke.mjs` (dice de qué cuenta es
+  el token y si el plan le pertenece). `--crear <email>` ya no sirve para este flujo.
+
 ## Arquitectura de auth
 
 Frontend envía `Authorization: Bearer <supabase_access_token>` en todas las peticiones.
