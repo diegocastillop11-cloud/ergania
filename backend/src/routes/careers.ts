@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/careersController'
+import * as guideCtrl from '../controllers/interviewGuideController'
 import { uploadMiddleware } from '../controllers/careersController'
 
 export const careersRoutes = Router()
@@ -51,6 +52,14 @@ careersRoutes.get('/applications/:id/interview-prep/pdf', ctrl.downloadInterview
 careersRoutes.patch('/applications/:id', ctrl.updateApplicationStatus)
 careersRoutes.patch('/applications/:id/cv', ctrl.updateApplicationCv)
 careersRoutes.post('/applications/:id/interview-prep', ctrl.generateInterviewPrep)
+
+// Guía de entrevista interactiva (reemplaza a interview-prep para las guías nuevas)
+careersRoutes.get('/applications/:id/interview-guide', guideCtrl.getInterviewGuide)
+careersRoutes.post('/applications/:id/interview-guide/research', guideCtrl.researchInterviewCompany)
+careersRoutes.post('/applications/:id/interview-guide', guideCtrl.generateInterviewGuide)
+careersRoutes.patch('/applications/:id/interview-guide/notes', guideCtrl.saveInterviewNotes)
+careersRoutes.get('/applications/:id/interview-guide/html', guideCtrl.downloadInterviewGuideHtml)
+careersRoutes.get('/applications/:id/interview-guide/pdf', guideCtrl.downloadInterviewGuidePdf)
 careersRoutes.post('/applications/:id/answer', ctrl.answerQuestion)
 careersRoutes.post('/applications/:id/interview-simulate/questions', ctrl.interviewSimulateQuestions)
 careersRoutes.post('/applications/:id/interview-simulate/feedback', ctrl.interviewSimulateFeedback)
