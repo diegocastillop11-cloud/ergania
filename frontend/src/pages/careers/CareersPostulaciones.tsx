@@ -8,11 +8,17 @@ import {
   Plus, FileText, Brain, MessageSquare, ExternalLink, Loader2,
   ChevronDown, ChevronUp, Copy, CheckCircle2, X, Star, Send,
   Download, Eye, Rocket, Mail, AlertTriangle, Languages, DollarSign,
-  Pencil, Save, Check, MessagesSquare,
+  Pencil, Save, Check, MessagesSquare, Search,
 } from 'lucide-react'
 import { Application, APLICACION_ESTADOS, ESTADO_CONFIG } from '../../types/careers'
 import { InterviewGuidePanel } from '../../components/interview/InterviewGuidePanel'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
+
+// Buscar "autonoma" tiene que encontrar "Universidad Autónoma" — sin esto el usuario
+// escribe sin tildes (lo normal al tipear rápido) y la postulación no aparece.
+function normalizeText(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
 
 async function downloadPdf(appId: string, filename: string) {
   const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
@@ -1619,6 +1625,7 @@ export default function CareersPostulaciones() {
   const { t } = useTranslation()
   const [showModal, setShowModal] = useState(false)
   const [offerWithoutLink, setOfferWithoutLink] = useState(false)
+  const [search, setSearch] = useState('')
   const qc = useQueryClient()
 
   const { data: apps = [], isLoading } = useQuery<Omit<Application, 'cvHtml'>[]>({
@@ -1630,6 +1637,12 @@ export default function CareersPostulaciones() {
     acc[a.estado] = (acc[a.estado] || 0) + 1
     return acc
   }, {})
+
+  const terms = normalizeText(search).split(/\s+/).filter(Boolean)
+  const filteredApps = terms.length === 0 ? apps : apps.filter(a => {
+    const haystack = normalizeText(`${a.empresa} ${a.rol} ${a.estado} ${a.url || ''}`)
+    return terms.every(term => haystack.includes(term))
+  })
 
   return (
     <div className="space-y-6">
@@ -1669,6 +1682,35 @@ export default function CareersPostulaciones() {
         </div>
       )}
 
+      {/* Buscador */}
+      {apps.length > 0 && (
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('careersPostulaciones.searchPlaceholder')}
+              className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-xl pl-9 pr-9 py-2.5 text-sm text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                title={t('careersPostulaciones.searchClear')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {search && (
+            <span className="text-xs text-[var(--text-muted)] shrink-0">
+              {t('careersPostulaciones.searchCount', { shown: filteredApps.length, total: apps.length })}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Lista */}
       {isLoading ? (
         <div className="flex items-center justify-center h-48 text-[var(--text-muted)]">
@@ -1692,9 +1734,22 @@ export default function CareersPostulaciones() {
             <Plus size={16} /> {t('careersPostulaciones.createFirst')}
           </button>
         </div>
+      ) : filteredApps.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-center gap-3">
+          <Search size={24} className="text-[var(--text-faint)]" />
+          <p className="text-[var(--text-tertiary)] text-sm">
+            {t('careersPostulaciones.searchNoMatches', { query: search })}
+          </p>
+          <button
+            onClick={() => setSearch('')}
+            className="text-xs text-blue-400 hover:text-blue-300 underline"
+          >
+            {t('careersPostulaciones.searchClear')}
+          </button>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-          {[...apps]
+          {[...filteredApps]
             .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id))
             .map(app => (
               <ApplicationCard key={app.id} app={app} />

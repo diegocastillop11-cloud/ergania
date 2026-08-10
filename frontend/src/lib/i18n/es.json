@@ -386,6 +386,10 @@
     "emptyTitle": "Sin postulaciones aún",
     "emptyDesc": "Crea tu primera postulación — la IA arma el CV personalizado para la oferta",
     "createFirst": "Crear Primera Postulación",
+    "searchPlaceholder": "Buscar por empresa, cargo o link…",
+    "searchClear": "Limpiar búsqueda",
+    "searchCount": "{{shown}} de {{total}} postulaciones",
+    "searchNoMatches": "Ninguna postulación coincide con \"{{query}}\".",
     "newModal": {
       "titleOfferNoLink": "Oferta sin link",
       "titleNew": "Nueva Postulación",
@@ -680,7 +684,9 @@
       "allBlocked": "Todos",
       "onlyBlocked": "Solo bloqueados",
       "onlyUnblocked": "Solo no bloqueados",
-      "noMatches": "Ningún resultado con estos filtros."
+      "noMatches": "Ningún resultado con estos filtros.",
+      "searchPlaceholder": "Buscar en la cola…",
+      "searchClear": "Limpiar búsqueda"
     },
     "blockedPortalNote": "Portal bloqueado — pega el texto del JD para mejor resultado",
     "analyzingShort": "Analizando...",

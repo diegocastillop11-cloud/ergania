@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Trash2, Zap, ExternalLink, Clock, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, AlertTriangle, XCircle, Loader2, Copy, FileText, MessageSquare
+  CheckCircle2, AlertCircle, AlertTriangle, XCircle, Loader2, Copy, FileText, MessageSquare,
+  Search, X
 } from 'lucide-react'
 import { PipelineJob, EvaluationResult, RECOMENDACION_CONFIG, SCORE_COLOR } from '../../types/careers'
 import { COUNTRIES } from '../../lib/countries'
@@ -29,6 +30,11 @@ function incrementOfferClick(url: string) {
   } catch {
     // ignore localStorage failures
   }
+}
+
+// Buscar "analista bi" tiene que encontrar "Análista BI" — el usuario tipea sin tildes.
+function normalizeText(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
 function titleFromUrl(url: string): string {
@@ -209,6 +215,7 @@ export default function CareersPipeline() {
   const [dateFilter, setDateFilter] = useState('todas')
   const [portalFilter, setPortalFilter] = useState('todos')
   const [blockedFilter, setBlockedFilter] = useState<'todos' | 'bloqueados' | 'no-bloqueados'>('todos')
+  const [search, setSearch] = useState('')
 
   const { data: pipeline = [] } = useQuery<PipelineJob[]>({
     queryKey: ['careers-pipeline'],
@@ -225,12 +232,18 @@ export default function CareersPipeline() {
   const availableDates = [...new Set(sortedPipeline.map(j => j.added))]
   const availablePortals = [...new Set(sortedPipeline.map(j => j.source || 'manual'))].sort()
 
+  const searchTerms = normalizeText(search).split(/\s+/).filter(Boolean)
+
   const filteredPipeline = sortedPipeline.filter(job => {
     if (dateFilter !== 'todas' && job.added !== dateFilter) return false
     if (portalFilter !== 'todos' && (job.source || 'manual') !== portalFilter) return false
     const blocked = isBlockedDomain(job.url)
     if (blockedFilter === 'bloqueados' && !blocked) return false
     if (blockedFilter === 'no-bloqueados' && blocked) return false
+    if (searchTerms.length > 0) {
+      const haystack = normalizeText(`${titleFromUrl(job.url)} ${job.url} ${job.source || ''}`)
+      if (!searchTerms.every(term => haystack.includes(term))) return false
+    }
     return true
   })
 
@@ -473,6 +486,24 @@ export default function CareersPipeline() {
 
           {pipeline.length > 0 && (
             <div className="flex flex-wrap gap-2">
+              <div className="relative w-full sm:w-56">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder={t('careersPipeline.filters.searchPlaceholder')}
+                  className="w-full bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg pl-8 pr-8 py-1.5 text-xs text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    title={t('careersPipeline.filters.searchClear')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
               <select
                 value={dateFilter}
                 onChange={e => setDateFilter(e.target.value)}
