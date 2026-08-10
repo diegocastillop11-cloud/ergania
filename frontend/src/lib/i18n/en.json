@@ -386,6 +386,10 @@
     "emptyTitle": "No applications yet",
     "emptyDesc": "Create your first application — the AI builds the tailored resume for the offer",
     "createFirst": "Create First Application",
+    "searchPlaceholder": "Search by company, role or link…",
+    "searchClear": "Clear search",
+    "searchCount": "{{shown}} of {{total}} applications",
+    "searchNoMatches": "No application matches \"{{query}}\".",
     "newModal": {
       "titleOfferNoLink": "Offer without link",
       "titleNew": "New Application",
@@ -680,7 +684,9 @@
       "allBlocked": "All",
       "onlyBlocked": "Blocked only",
       "onlyUnblocked": "Unblocked only",
-      "noMatches": "No results match these filters."
+      "noMatches": "No results match these filters.",
+      "searchPlaceholder": "Search the queue…",
+      "searchClear": "Clear search"
     },
     "blockedPortalNote": "Portal blocked — paste the JD text for better results",
     "analyzingShort": "Analyzing...",
