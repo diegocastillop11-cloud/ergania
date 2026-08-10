@@ -128,7 +128,14 @@ tienes cifras, déjalo vacío. Si no encontraste información confiable de ESTA 
   })
 
   const parsed = extractJson<Record<string, unknown>>(textOf(message))
-  if (!parsed || parsed.investigada === false) return EMPRESA_SIN_DATOS
+  return cleanEmpresaInfo(parsed)
+}
+
+/** Normaliza la investigación venga del modelo o del frontend (que la devuelve en el paso 2
+ *  para no volver a buscar). Todo lo que sale de acá se escapa al renderizar el HTML. */
+function cleanEmpresaInfo(raw: unknown): EmpresaInfo {
+  const parsed = (raw || {}) as Record<string, unknown>
+  if (!raw || parsed.investigada === false) return EMPRESA_SIN_DATOS
 
   const info: EmpresaInfo = {
     investigada: true,
@@ -277,10 +284,13 @@ Responde SOLO con este JSON, sin texto antes ni después:
 }
 \`\`\`
 
-Cantidades: 6 fit, 8 preguntas típicas, 5 técnicas, 5 para ellos, 6 escenarios (marca 1 como
+Cantidades: 6 fit, 6 preguntas típicas, 4 técnicas, 5 para ellos, 5 escenarios (marca 1 como
 "destacado": true — el más probable), 5 fortalezas, 5 debilidades, 6 items de checklist mental,
 5 de logística, 5 de "no hacer". Marca como "destacado": true el item de "fit" que sea el
-diferencial más fuerte del candidato.`,
+diferencial más fuerte del candidato.
+
+Cada "respuesta" va de 3 a 5 frases: lo que el candidato realmente alcanza a decir en voz alta,
+no un ensayo. Nada de repetir la misma anécdota en varias respuestas.`,
     }],
   })
 
@@ -358,6 +368,48 @@ function buildGuide(
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
+/** Paso 1: investigación de la empresa, aislada en su propia request.
+ *
+ *  Está separada de la generación porque juntas se acercaban demasiado al maxDuration de
+ *  300s de la función (búsqueda ~20-60s + escritura de la guía ~90-200s): si se pasaba,
+ *  Vercel cortaba con 504 y se perdía la búsqueda ya pagada. Partido en dos, cada request
+ *  va holgada y el frontend puede mostrar en qué paso va. */
+export const researchInterviewCompany = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+    const app = await svc.getApplication(req.params.id, userEmail)
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+
+    const country = getCountryConfig(app.pais)
+    const idioma: 'es' | 'en' = req.body?.idioma === 'en' || req.body?.idioma === 'es'
+      ? req.body.idioma
+      : app.idioma || country.idioma
+
+    // Investigación ya pagada para esta empresa en otra postulación del usuario.
+    if (req.body?.reinvestigar !== true) {
+      const cached = await svc.findEmpresaResearch(userEmail, app.empresa)
+      if (cached) return res.json({ ok: true, empresaInfo: cached, cached: true })
+    }
+
+    let empresaInfo: EmpresaInfo
+    try {
+      empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
+    } catch (err) {
+      // La guía se puede armar igual sin investigación; no vale la pena abortar el flujo.
+      console.error('researchEmpresa error:', err)
+      empresaInfo = EMPRESA_SIN_DATOS
+    }
+
+    res.json({ ok: true, empresaInfo, cached: false })
+  } catch (err: unknown) {
+    console.error('researchInterviewCompany error:', err)
+    if (!res.headersSent) {
+      res.status((err as { status?: number }).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    }
+  }
+}
+
 export const generateInterviewGuide = async (req: Request, res: Response) => {
   try {
     const { email: userEmail, userId } = await getUser(req)
@@ -374,21 +426,23 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
     const cv = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail)
 
-    // La investigación de empresa es lo único que gasta web_search. Si el usuario ya preparó
-    // otra postulación a la MISMA empresa, se reusa en vez de pagarla de nuevo — mismo criterio
-    // que usa SalaryPanel con el salario del Tracker. "Reinvestigar" la fuerza a rehacerse.
-    let empresaInfo: EmpresaInfo | null = null
-    if (req.body?.reinvestigar !== true) {
-      empresaInfo = await svc.findEmpresaResearch(userEmail, app.empresa)
-    }
-    if (!empresaInfo) {
-      try {
-        empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
-      } catch (err) {
-        // Que se caiga la búsqueda no puede tumbar la guía entera: el resto sale igual,
-        // con la tab de empresa avisando que no hay datos.
-        console.error('researchEmpresa error:', err)
-        empresaInfo = EMPRESA_SIN_DATOS
+    // La investigación viene del paso 1 (POST .../research). Se acepta del cliente para no
+    // repetir la búsqueda ya pagada, pero se re-normaliza acá y todo se escapa al renderizar.
+    // Si no viene (cliente viejo), se busca inline aceptando que la request tarda más.
+    let empresaInfo = cleanEmpresaInfo(req.body?.empresaInfo)
+    if (!empresaInfo.investigada) {
+      const cached = req.body?.reinvestigar === true ? null : await svc.findEmpresaResearch(userEmail, app.empresa)
+      if (cached) {
+        empresaInfo = cached
+      } else if (req.body?.empresaInfo === undefined) {
+        try {
+          empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
+        } catch (err) {
+          // Que se caiga la búsqueda no puede tumbar la guía entera: el resto sale igual,
+          // con la tab de empresa avisando que no hay datos.
+          console.error('researchEmpresa error:', err)
+          empresaInfo = EMPRESA_SIN_DATOS
+        }
       }
     }
 

@@ -34,8 +34,18 @@ export function InterviewGuidePanel({
   const [meta, setMeta] = useState<InterviewMeta>({ ...EMPTY_META, ...(app.interviewMeta || {}) })
   const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [reinvestigar, setReinvestigar] = useState(false)
+  const [step, setStep] = useState<'research' | 'writing' | null>(null)
+  // La investigación sobrevive a un fallo del paso 2 para no volver a pagarla en el reintento.
+  const [research, setResearch] = useState<unknown>(null)
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!loading) { setElapsed(0); return }
+    const id = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [loading])
 
   const errMsg = useCallback((err: unknown, fallback: string) => {
     return (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -72,17 +82,29 @@ export function InterviewGuidePanel({
     return () => window.removeEventListener('message', onMessage)
   }, [app.id])
 
+  // Dos requests a propósito: juntas rozaban el maxDuration de 300s de la función y un 504
+  // tiraba a la basura la búsqueda ya pagada. Partido, si falla el paso 2 la investigación
+  // queda en estado y el reintento no vuelve a buscar.
   const generate = async () => {
     setLoading(true)
     setError('')
+    const userApiKey = getKeyForProvider(llmProvider)
+    const auth = userApiKey ? { userApiKey } : {}
+
     try {
-      const userApiKey = getKeyForProvider(llmProvider)
+      let info = reinvestigar ? null : research
+      if (!info) {
+        setStep('research')
+        const { data } = await api.post(`/applications/${app.id}/interview-guide/research`, {
+          llmProvider, idioma: lang, reinvestigar, ...auth,
+        })
+        info = data.empresaInfo
+        setResearch(info)
+      }
+
+      setStep('writing')
       const { data } = await api.post(`/applications/${app.id}/interview-guide`, {
-        llmProvider,
-        idioma: lang,
-        meta,
-        reinvestigar,
-        ...(userApiKey ? { userApiKey } : {}),
+        llmProvider, idioma: lang, meta, empresaInfo: info, ...auth,
       })
       setHtml(data.html)
       setShowForm(false)
@@ -93,6 +115,7 @@ export function InterviewGuidePanel({
       console.error(err)
     } finally {
       setLoading(false)
+      setStep(null)
     }
   }
 
@@ -181,11 +204,26 @@ export function InterviewGuidePanel({
               <Loader2 size={32} className="text-violet-400 animate-spin" />
               <div>
                 <p className="text-[var(--text-primary)] font-medium">
-                  {t('careersPostulaciones.interviewGuide.loadingTitle')}
+                  {step === 'research'
+                    ? t('careersPostulaciones.interviewGuide.stepResearch')
+                    : t('careersPostulaciones.interviewGuide.stepWriting')}
                 </p>
                 <p className="text-[var(--text-tertiary)] text-sm mt-1 max-w-md">
                   {t('careersPostulaciones.interviewGuide.loadingNote')}
                 </p>
+                {/* Sin esto el spinner se ve igual al minuto 1 que al 3 y parece colgado. */}
+                <p className="text-[var(--text-muted)] text-xs mt-3 tabular-nums">
+                  {t('careersPostulaciones.interviewGuide.elapsed')} {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={step === 'research' ? 'text-violet-300 font-semibold' : 'text-[var(--text-muted)]'}>
+                  1. {t('careersPostulaciones.interviewGuide.stepResearchShort')}
+                </span>
+                <span className="text-[var(--text-faint)]">→</span>
+                <span className={step === 'writing' ? 'text-violet-300 font-semibold' : 'text-[var(--text-muted)]'}>
+                  2. {t('careersPostulaciones.interviewGuide.stepWritingShort')}
+                </span>
               </div>
             </div>
           )}

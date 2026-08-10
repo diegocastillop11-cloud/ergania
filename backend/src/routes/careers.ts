@@ -55,6 +55,7 @@ careersRoutes.post('/applications/:id/interview-prep', ctrl.generateInterviewPre
 
 // Guía de entrevista interactiva (reemplaza a interview-prep para las guías nuevas)
 careersRoutes.get('/applications/:id/interview-guide', guideCtrl.getInterviewGuide)
+careersRoutes.post('/applications/:id/interview-guide/research', guideCtrl.researchInterviewCompany)
 careersRoutes.post('/applications/:id/interview-guide', guideCtrl.generateInterviewGuide)
 careersRoutes.patch('/applications/:id/interview-guide/notes', guideCtrl.saveInterviewNotes)
 careersRoutes.get('/applications/:id/interview-guide/html', guideCtrl.downloadInterviewGuideHtml)
