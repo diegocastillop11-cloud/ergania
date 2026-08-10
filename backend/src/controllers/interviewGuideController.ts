@@ -406,8 +406,10 @@ export const researchInterviewCompany = async (req: Request, res: Response) => {
 
     // Investigación ya pagada para esta empresa en otra postulación del usuario.
     if (req.body?.reinvestigar !== true) {
+      // Se re-limpia: las guías generadas antes del fix quedaron guardadas con el marcado
+      // <cite> adentro, y reusarlas tal cual lo volvería a meter en la guía nueva.
       const cached = await svc.findEmpresaResearch(userEmail, app.empresa)
-      if (cached) return res.json({ ok: true, empresaInfo: cached, cached: true })
+      if (cached) return res.json({ ok: true, empresaInfo: cleanEmpresaInfo(cached), cached: true })
     }
 
     let empresaInfo: EmpresaInfo
@@ -451,7 +453,7 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
     if (!empresaInfo.investigada) {
       const cached = req.body?.reinvestigar === true ? null : await svc.findEmpresaResearch(userEmail, app.empresa)
       if (cached) {
-        empresaInfo = cached
+        empresaInfo = cleanEmpresaInfo(cached)
       } else if (req.body?.empresaInfo === undefined) {
         try {
           empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
