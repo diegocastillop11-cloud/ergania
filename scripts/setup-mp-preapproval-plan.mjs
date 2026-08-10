@@ -44,7 +44,10 @@ const res = await fetch('https://api.mercadopago.com/preapproval_plan', {
       transaction_amount: 9990,
       currency_id: 'CLP',
     },
-    back_url: 'https://ergania.com/subscription/success',
+    // El plan guarda su back_url al crearse y no se puede cambiar después, así
+    // que un plan creado para probar contra un preview NO sirve para producción:
+    // hay que crear otro apuntando a ergania.com antes de shippear.
+    back_url: `${process.argv[2] || 'https://ergania.com'}/subscription/success`,
   }),
 })
 
