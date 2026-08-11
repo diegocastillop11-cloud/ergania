@@ -5,8 +5,8 @@ function guideFixture(resumen: string, meta: InterviewGuide['meta'] = {}): Inter
   return {
     version: 1,
     generatedAt: '2026-08-10T00:00:00.000Z',
-    empresa: 'Empresas Carozzi S.A.',
-    rol: 'Project Manager TI (SAP-FI)',
+    empresa: 'Empresa Ejemplo S.A.',
+    rol: 'Analista de Datos',
     idioma: 'es',
     meta,
     empresaInfo: { investigada: true, resumen, stats: [], valores: [], fuentes: [] },
@@ -22,11 +22,11 @@ function guideFixture(resumen: string, meta: InterviewGuide['meta'] = {}): Inter
 
 // Regresión: la tool web_search devuelve el texto citado envuelto en <cite index="...">.
 // Como el HTML de la guía escapa todo, esas etiquetas se veían literales dentro del texto
-// ("<cite index="6-1,6-2">Empresas Carozzi es...</cite>") en la primera guía generada.
+// ("<cite index="6-1,6-2">Empresa Ejemplo es...</cite>") en la primera guía generada.
 describe('stripCitations', () => {
   it('saca las etiquetas <cite> dejando el texto citado', () => {
-    const raw = '<cite index="6-1,6-2">Empresas Carozzi es una multinacional chilena</cite>. <cite index="9-5">En 2024 reportó ventas por US$1.565 millones</cite>.'
-    expect(stripCitations(raw)).toBe('Empresas Carozzi es una multinacional chilena. En 2024 reportó ventas por US$1.565 millones.')
+    const raw = '<cite index="6-1,6-2">Empresa Ejemplo es una multinacional</cite>. <cite index="9-5">En 2024 reportó ventas por US$1.565 millones</cite>.'
+    expect(stripCitations(raw)).toBe('Empresa Ejemplo es una multinacional. En 2024 reportó ventas por US$1.565 millones.')
   })
 
   it('saca también la variante con corchetes numéricos', () => {
@@ -35,7 +35,7 @@ describe('stripCitations', () => {
   })
 
   it('no toca texto sin citas', () => {
-    const limpio = 'Blue Express pasó de 20 a 41 millones de órdenes entre 2022 y 2024.'
+    const limpio = 'La empresa pasó de 20 a 41 millones de órdenes entre 2022 y 2024.'
     expect(stripCitations(limpio)).toBe(limpio)
   })
 
@@ -46,17 +46,17 @@ describe('stripCitations', () => {
 })
 
 describe('buildInterviewGuideHtml — limpieza al renderizar', () => {
-  // El caso real: la guía de Carozzi se generó antes del fix y quedó guardada con el
+  // El caso real: una guía se generó antes del fix y quedó guardada con el
   // marcado adentro. Limpiar solo al generar no la arreglaba — al recargar se renderizaba
   // el JSON guardado tal cual. Obligar a regenerarla habría costado tokens por un bug de
   // presentación, así que la limpieza tiene que ocurrir también en el render.
   it('renderiza limpia una guía ya guardada con marcado de citas', () => {
-    const sucia = '<cite index="6-1,6-2">Empresas Carozzi es una multinacional chilena</cite>. <cite index="6-4">Cuenta con 11.037 empleados</cite>.'
+    const sucia = '<cite index="6-1,6-2">Empresa Ejemplo es una multinacional</cite>. <cite index="6-4">Cuenta con 11.037 empleados</cite>.'
     const html = buildInterviewGuideHtml(guideFixture(sucia), { mode: 'standalone' })
 
     expect(html).not.toContain('&lt;cite')
     expect(html).not.toContain('<cite')
-    expect(html).toContain('Empresas Carozzi es una multinacional chilena')
+    expect(html).toContain('Empresa Ejemplo es una multinacional')
     expect(html).toContain('Cuenta con 11.037 empleados')
   })
 
