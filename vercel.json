@@ -9,7 +9,8 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" }
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/(.*)", "destination": "/app.html" }
   ],
   "crons": [
     { "path": "/api/subscription/reminders", "schedule": "0 12 * * *" },

@@ -162,5 +162,11 @@ for (const page of PUBLIC_SEO) {
   console.log(`[prerender] ${page.path.padEnd(52)} ${String(body.length).padStart(7)} bytes`)
 }
 
+// Shell vacío para el fallback SPA de las rutas privadas. Sin esto caerían en
+// dist/index.html, que ahora trae la landing prerenderizada: /dashboard mostraría
+// un flash de la página de marketing en cada refresh antes de que React monte.
+// El rewrite que lo usa está en vercel.json.
+await writeFile(join(DIST, 'app.html'), template, 'utf8')
+
 await writeFile(join(DIST, 'sitemap.xml'), sitemap(PUBLIC_SEO), 'utf8')
-console.log(`[prerender] ${PUBLIC_SEO.length} rutas + sitemap.xml`)
+console.log(`[prerender] ${PUBLIC_SEO.length} rutas + app.html + sitemap.xml`)
