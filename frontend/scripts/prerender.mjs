@@ -19,7 +19,23 @@ const ROOT = resolve(HERE, '..')
 const DIST = join(ROOT, 'dist')
 const SSR_ENTRY = join(ROOT, 'dist-ssr', 'entry.js')
 
-const { render, PUBLIC_SEO, SITE_URL } = await import(`file://${SSR_ENTRY.replace(/\\/g, '/')}`)
+// La entry SSR arrastra el cliente de Supabase, que revienta al importarse con
+// "supabaseUrl is required" si faltan las VITE_*. Pasa en toda rama nueva de
+// Vercel hasta que se le agregan sus env vars de Preview a mano (ver CLAUDE.md).
+let render, PUBLIC_SEO, SITE_URL
+try {
+  ;({ render, PUBLIC_SEO, SITE_URL } = await import(`file://${SSR_ENTRY.replace(/\\/g, '/')}`))
+} catch (err) {
+  if (/supabaseUrl is required/i.test(err.message)) {
+    throw new Error(
+      '[prerender] faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY en este entorno. ' +
+      'Si es una rama nueva en Vercel, agregá sus env vars de Preview (CLAUDE.md → ' +
+      '"Gotcha: env vars de Preview") y volvé a deployar.',
+      { cause: err },
+    )
+  }
+  throw err
+}
 
 const esc = (value) =>
   String(value)
