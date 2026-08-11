@@ -19,8 +19,8 @@ const nav = [
   { to: '/busqueda',      icon: Target,          key: 'busqueda' },
   { to: '/scanner',       icon: Radio,           key: 'scanner' },
   { to: '/pipeline',      icon: Inbox,           key: 'pipeline' },
-  { to: '/postulaciones', icon: Send,            key: 'postulaciones' },
   { to: '/tracker',       icon: List,            key: 'tracker' },
+  { to: '/postulaciones', icon: Send,            key: 'postulaciones' },
   { to: '/subscription',  icon: Crown,           key: 'subscription' },
 ] as const
 
