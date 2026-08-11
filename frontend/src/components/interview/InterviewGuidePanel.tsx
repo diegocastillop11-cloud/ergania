@@ -148,41 +148,49 @@ export function InterviewGuidePanel({
   const hasGuide = !!html && !showForm
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-5xl h-[92vh] flex flex-col">
-        <div className="flex items-center justify-between gap-3 p-4 border-b border-[var(--border-default)] shrink-0">
-          <div className="min-w-0">
-            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2 truncate">
-              <Brain size={16} className="text-violet-400 shrink-0" />
-              {t('careersPostulaciones.interviewGuide.titlePrefix')} {app.empresa}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
-              {t('careersPostulaciones.interviewGuide.subtitle')}
-            </p>
+    // Pantalla completa en el celular y casi completa en el PC: es un documento para
+    // estudiar, no un diálogo de confirmación. En móvil sin padding ni esquinas
+    // redondeadas para no perder ni un píxel de ancho de lectura.
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/85 p-0 sm:items-center sm:p-4">
+      <div className="bg-[var(--bg-surface)] border-0 sm:border border-[var(--border-alt)] rounded-none sm:rounded-2xl w-full h-full sm:h-[95vh] sm:max-w-[1180px] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 border-b border-[var(--border-default)] shrink-0">
+          {/* Con la guía abierta el título ya lo muestra su propia cabecera: repetirlo acá
+              solo comía alto de lectura. En el formulario sí hace falta. */}
+          <div className="min-w-0 flex items-center gap-2">
+            <Brain size={16} className="text-violet-400 shrink-0" />
+            <span className="text-[var(--text-primary)] font-bold truncate text-sm">
+              {hasGuide
+                ? t('careersPostulaciones.interviewGuide.shortTitle')
+                : `${t('careersPostulaciones.interviewGuide.titlePrefix')} ${app.empresa}`}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {hasGuide && (
               <>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs"
                   title={t('careersPostulaciones.interviewGuide.regenerateTitle')}
                 >
-                  <RefreshCw size={13} /> {t('careersPostulaciones.interviewGuide.regenerate')}
+                  <RefreshCw size={14} />
+                  <span className="hidden md:inline">{t('careersPostulaciones.interviewGuide.regenerate')}</span>
                 </button>
                 <button
                   onClick={() => download('html')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-1.5 bg-gray-700 hover:bg-gray-600 text-[var(--text-secondary)] rounded-lg text-xs"
                   title={t('careersPostulaciones.interviewGuide.downloadHtmlTitle')}
                 >
-                  <FileCode2 size={13} /> HTML
+                  <FileCode2 size={14} />
+                  <span className="hidden md:inline">HTML</span>
                 </button>
                 <button
                   onClick={() => download('pdf')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs"
+                  className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs"
+                  title="PDF"
                 >
-                  <Download size={13} /> PDF
+                  <Download size={14} />
+                  <span className="hidden md:inline">PDF</span>
                 </button>
               </>
             )}
@@ -192,15 +200,17 @@ export function InterviewGuidePanel({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* El scroll lo maneja cada vista: el iframe el suyo, el formulario el propio. Antes
+            este contenedor también scrolleaba y quedaban dos barras compitiendo. */}
+        <div className="flex-1 min-h-0 flex flex-col">
           {error && (
-            <div className="m-4 p-3 bg-red-900/30 border border-red-800 rounded-xl text-red-300 text-sm">
+            <div className="m-3 p-3 bg-red-900/30 border border-red-800 rounded-xl text-red-300 text-sm shrink-0">
               {error}
             </div>
           )}
 
           {loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
               <Loader2 size={32} className="text-violet-400 animate-spin" />
               <div>
                 <p className="text-[var(--text-primary)] font-medium">
@@ -229,7 +239,7 @@ export function InterviewGuidePanel({
           )}
 
           {!loading && showForm && (
-            <div className="p-5 max-w-2xl mx-auto">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-2xl w-full mx-auto">
               <div className="flex items-start gap-3 mb-5">
                 <div className="w-11 h-11 rounded-xl bg-violet-900/30 flex items-center justify-center shrink-0">
                   <Sparkles size={20} className="text-violet-400" />
@@ -313,7 +323,7 @@ export function InterviewGuidePanel({
           )}
 
           {!loading && !showForm && loadingGuide && (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex-1 flex items-center justify-center">
               <Loader2 size={28} className="text-violet-400 animate-spin" />
             </div>
           )}
@@ -322,7 +332,7 @@ export function InterviewGuidePanel({
             <iframe
               ref={iframeRef}
               srcDoc={html}
-              className="w-full h-full bg-white border-0"
+              className="flex-1 w-full min-h-0 border-0"
               title={t('careersPostulaciones.interviewGuide.titlePrefix')}
             />
           )}
