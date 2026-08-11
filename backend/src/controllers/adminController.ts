@@ -709,23 +709,65 @@ function escBulk(s: string | null | undefined) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// Merge fields de los correos masivos: {{nombre}}, {{monto}}, {{plan}},
-// {{fecha}}, {{proxima_renovacion}}, {{dias_trial}}, {{producto}}. Un tag sin
-// dato disponible para ese destinatario (ej. {{monto}} para alguien sin pagos
-// registrados) se borra en vez de mandarse literal — más limpio para el
-// usuario final que ver "{{monto}}" en el correo.
+// Un tag sin dato disponible para ese destinatario (ej. {{monto}} para alguien
+// sin pagos registrados) se borra en vez de mandarse literal — más limpio para
+// el usuario final que ver "{{monto}}" en el correo.
 function renderMergeFields(text: string | null | undefined, vars: Record<string, string>): string {
-  return (text || '').replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_, key: string) => vars[key.toLowerCase()] ?? '')
+  return (text || '').replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key: string) => vars[key.toLowerCase()] ?? '')
 }
 
-const MERGE_FIELD_SAMPLE: Record<string, string> = {
-  nombre: 'Nombre de ejemplo',
-  producto: 'Ergania',
-  plan: 'Ergania — Plan mensual',
-  monto: '$9.990 CLP',
-  fecha: new Date().toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
-  proxima_renovacion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' }),
-  dias_trial: '2',
+// Registro único de los merge fields calculados. Es también lo que alimenta el
+// módulo Variables del panel y la ayuda del editor de correos, así que agregar
+// uno acá lo documenta solo en la UI — antes la lista estaba escrita a mano en
+// el frontend y se desincronizaba.
+interface MergeFieldSpec { clave: string; descripcion: string; origen: string; ejemplo: string }
+
+const fmtFecha = (d: Date) => d.toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })
+
+function builtinMergeFields(): MergeFieldSpec[] {
+  return [
+    { clave: 'nombre', descripcion: 'Nombre de pila del destinatario, para saludarlo.',
+      origen: 'Nombre completo declarado en el perfil de Postulante; si no lo llenó, el nombre de su cuenta de Google; si tampoco, se deduce de su correo.',
+      ejemplo: 'Diego' },
+    { clave: 'nombre_completo', descripcion: 'Nombre y apellidos del destinatario.',
+      origen: 'Mismo origen que {{nombre}}, sin recortar al primer nombre.',
+      ejemplo: 'Diego Castillo' },
+    { clave: 'producto', descripcion: 'Nombre del producto.', origen: 'Fijo en código.', ejemplo: 'Ergania' },
+    { clave: 'plan', descripcion: 'Plan que contrató el destinatario.',
+      origen: 'Último pago registrado en Pagos; si no tiene pagos, "Ergania — Plan mensual".', ejemplo: 'Ergania — Plan mensual' },
+    { clave: 'monto', descripcion: 'Monto de su último pago.',
+      origen: 'Último pago registrado en Pagos. Vacío si nunca pagó.', ejemplo: '$9.990 CLP' },
+    { clave: 'fecha', descripcion: 'Fecha de su último pago.',
+      origen: 'Último pago registrado en Pagos; si nunca pagó, la fecha de hoy.', ejemplo: fmtFecha(new Date()) },
+    { clave: 'proxima_renovacion', descripcion: 'Cuándo se le vuelve a cobrar.',
+      origen: 'Fin del período actual de su suscripción. Vacío si no tiene suscripción activa.',
+      ejemplo: fmtFecha(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) },
+    { clave: 'dias_trial', descripcion: 'Días que le quedan de prueba gratis.',
+      origen: 'Fin del trial de su suscripción. Vacío si no está en trial.', ejemplo: '2' },
+  ]
+}
+
+// Variables de valor fijo definidas por el admin (tabla email_variables). No
+// pueden pisar un merge field calculado: la validación de createEmailVariable
+// rechaza esas claves.
+async function loadCustomVariables(): Promise<Record<string, string>> {
+  if (!supabaseAdmin) return {}
+  const { data } = await supabaseAdmin.from('email_variables').select('clave, valor')
+  return Object.fromEntries((data ?? []).map((v: any) => [v.clave, v.valor ?? '']))
+}
+
+async function mergeFieldSample(): Promise<Record<string, string>> {
+  const custom = await loadCustomVariables()
+  return { ...custom, ...Object.fromEntries(builtinMergeFields().map(f => [f.clave, f.ejemplo])) }
+}
+
+// Última red si el usuario nunca declaró su nombre: la parte del correo antes
+// del @, recortada en el primer separador o número ("diego.castillop11" →
+// "Diego"). Feo, pero menos que un "Hola ," vacío.
+function nombreDesdeEmail(email: string): string {
+  const local = email.split('@')[0]
+  const base = local.split(/[._+\-0-9]/).filter(Boolean)[0] || local
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : ''
 }
 
 // Carga en batch (no un query por destinatario, un envío puede llegar a 300)
@@ -733,20 +775,32 @@ const MERGE_FIELD_SAMPLE: Record<string, string> = {
 async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, Record<string, string>>> {
   if (!supabaseAdmin || emails.length === 0) return {}
 
-  const [usersRes, perfilesRes, subsRes, receiptsRes] = await Promise.all([
+  const [usersRes, perfilesRes, subsRes, receiptsRes, customVars] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-    supabaseAdmin.from('perfiles').select('user_email, nombre').eq('is_active', true).in('user_email', emails),
+    supabaseAdmin.from('perfil_profiles').select('user_email, data').in('user_email', emails),
     supabaseAdmin.from('subscriptions').select('user_id, current_period_end, trial_ends_at'),
     supabaseAdmin.from('payment_receipts').select('user_email, monto, moneda, plan, fecha').in('user_email', emails).order('fecha', { ascending: false }),
+    loadCustomVariables(),
   ])
 
   const emailSet = new Set(emails)
   const userIdByEmail: Record<string, string> = {}
+  const metaNombreByEmail: Record<string, string> = {}
   for (const u of usersRes.data?.users ?? []) {
-    if (u.email && emailSet.has(u.email)) userIdByEmail[u.email] = u.id
+    if (!u.email || !emailSet.has(u.email)) continue
+    userIdByEmail[u.email] = u.id
+    // Solo el login con Google trae nombre; el registro con correo/contraseña no lo pide.
+    const meta = (u.user_metadata?.full_name || u.user_metadata?.name || '').trim()
+    if (meta) metaNombreByEmail[u.email] = meta
   }
+  // Nombre real de la persona, del perfil de Postulante (perfil_profiles.data.candidate).
+  // NO de `perfiles.nombre`: esa tabla guarda el nombre del perfil de búsqueda, que
+  // por defecto es "Principal" — de ahí salía el "Hola Principal," de los envíos.
   const nombreByEmail: Record<string, string> = {}
-  for (const p of perfilesRes.data ?? []) nombreByEmail[p.user_email] = p.nombre
+  for (const p of perfilesRes.data ?? []) {
+    const fullName = ((p as any).data?.candidate?.full_name || '').trim()
+    if (fullName && !nombreByEmail[(p as any).user_email]) nombreByEmail[(p as any).user_email] = fullName
+  }
 
   const subByUserId: Record<string, any> = {}
   for (const s of subsRes.data ?? []) subByUserId[s.user_id] = s
@@ -757,7 +811,7 @@ async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, 
     if (!latestReceiptByEmail[r.user_email]) latestReceiptByEmail[r.user_email] = r
   }
 
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })
+  const fmtDate = (iso: string) => fmtFecha(new Date(iso))
 
   const result: Record<string, Record<string, string>> = {}
   for (const email of emails) {
@@ -766,9 +820,12 @@ async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, 
     const daysLeft = sub?.trial_ends_at
       ? Math.max(0, Math.ceil((new Date(sub.trial_ends_at).getTime() - Date.now()) / 86400000))
       : undefined
+    const nombreCompleto = nombreByEmail[email] || metaNombreByEmail[email] || nombreDesdeEmail(email)
 
     result[email] = {
-      nombre: nombreByEmail[email] || email.split('@')[0],
+      ...customVars,
+      nombre: nombreCompleto.split(/\s+/)[0],
+      nombre_completo: nombreCompleto,
       producto: 'Ergania',
       plan: receipt?.plan || 'Ergania — Plan mensual',
       monto: receipt ? `$${Number(receipt.monto).toLocaleString('es-CL')} ${receipt.moneda}` : '',
@@ -793,7 +850,7 @@ function renderBulkEmailBody(cuerpo: string): string {
 }
 
 function buildBulkEmailHtml(email: {
-  titulo: string; cuerpo: string
+  encabezado?: string | null; cuerpo: string
   cta1_texto: string | null; cta1_url: string | null
   cta2_texto: string | null; cta2_url: string | null
 }, vars: Record<string, string> = {}): string {
@@ -802,7 +859,11 @@ function buildBulkEmailHtml(email: {
   // más pesa para que Gmail clasifique el correo como Promociones en vez de
   // Principal. La frase de darte de baja se mantiene: protege ante reportes
   // de spam aunque reste algo de chance de caer en Principal.
-  const titulo = renderMergeFields(email.titulo, vars)
+  // `titulo` (el nombre interno de la campaña) NO se imprime acá: se coló como
+  // primera línea del correo hasta 2026-08-10 y los destinatarios veían cosas
+  // como "Win-back (reconquista)". El encabezado visible es un campo aparte y
+  // opcional.
+  const encabezado = renderMergeFields(email.encabezado, vars).trim()
   const cuerpo = renderMergeFields(email.cuerpo, vars)
   const cta1Texto = email.cta1_texto ? renderMergeFields(email.cta1_texto, vars) : email.cta1_texto
   const cta2Texto = email.cta2_texto ? renderMergeFields(email.cta2_texto, vars) : email.cta2_texto
@@ -820,7 +881,7 @@ function buildBulkEmailHtml(email: {
       </p>` : ''
   return `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#333;">
-      <p style="font-weight:bold;font-size:16px;margin:0 0 16px;">${escBulk(titulo)}</p>
+      ${encabezado ? `<p style="font-weight:bold;font-size:16px;margin:0 0 16px;">${escBulk(encabezado)}</p>` : ''}
       ${renderBulkEmailBody(cuerpo)}
       ${cta1}
       ${cta2}
@@ -848,13 +909,13 @@ export async function createBulkEmail(req: Request, res: Response) {
   if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
+  const { titulo, asunto, encabezado, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
   if (!titulo?.trim() || !asunto?.trim()) return res.status(400).json({ error: 'Título y asunto son requeridos' })
 
   const { data, error } = await supabaseAdmin
     .from('bulk_emails')
     .insert({
-      titulo: titulo.trim(), asunto: asunto.trim(), cuerpo: cuerpo || '',
+      titulo: titulo.trim(), asunto: asunto.trim(), encabezado: encabezado?.trim() || null, cuerpo: cuerpo || '',
       cta1_texto: cta1_texto || null, cta1_url: cta1_url || null,
       cta2_texto: cta2_texto || null, cta2_url: cta2_url || null,
     })
@@ -869,13 +930,13 @@ export async function updateBulkEmail(req: Request, res: Response) {
   if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const { titulo, asunto, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
+  const { titulo, asunto, encabezado, cuerpo, cta1_texto, cta1_url, cta2_texto, cta2_url } = req.body ?? {}
   if (!titulo?.trim() || !asunto?.trim()) return res.status(400).json({ error: 'Título y asunto son requeridos' })
 
   const { error } = await supabaseAdmin
     .from('bulk_emails')
     .update({
-      titulo: titulo.trim(), asunto: asunto.trim(), cuerpo: cuerpo || '',
+      titulo: titulo.trim(), asunto: asunto.trim(), encabezado: encabezado?.trim() || null, cuerpo: cuerpo || '',
       cta1_texto: cta1_texto || null, cta1_url: cta1_url || null,
       cta2_texto: cta2_texto || null, cta2_url: cta2_url || null,
     })
@@ -901,10 +962,75 @@ export async function getBulkEmailPreview(req: Request, res: Response) {
 
   const { data, error } = await supabaseAdmin.from('bulk_emails').select('*').eq('id', req.params.id).single()
   if (error || !data) return res.status(404).json({ error: 'Correo no encontrado' })
+  const sample = await mergeFieldSample()
   res.json({
-    subject: renderMergeFields(data.asunto, MERGE_FIELD_SAMPLE),
-    html: buildBulkEmailHtml(data, MERGE_FIELD_SAMPLE),
+    subject: renderMergeFields(data.asunto, sample),
+    html: buildBulkEmailHtml(data, sample),
   })
+}
+
+// ── Variables de correos ───────────────────────────────────────────────────
+
+const CLAVE_VARIABLE_RE = /^[a-z][a-z0-9_]*$/
+
+export async function listEmailVariables(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin.from('email_variables').select('*').order('clave', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ builtin: builtinMergeFields(), custom: data ?? [] })
+}
+
+function validarVariable(body: any): { clave: string; valor: string; descripcion: string | null } | string {
+  const clave = (body?.clave || '').trim().toLowerCase()
+  if (!clave) return 'La clave es requerida'
+  if (!CLAVE_VARIABLE_RE.test(clave)) return 'La clave solo puede tener minúsculas, números y guion bajo, y debe empezar con una letra'
+  if (builtinMergeFields().some(f => f.clave === clave)) return `"${clave}" ya existe como variable automática — elige otro nombre`
+  return { clave, valor: (body?.valor ?? '').toString(), descripcion: body?.descripcion?.trim() || null }
+}
+
+export async function createEmailVariable(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const parsed = validarVariable(req.body)
+  if (typeof parsed === 'string') return res.status(400).json({ error: parsed })
+
+  const { data, error } = await supabaseAdmin.from('email_variables').insert(parsed).select().single()
+  if (error) {
+    if (error.code === '23505') return res.status(400).json({ error: `Ya existe una variable con la clave "${parsed.clave}"` })
+    return res.status(500).json({ error: error.message })
+  }
+  res.json({ variable: data })
+}
+
+export async function updateEmailVariable(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const parsed = validarVariable(req.body)
+  if (typeof parsed === 'string') return res.status(400).json({ error: parsed })
+
+  const { error } = await supabaseAdmin.from('email_variables').update(parsed).eq('id', req.params.id)
+  if (error) {
+    if (error.code === '23505') return res.status(400).json({ error: `Ya existe una variable con la clave "${parsed.clave}"` })
+    return res.status(500).json({ error: error.message })
+  }
+  res.json({ ok: true })
+}
+
+export async function deleteEmailVariable(req: Request, res: Response) {
+  const admin = await getAdminUser(req)
+  if (!admin || !isAdmin(admin.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { error } = await supabaseAdmin.from('email_variables').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
 }
 
 export async function listBulkEmailSent(req: Request, res: Response) {
@@ -925,7 +1051,7 @@ export async function listBulkEmailSent(req: Request, res: Response) {
 // así que un envío manual corre dentro de la misma request del botón
 // "Enviar correo", y uno programado corre dentro de la misma request del cron.
 async function sendBulkEmailBatch(bulkEmailId: string, bulkEmail: {
-  asunto: string; titulo: string; cuerpo: string
+  asunto: string; encabezado?: string | null; cuerpo: string
   cta1_texto: string | null; cta1_url: string | null
   cta2_texto: string | null; cta2_url: string | null
 }, emails: string[]) {
