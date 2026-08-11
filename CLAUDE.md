@@ -219,6 +219,48 @@ no se calcula sola, hay que subirla a mano (ver paso 0 abajo).
 4. Commit y push del bump de versión a `master` (`chore(android): sube versión a X.XX por ...`)
    — este push no toca el APK en sí (ya está en Blob), solo las 3 constantes de versión.
 
+## Prerender de rutas públicas (SEO / AdSense, 2026-08-10)
+
+AdSense rechazó el sitio por "contenido de poco valor". La causa real: Vite servía el mismo
+`index.html` de 1.147 bytes con `<div id="root"></div>` vacío en las 12 URLs públicas, así que
+para el crawler ergania.com no tenía una sola palabra — los artículos de `/recursos` solo
+existían después de ejecutar JS.
+
+`npm run build` ahora corre, después de `vite build`, un paso de prerender:
+
+- `frontend/src/prerender/entry.tsx` — `renderToString` + `StaticRouter` sobre las rutas
+  públicas, con `AuthContext` inyectado con sesión vacía (montar `AuthProvider` exigiría
+  Supabase y APIs de navegador). Por eso `AuthContext` está exportado y
+  `getInitialLanguage()` guarda contra `localStorage` inexistente.
+- `frontend/scripts/prerender.mjs` — escribe un `index.html` por ruta con su `<head>` propio
+  (title, description, canonical, OG, JSON-LD) y el contenido dentro de `#root`. También
+  genera `sitemap.xml` (ya no vive en `public/`) y `dist/app.html`.
+- `frontend/src/content/seo.ts` — fuente única de títulos/descripciones. Las páginas exportan
+  los suyos para que no se desincronicen.
+
+Cosas que rompen si se tocan sin cuidado:
+
+- **`dist/app.html` es el shell vacío del fallback SPA**, y el rewrite `/(.*) → /app.html` de
+  `vercel.json` es lo que lo usa. Sin eso, `/dashboard` cae en `dist/index.html`, que ahora
+  trae la landing prerenderizada, y se ve un flash de la página de marketing en cada refresh.
+  El handler de filesystem de Vercel corre antes del rewrite (verificable con `vercel build` y
+  mirando `.vercel/output/config.json`), así que las páginas prerenderizadas siempre ganan.
+- **El snippet de `adsbygoogle.js` y la meta `google-adsense-account` van en `index.html`**, no
+  inyectados por JS: Google los busca en el HTML servido. Por eso se eliminó `useAdSenseScript`.
+- **El build ahora falla si faltan `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`** (la entry
+  SSR importa el cliente de Supabase). En una rama nueva de Vercel eso se ve como build roto en
+  vez de pantalla en negro — ver "Gotcha: env vars de Preview". El script traduce el error.
+- `npm run build:prerender` suelto falla a propósito: la landing se escribe sobre
+  `dist/index.html`, que es también la plantilla. Correr `npm run build` completo.
+- `/preguntas` trae las FAQs desde `GET /api/faqs` en tiempo de build; si la petición falla, la
+  página se prerenderiza sin ellas y el cliente las carga igual (no rompe el deploy).
+
+**Pendiente manual de Diego** (no es código): subir el sitemap en Google Search Console, pedir
+indexación de `/recursos` y cada artículo, confirmar que aparecen en `site:ergania.com`, y
+recién ahí pedir la revisión de AdSense. No activar Auto ads: el bloque manual está confinado a
+los artículos vía `VITE_ADSENSE_SLOT_RECURSOS`, y Auto ads metería avisos dentro de la app de
+pago.
+
 ## MercadoPago: cómo funciona de verdad (verificado con un pago real, 2026-08-10)
 
 La documentación de MP describe varios flujos y es fácil implementar el que no corresponde.
