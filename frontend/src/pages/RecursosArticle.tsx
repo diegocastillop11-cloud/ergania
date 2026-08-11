@@ -2,12 +2,12 @@ import { useEffect, useRef } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { getArticleBySlug } from '../content/articles'
 import { useDocumentMeta } from '../lib/useDocumentMeta'
-import { useAdSenseScript } from '../lib/useAdSenseScript'
 
 // Se activa recién cuando exista un ad-slot real creado en el dashboard de
-// AdSense (ver Out of Scope del spec — es un paso manual de Diego). Sin esto
-// seteado, la página sigue sirviendo el script de adsbygoogle.js normalmente
-// (necesario para Auto ads), solo no dibuja este bloque manual.
+// AdSense (es un paso manual de Diego). El script de adsbygoogle.js lo carga
+// index.html en todo el sitio — Google necesita verlo en el HTML servido, no
+// inyectado por JS —, así que sin esto la página simplemente no dibuja el
+// bloque manual, pero Auto ads sigue disponible.
 const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT_RECURSOS as string | undefined
 
 function AdSlot({ slot }: { slot: string }) {
@@ -54,7 +54,6 @@ export default function RecursosArticle() {
     article ? `${article.title} — Ergania` : 'Recursos — Ergania',
     article?.description ?? '',
   )
-  useAdSenseScript()
 
   if (!article) return <Navigate to="/recursos" replace />
 

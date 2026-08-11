@@ -6,12 +6,14 @@ import { useTranslation } from '../lib/i18n/LanguageContext'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
-interface Faq { id: string; question: string; answer: string }
+export interface Faq { id: string; question: string; answer: string }
 
-export default function Preguntas() {
+// initialFaqs solo lo usa el prerender (scripts/prerender.mjs), que trae las FAQs
+// en tiempo de build para que el crawler no reciba la pantalla de "cargando".
+export default function Preguntas({ initialFaqs = [] }: { initialFaqs?: Faq[] }) {
   const { t } = useTranslation()
-  const [faqs, setFaqs] = useState<Faq[]>([])
-  const [loading, setLoading] = useState(true)
+  const [faqs, setFaqs] = useState<Faq[]>(initialFaqs)
+  const [loading, setLoading] = useState(initialFaqs.length === 0)
   const [openId, setOpenId] = useState<string | null>(null)
   const [showContact, setShowContact] = useState(false)
 

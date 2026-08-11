@@ -19,7 +19,9 @@ interface AuthContextType {
   acceptTerms: () => Promise<{ error: string | null }>
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
+// Exportado para que el prerender SSR pueda inyectar una sesión vacía sin
+// montar AuthProvider (que depende de Supabase y del navegador).
+export const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser]    = useState<User | null>(null)

@@ -2,7 +2,10 @@ User-agent: *
 Allow: /
 Allow: /preguntas
 Allow: /privacidad
+Allow: /terminos
 Allow: /recursos
+Allow: /nosotros
+Allow: /contacto
 
 # Pantallas funcionales/de redirección sin contenido de publicador —
 # no deben indexarse ni evaluarse para revisión de AdSense

@@ -40,6 +40,9 @@ function interpolate(text: string, vars?: Record<string, string | number>): stri
 }
 
 function getInitialLanguage(): Language {
+  // Corre durante el render, así que también se ejecuta en el prerender SSR
+  // (scripts/prerender.mjs), donde no existe localStorage.
+  if (typeof localStorage === 'undefined') return 'es'
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved === 'es' || saved === 'en') return saved
   // Mercado actual (Chile/LATAM/España) es 100% hispanohablante — español por defecto,

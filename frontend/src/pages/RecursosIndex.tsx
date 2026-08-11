@@ -15,8 +15,8 @@ const C = {
 const display = "'Space Grotesk', -apple-system, 'Segoe UI', Arial, sans-serif"
 const sans = "'Source Sans Pro', -apple-system, 'Segoe UI', Arial, sans-serif"
 
-const TITLE = 'Recursos para tu búsqueda laboral — Ergania'
-const DESCRIPTION = 'Guías prácticas sobre CV, entrevistas, pretensión de renta y búsqueda de trabajo remoto, escritas por el equipo de Ergania.'
+export const TITLE = 'Recursos para tu búsqueda laboral — Ergania'
+export const DESCRIPTION ='Guías prácticas sobre CV, entrevistas, pretensión de renta y búsqueda de trabajo remoto, escritas por el equipo de Ergania.'
 
 export default function RecursosIndex() {
   useDocumentMeta(TITLE, DESCRIPTION)

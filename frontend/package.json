@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && npm run build:prerender",
+    "build:prerender": "vite build --ssr src/prerender/entry.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "build:capacitor": "tsc && vite build --mode capacitor",
     "preview": "vite preview",
     "test": "vitest run",

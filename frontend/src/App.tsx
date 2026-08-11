@@ -10,6 +10,8 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import RecursosIndex from './pages/RecursosIndex'
 import RecursosArticle from './pages/RecursosArticle'
+import Nosotros from './pages/Nosotros'
+import Contacto from './pages/Contacto'
 import Subscription from './pages/Subscription'
 import SubscriptionCallback from './pages/SubscriptionCallback'
 import CareersDashboard from './pages/careers/CareersDashboard'
@@ -64,6 +66,8 @@ export default function App() {
       <Route path="/terminos" element={<Terms />} />
       <Route path="/recursos" element={<RecursosIndex />} />
       <Route path="/recursos/:slug" element={<RecursosArticle />} />
+      <Route path="/nosotros" element={<Nosotros />} />
+      <Route path="/contacto" element={<Contacto />} />
       <Route path="/login" element={<Login />} />
       <Route path="/preguntas" element={<Preguntas />} />
       <Route path="/reset-password" element={<ResetPassword />} />
