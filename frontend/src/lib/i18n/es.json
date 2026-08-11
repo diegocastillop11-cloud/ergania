@@ -456,6 +456,10 @@
     "interviewGuide": {
       "titlePrefix": "Guía de Entrevista —",
       "shortTitle": "Guía de Entrevista",
+      "restoreTitle": "Volver al tamaño ventana",
+      "expandTitle": "Ver la guía en pantalla completa",
+      "expand": "Pantalla completa",
+      "restore": "Ventana",
       "subtitle": "Investigación de la empresa, tu pitch, preguntas y escenarios en un solo lugar",
       "readyTitle": "Preparemos tu entrevista",
       "readyDesc": "La IA investiga la empresa en internet y arma una guía completa con tu pitch, las preguntas más probables con respuestas basadas en tu CV, escenarios, fortalezas y debilidades, y un checklist.",

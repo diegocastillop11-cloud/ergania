@@ -5,11 +5,25 @@ import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import {
   Brain, Loader2, X, Download, FileCode2, Sparkles, RefreshCw, Search,
+  Maximize2, Minimize2,
 } from 'lucide-react'
 import type { Application, InterviewMeta } from '../../types/careers'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 const EMPTY_META: InterviewMeta = { entrevistadores: '', fecha: '', hora: '', modalidad: '', tipo: '' }
+
+// Estudiar una guía es una sesión larga: se recuerda cómo la dejó el usuario la última vez
+// en vez de obligarlo a agrandarla cada vez que abre una postulación.
+const EXPANDED_KEY = 'ergania:guide-expanded'
+
+function loadExpanded(): boolean {
+  try {
+    const v = localStorage.getItem(EXPANDED_KEY)
+    return v === null ? true : v === '1'
+  } catch {
+    return true
+  }
+}
 
 function fileBase(app: Application): string {
   const clean = (s: string) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
@@ -38,6 +52,15 @@ export function InterviewGuidePanel({
   // La investigación sobrevive a un fallo del paso 2 para no volver a pagarla en el reintento.
   const [research, setResearch] = useState<unknown>(null)
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
+  const [expanded, setExpanded] = useState<boolean>(loadExpanded)
+
+  const toggleExpanded = () => {
+    setExpanded(v => {
+      const next = !v
+      try { localStorage.setItem(EXPANDED_KEY, next ? '1' : '0') } catch { /* modo incógnito */ }
+      return next
+    })
+  }
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const [elapsed, setElapsed] = useState(0)
@@ -148,11 +171,15 @@ export function InterviewGuidePanel({
   const hasGuide = !!html && !showForm
 
   return (
-    // Pantalla completa en el celular y casi completa en el PC: es un documento para
-    // estudiar, no un diálogo de confirmación. En móvil sin padding ni esquinas
-    // redondeadas para no perder ni un píxel de ancho de lectura.
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/85 p-0 sm:items-center sm:p-4">
-      <div className="bg-[var(--bg-surface)] border-0 sm:border border-[var(--border-alt)] rounded-none sm:rounded-2xl w-full h-full sm:h-[95vh] sm:max-w-[1180px] flex flex-col overflow-hidden">
+    // Dos tamaños en PC: pantalla completa para estudiar sin distracción, y ventana para
+    // poder mirar la postulación de atrás. En celular siempre es pantalla completa —
+    // achicarla ahí solo quitaría ancho de lectura.
+    <div className={`fixed inset-0 z-50 flex items-stretch justify-center bg-black/85 p-0 ${expanded ? '' : 'sm:items-center sm:p-4'}`}>
+      <div className={`bg-[var(--bg-surface)] flex flex-col overflow-hidden w-full h-full ${
+        expanded
+          ? 'border-0 rounded-none'
+          : 'border-0 sm:border border-[var(--border-alt)] rounded-none sm:rounded-2xl sm:h-[95vh] sm:max-w-[1180px]'
+      }`}>
         <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 border-b border-[var(--border-default)] shrink-0">
           {/* Con la guía abierta el título ya lo muestra su propia cabecera: repetirlo acá
               solo comía alto de lectura. En el formulario sí hace falta. */}
@@ -194,6 +221,21 @@ export function InterviewGuidePanel({
                 </button>
               </>
             )}
+            {/* Solo en PC: en celular no hay un "tamaño ventana" que valga la pena. */}
+            <button
+              onClick={toggleExpanded}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] border border-[var(--border-alt)] text-[var(--text-secondary)] rounded-lg text-xs"
+              title={expanded
+                ? t('careersPostulaciones.interviewGuide.restoreTitle')
+                : t('careersPostulaciones.interviewGuide.expandTitle')}
+            >
+              {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              <span className="hidden lg:inline">
+                {expanded
+                  ? t('careersPostulaciones.interviewGuide.restore')
+                  : t('careersPostulaciones.interviewGuide.expand')}
+              </span>
+            </button>
             <button onClick={onClose} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
               <X size={18} />
             </button>
