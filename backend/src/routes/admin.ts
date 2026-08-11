@@ -8,6 +8,7 @@ import {
   listReceipts, downloadReceiptPdf,
   listBulkEmails, createBulkEmail, updateBulkEmail, deleteBulkEmail,
   getBulkEmailPreview, listBulkEmailSent, sendBulkEmail,
+  listEmailVariables, createEmailVariable, updateEmailVariable, deleteEmailVariable,
   listScheduledEmails, createScheduledEmail, deleteScheduledEmail, runScheduledBulkEmails,
   listGastos, createGasto, updateGasto, deleteGasto,
   uploadGastoArchivoMiddleware, uploadGastoArchivo, downloadGastoArchivo, deleteGastoArchivo,
@@ -59,6 +60,11 @@ router.post('/bulk-emails/:id/send', sendBulkEmail)
 router.get('/bulk-emails/:id/scheduled', listScheduledEmails)
 router.post('/bulk-emails/:id/scheduled', createScheduledEmail)
 router.delete('/scheduled/:id', deleteScheduledEmail)
+
+router.get('/email-variables', listEmailVariables)
+router.post('/email-variables', createEmailVariable)
+router.put('/email-variables/:id', updateEmailVariable)
+router.delete('/email-variables/:id', deleteEmailVariable)
 
 router.get('/gastos', listGastos)
 router.post('/gastos', createGasto)

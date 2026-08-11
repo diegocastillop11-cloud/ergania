@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone, HelpCircle,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone, HelpCircle, Braces,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -825,12 +825,205 @@ function ReportsTab({ token }: { token: string }) {
   )
 }
 
+// ── Variables de correos ───────────────────────────────────────────────────
+
+interface EmailVariableSpec { clave: string; descripcion: string; origen: string; ejemplo: string }
+interface EmailVariable { id: string; clave: string; valor: string; descripcion: string | null }
+
+const EMPTY_VARIABLE_FORM = { clave: '', valor: '', descripcion: '' }
+
+function VariablesTab({ token }: { token: string }) {
+  const [builtin, setBuiltin] = useState<EmailVariableSpec[]>([])
+  const [custom, setCustom] = useState<EmailVariable[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(EMPTY_VARIABLE_FORM)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${API_BASE}/api/admin/email-variables`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { setBuiltin(d.builtin || []); setCustom(d.custom || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const copy = (clave: string) => {
+    navigator.clipboard?.writeText(`{{${clave}}}`)
+    setCopied(clave)
+    setTimeout(() => setCopied(c => (c === clave ? '' : c)), 1500)
+  }
+
+  const save = async () => {
+    setError('')
+    if (!form.clave.trim()) { setError('La clave es requerida'); return }
+    setSaving(true)
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/admin/email-variables${editingId ? `/${editingId}` : ''}`,
+        { method: editingId ? 'PUT' : 'POST', headers: authHeaders, body: JSON.stringify(form) },
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al guardar')
+      setForm(EMPTY_VARIABLE_FORM)
+      setEditingId(null)
+      load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const startEdit = (v: EmailVariable) => {
+    setForm({ clave: v.clave, valor: v.valor, descripcion: v.descripcion || '' })
+    setEditingId(v.id)
+    setError('')
+  }
+
+  const remove = async (v: EmailVariable) => {
+    if (!window.confirm(`¿Eliminar la variable {{${v.clave}}}? Los correos que la usen quedarán con ese espacio en blanco.`)) return
+    await fetch(`${API_BASE}/api/admin/email-variables/${v.id}`, { method: 'DELETE', headers: authHeaders })
+    load()
+  }
+
+  if (loading) return <p className="text-gray-500 text-sm p-5">Cargando...</p>
+
+  return (
+    <div className="p-5 space-y-6">
+      <p className="text-gray-400 text-sm">
+        Una variable es un texto entre llaves que se escribe en un correo masivo y se reemplaza por el dato
+        real de cada destinatario al momento de enviarlo. Por ejemplo, escribir{' '}
+        <code className="text-gray-300">Hola {'{{nombre}}'},</code> le llega a cada persona con su propio nombre.
+      </p>
+
+      <div>
+        <h3 className="text-sm font-semibold text-white mb-1">Automáticas</h3>
+        <p className="text-gray-500 text-xs mb-3">
+          Salen de la base de datos, no se pueden editar. Si una persona no tiene ese dato, la variable se
+          borra del correo (no se manda el texto entre llaves).
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="text-gray-500 text-xs border-b border-gray-800">
+                <th className="text-left py-2 pr-3 font-medium">Variable</th>
+                <th className="text-left py-2 pr-3 font-medium">Qué es</th>
+                <th className="text-left py-2 pr-3 font-medium">De dónde sale</th>
+                <th className="text-left py-2 font-medium">Ejemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {builtin.map(v => (
+                <tr key={v.clave} className="border-b border-gray-800/50 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap">
+                    <button onClick={() => copy(v.clave)} title="Copiar" className="text-blue-400 hover:text-blue-300 font-mono text-xs">
+                      {`{{${v.clave}}}`}
+                    </button>
+                    {copied === v.clave && <span className="text-green-400 text-[10px] ml-1">copiada</span>}
+                  </td>
+                  <td className="py-2 pr-3 text-gray-300">{v.descripcion}</td>
+                  <td className="py-2 pr-3 text-gray-500 text-xs">{v.origen}</td>
+                  <td className="py-2 text-gray-400 text-xs whitespace-nowrap">{v.ejemplo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-white mb-1">Propias</h3>
+        <p className="text-gray-500 text-xs mb-3">
+          Textos fijos que defines tú, iguales para todos los destinatarios (el precio, un correo de soporte,
+          el nombre de una promoción). Sirven para escribirlos una vez y no tener que corregirlos correo por
+          correo cuando cambian.
+        </p>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input placeholder="Clave (ej. precio_mensual)" value={form.clave}
+              onChange={e => setForm(f => ({ ...f, clave: e.target.value }))}
+              className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono" />
+            <input placeholder="Valor (ej. $9.990)" value={form.valor}
+              onChange={e => setForm(f => ({ ...f, valor: e.target.value }))}
+              className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          </div>
+          <input placeholder="Para qué sirve (opcional, solo lo ves tú)" value={form.descripcion}
+            onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+          <div className="flex gap-2">
+            <button onClick={save} disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
+              <Save size={13} /> {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Agregar variable'}
+            </button>
+            {editingId && (
+              <button onClick={() => { setEditingId(null); setForm(EMPTY_VARIABLE_FORM); setError('') }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs">
+                <X size={13} /> Cancelar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {custom.length === 0 ? (
+          <p className="text-gray-600 text-sm text-center py-4">Todavía no defines variables propias.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead>
+                <tr className="text-gray-500 text-xs border-b border-gray-800">
+                  <th className="text-left py-2 pr-3 font-medium">Variable</th>
+                  <th className="text-left py-2 pr-3 font-medium">Valor</th>
+                  <th className="text-left py-2 pr-3 font-medium">Para qué sirve</th>
+                  <th className="py-2 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {custom.map(v => (
+                  <tr key={v.id} className="border-b border-gray-800/50 align-top">
+                    <td className="py-2 pr-3 whitespace-nowrap">
+                      <button onClick={() => copy(v.clave)} title="Copiar" className="text-blue-400 hover:text-blue-300 font-mono text-xs">
+                        {`{{${v.clave}}}`}
+                      </button>
+                      {copied === v.clave && <span className="text-green-400 text-[10px] ml-1">copiada</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-gray-300">{v.valor}</td>
+                    <td className="py-2 pr-3 text-gray-500 text-xs">{v.descripcion || '—'}</td>
+                    <td className="py-2">
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => startEdit(v)} className="text-gray-500 hover:text-blue-400 p-1" title="Editar">
+                          <Pencil size={13} />
+                        </button>
+                        <button onClick={() => remove(v)} className="text-gray-500 hover:text-red-400 p-1" title="Eliminar">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Correos masivos ────────────────────────────────────────────────────────
 
 interface BulkUser { id: string; email: string; createdAt: string; sub: any; evaluationsCount: number }
 
 interface BulkEmail {
-  id: string; titulo: string; asunto: string; cuerpo: string
+  id: string; titulo: string; asunto: string; encabezado: string | null; cuerpo: string
   cta1_texto: string | null; cta1_url: string | null
   cta2_texto: string | null; cta2_url: string | null
 }
@@ -841,29 +1034,42 @@ interface ScheduledEmail {
   sent_at: string | null; result: any
 }
 
-const EMPTY_BULK_EMAIL_FORM = { titulo: '', asunto: '', cuerpo: '', cta1_texto: '', cta1_url: '', cta2_texto: '', cta2_url: '' }
+const EMPTY_BULK_EMAIL_FORM = { titulo: '', asunto: '', encabezado: '', cuerpo: '', cta1_texto: '', cta1_url: '', cta2_texto: '', cta2_url: '' }
 type BulkEmailFormState = typeof EMPTY_BULK_EMAIL_FORM
 
-function BulkEmailFields({ form, setForm }: { form: BulkEmailFormState; setForm: (fn: (f: BulkEmailFormState) => BulkEmailFormState) => void }) {
+function BulkEmailFields({ form, setForm, variables }: {
+  form: BulkEmailFormState
+  setForm: (fn: (f: BulkEmailFormState) => BulkEmailFormState) => void
+  variables: string[]
+}) {
   return (
     <>
-      <input placeholder="Título interno" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      <div>
+        <input placeholder="Título interno" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        <p className="text-[11px] text-gray-500 mt-1">Solo para identificar el correo en este panel. El usuario NO lo ve.</p>
+      </div>
       <input placeholder="Asunto del correo" value={form.asunto} onChange={e => setForm(f => ({ ...f, asunto: e.target.value }))}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      <div>
+        <input placeholder="Encabezado visible (opcional)" value={form.encabezado} onChange={e => setForm(f => ({ ...f, encabezado: e.target.value }))}
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+        <p className="text-[11px] text-gray-500 mt-1">Primera línea en negrita del correo. Si lo dejas vacío, el correo parte directo en el cuerpo.</p>
+      </div>
       <textarea
         placeholder="Cuerpo del correo. Deja una línea en blanco entre párrafos. Las líneas que empiecen con '- ' se muestran como lista."
         value={form.cuerpo} onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))} rows={8}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono" />
       <p className="text-[11px] text-gray-500">
-        Tags disponibles (se reemplazan por el dato real de cada destinatario al enviar — funcionan en título, asunto, cuerpo y botones):{' '}
-        <code className="text-gray-400">{'{{nombre}}'}</code>{', '}
-        <code className="text-gray-400">{'{{plan}}'}</code>{', '}
-        <code className="text-gray-400">{'{{monto}}'}</code>{', '}
-        <code className="text-gray-400">{'{{fecha}}'}</code>{', '}
-        <code className="text-gray-400">{'{{proxima_renovacion}}'}</code>{', '}
-        <code className="text-gray-400">{'{{dias_trial}}'}</code>{', '}
-        <code className="text-gray-400">{'{{producto}}'}</code>. Si no hay dato para ese destinatario, el tag se borra en vez de mostrarse tal cual.
+        Variables disponibles (se reemplazan por el dato real de cada destinatario al enviar — funcionan en asunto, encabezado, cuerpo y botones):{' '}
+        {variables.map((v, i) => (
+          <span key={v}>
+            {i > 0 && ', '}
+            <code className="text-gray-400">{`{{${v}}}`}</code>
+          </span>
+        ))}
+        . Si no hay dato para ese destinatario, la variable se borra en vez de mostrarse tal cual.
+        Qué significa cada una: pestaña <span className="text-gray-400">Variables</span>.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input placeholder="Texto botón principal (opcional)" value={form.cta1_texto} onChange={e => setForm(f => ({ ...f, cta1_texto: e.target.value }))}
@@ -879,8 +1085,8 @@ function BulkEmailFields({ form, setForm }: { form: BulkEmailFormState; setForm:
   )
 }
 
-function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen }: {
-  email: BulkEmail; token: string; userList: BulkUser[]
+function BulkEmailCard({ email, token, userList, variables, onChanged, onDeleted, startOpen }: {
+  email: BulkEmail; token: string; userList: BulkUser[]; variables: string[]
   onChanged: () => void; onDeleted: () => void; startOpen?: boolean
 }) {
   const [open, setOpen] = useState(!!startOpen)
@@ -954,7 +1160,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
 
   const startEdit = () => {
     setForm({
-      titulo: email.titulo, asunto: email.asunto, cuerpo: email.cuerpo,
+      titulo: email.titulo, asunto: email.asunto, encabezado: email.encabezado || '', cuerpo: email.cuerpo,
       cta1_texto: email.cta1_texto || '', cta1_url: email.cta1_url || '',
       cta2_texto: email.cta2_texto || '', cta2_url: email.cta2_url || '',
     })
@@ -1057,7 +1263,7 @@ function BulkEmailCard({ email, token, userList, onChanged, onDeleted, startOpen
           {/* Edición de texto */}
           {editing ? (
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
-              <BulkEmailFields form={form} setForm={setForm} />
+              <BulkEmailFields form={form} setForm={setForm} variables={variables} />
               {saveError && <p className="text-red-400 text-xs">{saveError}</p>}
               <div className="flex gap-2">
                 <button onClick={saveEdit} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
@@ -1254,6 +1460,7 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
   const [saving, setSaving] = useState(false)
   const [draftError, setDraftError] = useState('')
   const [newestId, setNewestId] = useState<string | null>(null)
+  const [variables, setVariables] = useState<string[]>([])
   const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
   const load = () => {
@@ -1265,6 +1472,19 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
   }
 
   useEffect(() => { load() }, [])
+
+  // La lista de variables la manda el backend (mismo endpoint que usa la
+  // pestaña Variables) para que no se desincronice de lo que de verdad se
+  // reemplaza al enviar.
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/email-variables`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => setVariables([
+        ...(d.builtin || []).map((v: EmailVariableSpec) => v.clave),
+        ...(d.custom || []).map((v: EmailVariable) => v.clave),
+      ]))
+      .catch(() => {})
+  }, [])
 
   const startDraft = () => {
     setDraft({ ...EMPTY_BULK_EMAIL_FORM, titulo: 'Nuevo correo', asunto: 'Asunto del correo' })
@@ -1308,7 +1528,7 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
       {drafting ? (
         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
           <h3 className="text-sm font-semibold text-white">Nuevo correo</h3>
-          <BulkEmailFields form={draft} setForm={setDraft} />
+          <BulkEmailFields form={draft} setForm={setDraft} variables={variables} />
           {draftError && <p className="text-red-400 text-xs">{draftError}</p>}
           <div className="flex gap-2">
             <button onClick={saveDraft} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium">
@@ -1334,7 +1554,7 @@ function BulkEmailTab({ token, userList }: { token: string; userList: BulkUser[]
         <div className="space-y-2">
           {emails.map(e => (
             <BulkEmailCard
-              key={e.id} email={e} token={token} userList={userList}
+              key={e.id} email={e} token={token} userList={userList} variables={variables}
               onChanged={load} onDeleted={load}
               startOpen={e.id === newestId}
             />
@@ -1389,7 +1609,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'faqs' | 'gastos' | 'reportes' | 'bulkemail'>('suscripciones')
+  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'faqs' | 'gastos' | 'reportes' | 'bulkemail' | 'variables'>('suscripciones')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
@@ -1639,6 +1859,7 @@ export default function Admin() {
                 { key: 'gastos',        label: 'Planilla de gastos', icon: Receipt       },
                 { key: 'reportes',      label: 'Reportes',           icon: FileText      },
                 { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
+                { key: 'variables',     label: 'Variables',          icon: Braces        },
               ] as const).map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -2030,6 +2251,9 @@ export default function Admin() {
 
             {/* Correos masivos */}
             {tab === 'bulkemail' && session && <BulkEmailTab token={session.access_token} userList={stats.userList} />}
+
+            {/* Variables de los correos masivos */}
+            {tab === 'variables' && session && <VariablesTab token={session.access_token} />}
 
           </div>
         </div>
