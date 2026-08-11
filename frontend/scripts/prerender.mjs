@@ -162,11 +162,23 @@ for (const page of PUBLIC_SEO) {
   console.log(`[prerender] ${page.path.padEnd(52)} ${String(body.length).padStart(7)} bytes`)
 }
 
+/**
+ * Las rutas privadas están en Disallow (robots.txt), así que Google nunca las
+ * evalúa: cargar ahí adsbygoogle.js solo le agregaría una petición a terceros a
+ * cada pantalla de un usuario que paga. El snippet se queda en las páginas
+ * públicas, que son las que Google revisa.
+ */
+function stripAdSense(html) {
+  return html
+    .replace(/\s*<meta name="google-adsense-account"[^>]*>/, '')
+    .replace(/\s*<script[^>]*pagead2\.googlesyndication\.com[^>]*><\/script>/, '')
+}
+
 // Shell vacío para el fallback SPA de las rutas privadas. Sin esto caerían en
 // dist/index.html, que ahora trae la landing prerenderizada: /dashboard mostraría
 // un flash de la página de marketing en cada refresh antes de que React monte.
 // El rewrite que lo usa está en vercel.json.
-await writeFile(join(DIST, 'app.html'), template, 'utf8')
+await writeFile(join(DIST, 'app.html'), stripAdSense(template), 'utf8')
 
 await writeFile(join(DIST, 'sitemap.xml'), sitemap(PUBLIC_SEO), 'utf8')
 console.log(`[prerender] ${PUBLIC_SEO.length} rutas + app.html + sitemap.xml`)

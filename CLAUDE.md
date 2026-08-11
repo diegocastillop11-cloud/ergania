@@ -216,6 +216,8 @@ no se calcula sola, hay que subirla a mano (ver paso 0 abajo).
    ```
    Este es un binario compilado, no código — no requiere pasar por rama/Preview (regla nueva de
    abajo), sí sigue el flujo de push directo a `master` solo para el bump de versión (paso 0).
+   El APK firmado que sale hoy de Actions pesa ~6,3 MB (verificado 2026-08-10, v2.19) — si
+   alguna vez se acerca de nuevo a los 100 MB, revisar qué se está empaquetando antes de subirlo.
 4. Commit y push del bump de versión a `master` (`chore(android): sube versión a X.XX por ...`)
    — este push no toca el APK en sí (ya está en Blob), solo las 3 constantes de versión.
 
@@ -247,6 +249,9 @@ Cosas que rompen si se tocan sin cuidado:
   mirando `.vercel/output/config.json`), así que las páginas prerenderizadas siempre ganan.
 - **El snippet de `adsbygoogle.js` y la meta `google-adsense-account` van en `index.html`**, no
   inyectados por JS: Google los busca en el HTML servido. Por eso se eliminó `useAdSenseScript`.
+  Se quitan en dos lugares donde no corresponden: `app.html` (rutas privadas, `stripAdSense()`
+  en el script de prerender) y el build de Capacitor (plugin `strip-adsense-capacitor` en
+  `vite.config.ts`, o el APK cargaría el script de anuncios dentro de la app de pago).
 - **El build ahora falla si faltan `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`** (la entry
   SSR importa el cliente de Supabase). En una rama nueva de Vercel eso se ve como build roto en
   vez de pantalla en negro — ver "Gotcha: env vars de Preview". El script traduce el error.
