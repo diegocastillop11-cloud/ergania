@@ -455,6 +455,11 @@
     },
     "interviewGuide": {
       "titlePrefix": "Interview Guide —",
+      "shortTitle": "Interview Guide",
+      "restoreTitle": "Back to window size",
+      "expandTitle": "View the guide full screen",
+      "expand": "Full screen",
+      "restore": "Window",
       "subtitle": "Company research, your pitch, questions and scenarios in one place",
       "readyTitle": "Let's prep your interview",
       "readyDesc": "The AI researches the company online and builds a full guide with your pitch, the most likely questions answered from your CV, scenarios, strengths and weaknesses, and a checklist.",
