@@ -5,6 +5,7 @@ import { useTranslation } from '../lib/i18n/LanguageContext'
 import { CosmicButton } from '../components/ui/cosmic-button'
 import { logApkDownload } from '../lib/logApkDownload'
 import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME, ANDROID_APK_URL } from '../lib/appVersion'
+import { DEMO_VIDEO_URL, DEMO_POSTER_URL, DEMO_ASPECT_RATIO } from '../lib/demoVideo'
 
 const C = {
   heroA:    '#1E1B4B',
@@ -27,12 +28,6 @@ const C = {
 }
 
 const gradAccent = `linear-gradient(90deg, ${C.blue2}, ${C.violet2})`
-
-// Mismo store de Blob que el APK: el video no puede vivir en public/ porque se iría al
-// bundle del deploy. El poster sí es local — pesa poco y evita un salto de DNS extra
-// antes de pintar el frame inicial.
-const DEMO_VIDEO_URL = 'https://swwwpx4x0ekiwk61.public.blob.vercel-storage.com/ergania-demo.mp4'
-const DEMO_POSTER_URL = '/demo-poster.jpg'
 
 const display = "'Space Grotesk', -apple-system, 'Segoe UI', Arial, sans-serif"
 const sans    = "'Source Sans Pro', -apple-system, 'Segoe UI', Arial, sans-serif"
@@ -280,9 +275,8 @@ export default function Landing() {
               preload="none"
               poster={DEMO_POSTER_URL}
               // El aspect-ratio fijo reserva el espacio antes de que exista metadata del
-              // video: sin él la sección mide ~150px y salta al darle play. 17/9 es el ratio
-              // nativo del archivo (816x432) — si se re-graba el demo hay que ajustarlo.
-              style={{ display: 'block', width: '100%', aspectRatio: '17 / 9', objectFit: 'contain', borderRadius: 14, background: '#05070F' }}
+              // video: sin él la sección mide ~150px y salta al darle play.
+              style={{ display: 'block', width: '100%', aspectRatio: DEMO_ASPECT_RATIO, objectFit: 'contain', borderRadius: 14, background: '#05070F' }}
             >
               <source src={DEMO_VIDEO_URL} type="video/mp4" />
             </video>
