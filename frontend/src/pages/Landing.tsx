@@ -28,6 +28,12 @@ const C = {
 
 const gradAccent = `linear-gradient(90deg, ${C.blue2}, ${C.violet2})`
 
+// Mismo store de Blob que el APK: el video no puede vivir en public/ porque se iría al
+// bundle del deploy. El poster sí es local — pesa poco y evita un salto de DNS extra
+// antes de pintar el frame inicial.
+const DEMO_VIDEO_URL = 'https://swwwpx4x0ekiwk61.public.blob.vercel-storage.com/ergania-demo.mp4'
+const DEMO_POSTER_URL = '/demo-poster.jpg'
+
 const display = "'Space Grotesk', -apple-system, 'Segoe UI', Arial, sans-serif"
 const sans    = "'Source Sans Pro', -apple-system, 'Segoe UI', Arial, sans-serif"
 
@@ -128,6 +134,11 @@ export default function Landing() {
           text-decoration: none; border: none; cursor: pointer;
         }
         .lp-check { color: ${C.blue2}; font-weight: 700; margin-right: 10px; }
+        .lp-demo-frame {
+          position: relative; border: 1px solid rgba(96,165,250,.22); border-radius: 16px;
+          padding: 8px; background: rgba(255,255,255,.03);
+          box-shadow: 0 30px 80px -30px rgba(96,165,250,.35);
+        }
         .lp-hero-logo-glow {
           position: absolute; inset: -30%; border-radius: 50%;
           background: radial-gradient(circle, rgba(96,165,250,.35), rgba(139,92,246,.18) 55%, transparent 75%);
@@ -249,6 +260,32 @@ export default function Landing() {
             <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.inkSub }}>
               <strong style={{ color: C.ink }}>+2.400</strong> {t('landing.hero.socialProof')}
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── VIDEO DEMO ── */}
+      <section id="demo" className="lp-section" style={{ padding: '84px 48px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, letterSpacing: '2.5px', textTransform: 'uppercase', color: C.blue2, marginBottom: 14 }}>{t('landing.demo.kicker')}</p>
+          <h2 style={{ fontFamily: display, fontSize: 38, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2, marginBottom: 12 }}>{t('landing.demo.title')}</h2>
+          <p style={{ fontFamily: sans, fontSize: 16, lineHeight: 1.65, color: C.inkSub, maxWidth: 520, margin: '0 auto 40px' }}>{t('landing.demo.subtitle')}</p>
+
+          <div className="lp-demo-frame">
+            {/* preload="none" es lo que mantiene el peso de la landing intacto: sin esto el
+                navegador baja metadata del video en cada visita aunque nadie le dé play. */}
+            <video
+              controls
+              playsInline
+              preload="none"
+              poster={DEMO_POSTER_URL}
+              // El aspect-ratio fijo reserva el espacio antes de que exista metadata del
+              // video: sin él la sección mide ~150px y salta al darle play. 17/9 es el ratio
+              // nativo del archivo (816x432) — si se re-graba el demo hay que ajustarlo.
+              style={{ display: 'block', width: '100%', aspectRatio: '17 / 9', objectFit: 'contain', borderRadius: 14, background: '#05070F' }}
+            >
+              <source src={DEMO_VIDEO_URL} type="video/mp4" />
+            </video>
           </div>
         </div>
       </section>

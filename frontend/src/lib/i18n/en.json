@@ -167,6 +167,11 @@
       "socialProof": "job seekers",
       "androidCta": "Got Android? Download the app (v{{version}}) →"
     },
+    "demo": {
+      "kicker": "In 2 minutes",
+      "title": "See Ergania in action",
+      "subtitle": "A short walkthrough: how to upload your resume, evaluate an offer, and walk into the interview prepared."
+    },
     "howItWorks": {
       "kicker": "How it works",
       "title": "Three steps to your next opportunity",

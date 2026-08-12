@@ -167,6 +167,11 @@
       "socialProof": "buscando trabajo",
       "androidCta": "¿Tienes Android? Descarga la app (v{{version}}) →"
     },
+    "demo": {
+      "kicker": "En 2 minutos",
+      "title": "Mira Ergania en acción",
+      "subtitle": "Un recorrido corto por la app: cómo cargar tu CV, evaluar una oferta y llegar preparado a la entrevista."
+    },
     "howItWorks": {
       "kicker": "Cómo funciona",
       "title": "Tres pasos hacia tu próxima oportunidad",
