@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 import { DEMO_VIDEO_URL, DEMO_POSTER_URL, DEMO_ASPECT_RATIO } from '../lib/demoVideo'
+import { useLogFirstPlay } from '../lib/useLogFirstPlay'
 
 interface Props { onClose: () => void }
 
 export default function DemoVideoModal({ onClose }: Props) {
   const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
+  const onFirstPlay = useLogFirstPlay('dashboard')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -50,6 +52,7 @@ export default function DemoVideoModal({ onClose }: Props) {
           controls
           autoPlay
           playsInline
+          onPlay={onFirstPlay}
           poster={DEMO_POSTER_URL}
           className="w-full bg-black"
           style={{ aspectRatio: DEMO_ASPECT_RATIO, objectFit: 'contain' }}

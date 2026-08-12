@@ -9,6 +9,7 @@ import { subscriptionRoutes } from './routes/subscription'
 import { contactRoutes } from './routes/contact'
 import { adminRoutes } from './routes/admin'
 import { apkRoutes } from './routes/apk'
+import { videoRoutes } from './routes/video'
 import { faqRoutes } from './routes/faq'
 
 const app = express()
@@ -40,6 +41,7 @@ app.use('/api/subscription', subscriptionRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/apk', apkRoutes)
+app.use('/api/video', videoRoutes)
 app.use('/api/faqs', faqRoutes)
 
 app.get('/api/health', (_req, res) => {

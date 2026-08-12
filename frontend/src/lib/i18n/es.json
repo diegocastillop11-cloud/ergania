@@ -156,7 +156,9 @@
     }
   },
   "demoVideo": {
+    "bannerKicker": "Video · 2 min",
     "bannerText": "Aprende a usar Ergania paso a paso",
+    "bannerSubtext": "Te mostramos cómo cargar tu CV, evaluar una oferta y prepararte para la entrevista.",
     "bannerCta": "Ver video",
     "modalTitle": "Cómo usar Ergania",
     "modalSubtitle": "Recorrido completo de la app · 2 min",

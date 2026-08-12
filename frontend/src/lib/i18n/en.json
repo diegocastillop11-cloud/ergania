@@ -156,7 +156,9 @@
     }
   },
   "demoVideo": {
+    "bannerKicker": "Video · 2 min",
     "bannerText": "Learn how to use Ergania step by step",
+    "bannerSubtext": "We'll show you how to upload your resume, evaluate an offer, and prep for the interview.",
     "bannerCta": "Watch video",
     "modalTitle": "How to use Ergania",
     "modalSubtitle": "Full app walkthrough · 2 min",

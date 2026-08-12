@@ -176,9 +176,9 @@ export default function CareersDashboard() {
     <div className="space-y-6">
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
 
-      <DemoVideoBanner />
-
       <AndroidAppBanner />
+
+      <DemoVideoBanner />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">

@@ -6,6 +6,7 @@ import { CosmicButton } from '../components/ui/cosmic-button'
 import { logApkDownload } from '../lib/logApkDownload'
 import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME, ANDROID_APK_URL } from '../lib/appVersion'
 import { DEMO_VIDEO_URL, DEMO_POSTER_URL, DEMO_ASPECT_RATIO } from '../lib/demoVideo'
+import { useLogFirstPlay } from '../lib/useLogFirstPlay'
 
 const C = {
   heroA:    '#1E1B4B',
@@ -45,6 +46,7 @@ export default function Landing() {
   const { user, loading } = useAuth()
   const { t, language, setLanguage } = useTranslation()
   const cosmicNav = useCosmicNav()
+  const onFirstPlay = useLogFirstPlay('landing')
 
   if (!loading && user) return <Navigate to="/dashboard" replace />
 
@@ -273,6 +275,7 @@ export default function Landing() {
               controls
               playsInline
               preload="none"
+              onPlay={onFirstPlay}
               poster={DEMO_POSTER_URL}
               // El aspect-ratio fijo reserva el espacio antes de que exista metadata del
               // video: sin él la sección mide ~150px y salta al darle play.

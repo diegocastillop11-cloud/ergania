@@ -112,7 +112,7 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes, deletionsRes] = await Promise.all([
+  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes, videoPlaysRes, deletionsRes] = await Promise.all([
     supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
     supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('contact_messages').select('*').order('last_message_at', { ascending: false }),
@@ -120,6 +120,7 @@ export async function getStats(req: Request, res: Response) {
     supabaseAdmin.from('tracker_entries').select('user_email'),
     supabaseAdmin.from('perfil_profiles').select('user_email, data'),
     supabaseAdmin.from('apk_downloads').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('video_plays').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('account_deletion_requests').select('*').order('created_at', { ascending: false }),
   ])
 
@@ -193,6 +194,9 @@ export async function getStats(req: Request, res: Response) {
     userList,
     contactMessages: msgs,
     apkDownloadsCount: apkDownloadsRes.count ?? 0,
+    // Si la migración 025 aún no corre en este entorno, count viene null y el panel
+    // muestra 0 en vez de romperse.
+    videoPlaysCount: videoPlaysRes.count ?? 0,
     deletionRequests,
   })
 }
