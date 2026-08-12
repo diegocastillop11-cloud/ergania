@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
 import AndroidAppBanner from '../../components/AndroidAppBanner'
+import DemoVideoBanner from '../../components/DemoVideoBanner'
 import EvaluationLimitBanner from '../../components/careers/EvaluationLimitBanner'
 import { loadLlmProvider, saveLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { loadApiKeys, saveApiKeys, type ApiKeyStore } from '../../lib/userApiKeys'
@@ -176,6 +177,8 @@ export default function CareersDashboard() {
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
 
       <AndroidAppBanner />
+
+      <DemoVideoBanner />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">

@@ -155,6 +155,16 @@
       "downloadError": "Error downloading backup:"
     }
   },
+  "demoVideo": {
+    "bannerKicker": "Video · 2 min",
+    "bannerText": "Learn how to use Ergania step by step",
+    "bannerSubtext": "We'll show you how to upload your resume, evaluate an offer, and prep for the interview.",
+    "bannerCta": "Watch video",
+    "modalTitle": "How to use Ergania",
+    "modalSubtitle": "Full app walkthrough · 2 min",
+    "close": "Close",
+    "dismiss": "Don't show again"
+  },
   "landing": {
     "nav": { "features": "Features", "pricing": "Pricing", "faq": "FAQ", "login": "Log in", "tryNow": "Try now" },
     "hero": {
@@ -166,6 +176,16 @@
       "ctaGhost": "See how it works",
       "socialProof": "job seekers",
       "androidCta": "Got Android? Download the app (v{{version}}) →"
+    },
+    "demo": {
+      "kicker": "In 2 minutes",
+      "title": "See Ergania in action",
+      "subtitle": "A short walkthrough: how to upload your resume, evaluate an offer, and walk into the interview prepared."
+    },
+    "demo": {
+      "kicker": "In 2 minutes",
+      "title": "See Ergania in action",
+      "subtitle": "A short walkthrough: how to upload your resume, evaluate an offer, and walk into the interview prepared."
     },
     "howItWorks": {
       "kicker": "How it works",
