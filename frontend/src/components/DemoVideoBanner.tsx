@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PlayCircle, X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
-import { DEMO_POSTER_URL } from '../lib/demoVideo'
+import { DEMO_POSTER_URL, DEMO_ASPECT_RATIO } from '../lib/demoVideo'
 import DemoVideoModal from './DemoVideoModal'
 
 const DISMISS_KEY = 'ergania:demoVideoBannerDismissed'
@@ -45,7 +45,7 @@ export default function DemoVideoBanner() {
                 src={DEMO_POSTER_URL}
                 alt=""
                 className="block w-full h-auto"
-                style={{ aspectRatio: '17 / 9', objectFit: 'cover' }}
+                style={{ aspectRatio: DEMO_ASPECT_RATIO, objectFit: 'cover' }}
               />
               <span className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/25 transition-colors">
                 <PlayCircle size={40} className="text-white drop-shadow-lg" />
