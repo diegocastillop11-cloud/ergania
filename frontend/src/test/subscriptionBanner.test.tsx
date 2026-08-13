@@ -1,7 +1,12 @@
 /**
- * Tests de SubscriptionBanner: estados de trial/pago y los dos proveedores.
+ * Tests de SubscriptionBanner: estados de trial/pago y a dónde llevan los CTA.
  * MP es Checkout Pro (pago manual, sí necesita recordatorio de renovación).
  * PayPal es Subscriptions (cobro automático, no lo necesita).
+ *
+ * El banner NO cobra directo desde acá: desde 4674bb3 todos sus CTA son <Link> a
+ * /subscription, donde vive el checkbox de aceptación de Términos y renuncia al
+ * derecho a retracto exigido antes del pago (Ley 19.496, art. 3° bis). La elección
+ * entre MercadoPago y PayPal ocurre en esa página, no en el banner.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -68,10 +73,10 @@ describe('SubscriptionBanner — trial', () => {
     expect(screen.getByText(/termina hoy/)).toBeInTheDocument()
   })
 
-  it('muestra los dos botones de pago (Mercado Pago y PayPal)', () => {
+  it('el CTA con el precio lleva a /subscription en vez de cobrar directo', () => {
     renderBanner({ ...base, status: 'trial', daysLeft: 2 })
-    expect(screen.getByText(/Suscribirse \$9.990\/mes/)).toBeInTheDocument()
-    expect(screen.getByText(/Pay with PayPal/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Suscribirse \$9.990\/mes/ }))
+      .toHaveAttribute('href', '/subscription')
   })
 
   it('el banner de trial es descartable', () => {
@@ -90,9 +95,15 @@ describe('SubscriptionBanner — plan vencido', () => {
     expect(screen.queryByText(/prueba/i)).not.toBeInTheDocument()
   })
 
-  it('ofrece ambos proveedores para reactivar', () => {
+  it('ofrece reactivar llevando a /subscription (ahí están MP y PayPal)', () => {
     renderBanner({ ...base, status: 'expired', isActive: false, daysLeft: 0 })
-    expect(screen.getByText(/Mercado Pago — \$9.990\/mes/)).toBeInTheDocument()
-    expect(screen.getByText(/PayPal — \$12.99\/mo/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Suscribirme/ }))
+      .toHaveAttribute('href', '/subscription')
+  })
+
+  it('el banner bloqueante no se puede descartar', () => {
+    const { container } = renderBanner({ ...base, status: 'cancelled', isActive: false, daysLeft: 0 })
+    expect(container.querySelector('button')).toBeNull()
+    expect(screen.getByText('Suscripción cancelada')).toBeInTheDocument()
   })
 })
