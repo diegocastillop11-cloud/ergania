@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as svc from '../services/careerOpsService'
 import * as guide from '../services/interviewGuideService'
 import { getCountryConfig } from '../config/countries'
+import { getInterviewType } from '../config/interviewTypes'
 import {
   getUser, getUserEmail, requireActiveSubscription,
   getLlmClient, getProviderFromRequest, friendlyAiError,
@@ -171,13 +172,15 @@ function cleanEmpresaInfo(raw: unknown): EmpresaInfo {
 
 // ── 2. El cuerpo de la guía ──────────────────────────────────────────────────
 
+/** Solo los datos de agenda. El tipo de entrevista salió de acá a propósito: mezclado con la
+ *  hora y el link terminaba tratado como un dato logístico más, sin cambiar el contenido de la
+ *  guía. Ahora entra por `tipoBlock`, que sí redefine las cuotas. */
 function metaBlock(meta: InterviewMeta): string {
   const lines = [
     meta.entrevistadores ? `- Entrevistador(es): ${meta.entrevistadores}` : '',
     meta.fecha ? `- Fecha: ${meta.fecha}` : '',
     meta.hora ? `- Hora: ${meta.hora}` : '',
     meta.modalidad ? `- Modalidad/link: ${meta.modalidad}` : '',
-    meta.tipo ? `- Tipo de entrevista: ${meta.tipo}` : '',
   ].filter(Boolean)
   if (!lines.length) {
     return `El candidato no entregó datos de la entrevista (entrevistadores, fecha, modalidad).
@@ -185,6 +188,38 @@ En "checklist.logistica" pon items genéricos pero accionables y NO inventes nom
   }
   return `DATOS REALES DE ESTA ENTREVISTA (úsalos; el checklist logístico debe referirse a ellos):
 ${lines.join('\n')}`
+}
+
+const CUOTAS_MIXTAS = '6 fit, 6 preguntas típicas, 4 técnicas, 5 para ellos, 5 escenarios, 5 fortalezas, 5 debilidades, 6 items de checklist mental, 5 de logística, 5 de "no hacer"'
+
+/** El tipo de entrevista decide en qué se gasta el presupuesto de contenido: no es lo mismo un
+ *  screening de RRHH de 20 minutos que una técnica. Sin tipo elegido (o con el texto libre de
+ *  las guías viejas) se cae al reparto mixto, que es como se generaba antes de este cambio. */
+function tipoBlock(app: svc.Application, meta: InterviewMeta, moneda: string): { foco: string; cuotas: string } {
+  const tipo = getInterviewType(meta.tipo)
+  if (!tipo) {
+    return {
+      foco: meta.tipo
+        ? `El candidato describió la entrevista como: "${meta.tipo}". Adapta el contenido a eso.`
+        : 'El candidato no indicó qué tipo de entrevista es. Cubre un poco de cada registro.',
+      cuotas: CUOTAS_MIXTAS,
+    }
+  }
+
+  // La renta ya se estimó en Evaluar Oferta / Pretensión de Renta y está guardada. Para el
+  // screening de RRHH es EL dato de la guía: la pregunta llega sí o sí y la respuesta con una
+  // cifra propia es lo que separa una guía útil de una lista de consejos.
+  const renta = tipo.key === 'rrhh' && app.salario_clp
+    ? `\n\nRENTA YA ESTIMADA PARA ESTE CARGO (${moneda}): ${app.salario_clp}
+Úsala para armar la respuesta a la expectativa de renta: una cifra o rango concreto que el candidato
+pueda decir en voz alta, más la frase para dejarla abierta a conversación. No inventes otra cifra ni
+la contradigas.`
+    : ''
+
+  return {
+    foco: `TIPO DE ENTREVISTA: ${tipo.label}\n\n${tipo.foco}${renta}`,
+    cuotas: tipo.cuotas,
+  }
 }
 
 async function generateGuideBody(
@@ -195,6 +230,7 @@ async function generateGuideBody(
   empresaInfo: EmpresaInfo,
   meta: InterviewMeta,
   paisNombre: string,
+  moneda: string,
   idioma: 'es' | 'en',
 ): Promise<Record<string, unknown> | null> {
   const idiomaRule = idioma === 'en'
@@ -207,6 +243,8 @@ ${empresaInfo.resumen}
 ${empresaInfo.stats.map(s => `- ${s.valor}: ${s.etiqueta}`).join('\n')}`
     : `No hay investigación disponible de esta empresa. Basa todo en el aviso del cargo y NO inventes
 cifras, adquisiciones ni premios de la empresa.`
+
+  const { foco, cuotas } = tipoBlock(app, meta, moneda)
 
   const message = await getLlmClient(req).messages.create({
     model: 'claude-sonnet-4-5',
@@ -223,10 +261,16 @@ Reglas:
 - Si al candidato le falta algo que el cargo pide, dale la estrategia para responderlo con
   honestidad positiva en vez de esconderlo.
 - Nunca inventes datos de la empresa. Solo puedes usar los que te doy.
+- Nunca enseñes a "pasar" un test psicométrico o proyectivo (Wartegg, Luscher, persona bajo la
+  lluvia, Zavic, Cleaver y similares): no sugieras qué dibujar, qué color elegir ni qué alternativa
+  marcar. Puedes decir qué instrumento es y cómo es la sesión, para que el candidato llegue sin
+  sorpresas — nada más. Una respuesta ensayada en esos tests se detecta y lo perjudica.
 ${idiomaRule}`,
     messages: [{
       role: 'user',
       content: `Prepara al candidato para su entrevista en ${app.empresa} — cargo: ${app.rol}.
+
+${foco}
 
 ${investigacion}
 
@@ -293,10 +337,9 @@ Responde SOLO con este JSON, sin texto antes ni después:
 }
 \`\`\`
 
-Cantidades: 6 fit, 6 preguntas típicas, 4 técnicas, 5 para ellos, 5 escenarios (marca 1 como
-"destacado": true — el más probable), 5 fortalezas, 5 debilidades, 6 items de checklist mental,
-5 de logística, 5 de "no hacer". Marca como "destacado": true el item de "fit" que sea el
-diferencial más fuerte del candidato.
+Cantidades para ESTA entrevista: ${cuotas}. Respeta estos números — donde diga 0, deja el arreglo
+vacío en vez de rellenarlo. Marca 1 escenario como "destacado": true (el más probable) y marca
+como "destacado": true el item de "fit" que sea el diferencial más fuerte del candidato.
 
 Cada "respuesta" va de 3 a 5 frases: lo que el candidato realmente alcanza a decir en voz alta,
 no un ensayo. Nada de repetir la misma anécdota en varias respuestas.`,
@@ -457,7 +500,7 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
       }
     }
 
-    const body = await generateGuideBody(req, app, cv, profile, empresaInfo, meta, country.nombre, idioma)
+    const body = await generateGuideBody(req, app, cv, profile, empresaInfo, meta, country.nombre, country.moneda, idioma)
     if (!body) {
       return res.status(502).json({ error: 'La IA devolvió una respuesta que no se pudo leer. Intenta de nuevo.' })
     }

@@ -10,6 +10,8 @@
 // Open Sans como fallback — por eso la familia es un stack de sistema y no una fuente
 // concreta: en el equipo del usuario usa la suya, en el PDF cae a Open Sans y se ve bien.
 
+import { interviewTypeLabel } from '../config/interviewTypes'
+
 export interface InterviewMeta {
   entrevistadores?: string
   fecha?: string
@@ -485,7 +487,7 @@ function sectionEmpresa(g: InterviewGuide, T: Dict): string {
     meta.entrevistadores ? { k: T.entrevistadores, v: meta.entrevistadores } : null,
     meta.fecha ? { k: T.fecha, v: meta.fecha } : null,
     meta.hora ? { k: T.hora, v: meta.hora } : null,
-    meta.tipo ? { k: T.tipo, v: meta.tipo } : null,
+    meta.tipo ? { k: T.tipo, v: interviewTypeLabel(meta.tipo, g.idioma) } : null,
     meta.modalidad ? { k: T.modalidad, v: meta.modalidad } : null,
   ].filter(Boolean) as { k: string; v: string }[]
 

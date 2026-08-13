@@ -12,6 +12,13 @@ import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 const EMPTY_META: InterviewMeta = { entrevistadores: '', fecha: '', hora: '', modalidad: '', tipo: '' }
 
+// El tipo decide cómo se reparte el contenido de la guía (ver backend/src/config/interviewTypes.ts):
+// una de RRHH no lleva preguntas técnicas y una técnica casi no lleva conductuales. Las claves
+// tienen que calzar con las de ese archivo. Vacío = reparto mixto, igual que antes de existir esto.
+const TYPE_KEYS = ['rrhh', 'tecnica', 'gerente', 'psicolaboral', 'panel'] as const
+
+const isKnownType = (v?: string) => !!v && (TYPE_KEYS as readonly string[]).includes(v)
+
 // Estudiar una guía es una sesión larga: se recuerda cómo la dejó el usuario la última vez
 // en vez de obligarlo a agrandarla cada vez que abre una postulación.
 const EXPANDED_KEY = 'ergania:guide-expanded'
@@ -46,6 +53,12 @@ export function InterviewGuidePanel({
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(!app.interviewGuide)
   const [meta, setMeta] = useState<InterviewMeta>({ ...EMPTY_META, ...(app.interviewMeta || {}) })
+  // Las guías generadas antes de este cambio guardaron texto libre en `tipo`: se muestran en
+  // "Otro" con su texto intacto en vez de perderlo al cerrar la lista de opciones.
+  const [tipoMode, setTipoMode] = useState<string>(() => {
+    const t = app.interviewMeta?.tipo || ''
+    return t && !isKnownType(t) ? 'otro' : t
+  })
   const [lang, setLang] = useState<'es' | 'en'>(app.idioma || 'es')
   const [reinvestigar, setReinvestigar] = useState(false)
   const [step, setStep] = useState<'research' | 'writing' | null>(null)
@@ -153,6 +166,8 @@ export function InterviewGuidePanel({
     }
   }
 
+  const inputClass = 'w-full px-3 py-2 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none focus:border-violet-500'
+
   const field = (key: keyof InterviewMeta, label: string, placeholder: string) => (
     <div>
       <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
@@ -163,8 +178,42 @@ export function InterviewGuidePanel({
         value={meta[key] || ''}
         onChange={e => setMeta(m => ({ ...m, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full px-3 py-2 bg-[var(--bg-surface-alt)] border border-[var(--border-alt)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none focus:border-violet-500"
+        className={inputClass}
       />
+    </div>
+  )
+
+  const tipoField = (
+    <div>
+      <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
+        {t('careersPostulaciones.interviewGuide.fieldType')}
+      </label>
+      <select
+        value={tipoMode}
+        onChange={e => {
+          const v = e.target.value
+          setTipoMode(v)
+          // Al pasar a "Otro" se limpia solo si venía de una opción de la lista: si el usuario
+          // ya tenía texto propio escrito, se respeta.
+          setMeta(m => ({ ...m, tipo: v === 'otro' ? (isKnownType(m.tipo) ? '' : m.tipo) : v }))
+        }}
+        className={inputClass}
+      >
+        <option value="">{t('careersPostulaciones.interviewGuide.typeUnset')}</option>
+        {TYPE_KEYS.map(k => (
+          <option key={k} value={k}>{t(`careersPostulaciones.interviewGuide.type_${k}`)}</option>
+        ))}
+        <option value="otro">{t('careersPostulaciones.interviewGuide.typeOther')}</option>
+      </select>
+      {tipoMode === 'otro' && (
+        <input
+          type="text"
+          value={meta.tipo || ''}
+          onChange={e => setMeta(m => ({ ...m, tipo: e.target.value }))}
+          placeholder={t('careersPostulaciones.interviewGuide.phType')}
+          className={`${inputClass} mt-2`}
+        />
+      )}
     </div>
   )
 
@@ -311,7 +360,7 @@ export function InterviewGuidePanel({
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {field('entrevistadores', t('careersPostulaciones.interviewGuide.fieldInterviewers'), t('careersPostulaciones.interviewGuide.phInterviewers'))}
-                  {field('tipo', t('careersPostulaciones.interviewGuide.fieldType'), t('careersPostulaciones.interviewGuide.phType'))}
+                  {tipoField}
                   {field('fecha', t('careersPostulaciones.interviewGuide.fieldDate'), t('careersPostulaciones.interviewGuide.phDate'))}
                   {field('hora', t('careersPostulaciones.interviewGuide.fieldTime'), t('careersPostulaciones.interviewGuide.phTime'))}
                 </div>
