@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { supabaseAdmin } from '../config/supabase'
+import { supabaseAdmin, listAllAuthUsers, fetchAllRows } from '../config/supabase'
 import * as svc from '../services/careerOpsService'
 import * as subscriptionSvc from '../services/subscriptionService'
 import { isAdminEmail } from '../config/adminEmails'
@@ -112,26 +112,25 @@ export async function getStats(req: Request, res: Response) {
 
   if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
 
-  const [usersRes, subsRes, messagesRes, receiptsRes, trackerRes, profilesRes, apkDownloadsRes, videoPlaysRes, deletionsRes] = await Promise.all([
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-    supabaseAdmin.from('subscriptions').select('*').order('created_at', { ascending: false }),
-    supabaseAdmin.from('contact_messages').select('*').order('last_message_at', { ascending: false }),
-    supabaseAdmin.from('payment_receipts').select('*').order('fecha', { ascending: false }),
-    supabaseAdmin.from('tracker_entries').select('user_email'),
-    supabaseAdmin.from('perfil_profiles').select('user_email, data'),
+  // Todo lo que se cuenta acá va paginado: auth.users y subscriptions ya pasaron
+  // las 1000 filas que Supabase devuelve por respuesta (ver fetchAllRows).
+  const [users, subsRows, msgs, receipts, trackerRows, profileRows, apkDownloadsRes, videoPlaysRes, deletionRows] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
+    fetchAllRows((from, to) => supabaseAdmin!.from('subscriptions').select('*').order('created_at', { ascending: false }).range(from, to), 'subscriptions'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('contact_messages').select('*').order('last_message_at', { ascending: false }).range(from, to), 'contact_messages'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('payment_receipts').select('*').order('fecha', { ascending: false }).range(from, to), 'payment_receipts'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('tracker_entries').select('user_email').order('created_at', { ascending: false }).range(from, to), 'tracker_entries'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('perfil_profiles').select('user_email, data').order('created_at', { ascending: false }).range(from, to), 'perfil_profiles'),
     supabaseAdmin.from('apk_downloads').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('video_plays').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.from('account_deletion_requests').select('*').order('created_at', { ascending: false }),
+    fetchAllRows((from, to) => supabaseAdmin!.from('account_deletion_requests').select('*').order('created_at', { ascending: false }).range(from, to), 'account_deletion_requests'),
   ])
 
-  const users = usersRes.data?.users ?? []
   // Status "real" (respeta current_period_end/trial_ends_at), no el crudo
   // guardado en la fila — evita que el panel muestre "Cancelado"/"Trial" para
   // cuentas que en verdad siguen con acceso (ver computeEffectiveStatus).
-  const subs  = (subsRes.data ?? []).map((s: any) => ({ ...s, status: subscriptionSvc.computeEffectiveStatus(s) }))
-  const msgs  = messagesRes.data ?? []
-  const receipts = receiptsRes.data ?? []
-  const deletionRequests = (deletionsRes.data ?? []).map((d: any) => ({
+  const subs  = subsRows.map((s: any) => ({ ...s, status: subscriptionSvc.computeEffectiveStatus(s) }))
+  const deletionRequests = deletionRows.map((d: any) => ({
     id: d.id, userId: d.user_id, email: d.email, motivo: d.motivo, createdAt: d.created_at,
   }))
 
@@ -139,7 +138,7 @@ export async function getStats(req: Request, res: Response) {
   // tabla perfil_profiles). No viene de auth.users porque el registro con email/password no
   // pide nombre — solo login con Google lo trae, y no todos los usuarios entran por ahí.
   const nameByEmail: Record<string, string> = {}
-  for (const row of profilesRes.data ?? []) {
+  for (const row of profileRows) {
     const fullName = (row as any).data?.candidate?.full_name?.trim()
     if (fullName && !nameByEmail[(row as any).user_email]) nameByEmail[(row as any).user_email] = fullName
   }
@@ -149,10 +148,10 @@ export async function getStats(req: Request, res: Response) {
   // Conteo de ofertas evaluadas por usuario (tracker_entries se llena tanto por
   // Evaluar Oferta como por Postulaciones, así que es "ofertas trackeadas", no
   // solo evaluaciones estrictas de renta).
-  const evalCountByEmail = (trackerRes.data ?? []).reduce((acc: Record<string, number>, r: any) => {
+  const evalCountByEmail = trackerRows.reduce((acc: Record<string, number>, r: any) => {
     acc[r.user_email] = (acc[r.user_email] ?? 0) + 1
     return acc
-  }, {})
+  }, {} as Record<string, number>)
 
   const userList = users.map((u: any) => ({
     id:              u.id,
@@ -779,18 +778,20 @@ function nombreDesdeEmail(email: string): string {
 async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, Record<string, string>>> {
   if (!supabaseAdmin || emails.length === 0) return {}
 
-  const [usersRes, perfilesRes, subsRes, receiptsRes, customVars] = await Promise.all([
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-    supabaseAdmin.from('perfil_profiles').select('user_email, data').in('user_email', emails),
-    supabaseAdmin.from('subscriptions').select('user_id, current_period_end, trial_ends_at'),
-    supabaseAdmin.from('payment_receipts').select('user_email, monto, moneda, plan, fecha').in('user_email', emails).order('fecha', { ascending: false }),
+  // Un destinatario fuera de la primera página de auth.users quedaba sin
+  // user_id ni nombre y recibía el correo con los merge fields en blanco.
+  const [users, perfiles, subs, receipts, customVars] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
+    fetchAllRows((from, to) => supabaseAdmin!.from('perfil_profiles').select('user_email, data').in('user_email', emails).order('created_at', { ascending: false }).range(from, to), 'perfil_profiles'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('subscriptions').select('user_id, current_period_end, trial_ends_at').order('created_at', { ascending: false }).range(from, to), 'subscriptions'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('payment_receipts').select('user_email, monto, moneda, plan, fecha').in('user_email', emails).order('fecha', { ascending: false }).range(from, to), 'payment_receipts'),
     loadCustomVariables(),
   ])
 
   const emailSet = new Set(emails)
   const userIdByEmail: Record<string, string> = {}
   const metaNombreByEmail: Record<string, string> = {}
-  for (const u of usersRes.data?.users ?? []) {
+  for (const u of users) {
     if (!u.email || !emailSet.has(u.email)) continue
     userIdByEmail[u.email] = u.id
     // Solo el login con Google trae nombre; el registro con correo/contraseña no lo pide.
@@ -801,17 +802,17 @@ async function loadMergeDataForEmails(emails: string[]): Promise<Record<string, 
   // NO de `perfiles.nombre`: esa tabla guarda el nombre del perfil de búsqueda, que
   // por defecto es "Principal" — de ahí salía el "Hola Principal," de los envíos.
   const nombreByEmail: Record<string, string> = {}
-  for (const p of perfilesRes.data ?? []) {
+  for (const p of perfiles) {
     const fullName = ((p as any).data?.candidate?.full_name || '').trim()
     if (fullName && !nombreByEmail[(p as any).user_email]) nombreByEmail[(p as any).user_email] = fullName
   }
 
   const subByUserId: Record<string, any> = {}
-  for (const s of subsRes.data ?? []) subByUserId[s.user_id] = s
+  for (const s of subs) subByUserId[s.user_id] = s
 
   // Ordenado por fecha desc arriba, así que la primera fila por email es la más reciente.
   const latestReceiptByEmail: Record<string, any> = {}
-  for (const r of receiptsRes.data ?? []) {
+  for (const r of receipts) {
     if (!latestReceiptByEmail[r.user_email]) latestReceiptByEmail[r.user_email] = r
   }
 
@@ -1118,18 +1119,16 @@ const MIN_ACCOUNT_AGE_MS = 24 * 60 * 60 * 1000
 
 async function loadTrialCandidates(maxEvals: number): Promise<string[]> {
   if (!supabaseAdmin) return []
-  const [usersRes, subsRes, trackerRes] = await Promise.all([
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-    supabaseAdmin.from('subscriptions').select('user_id, status, is_test'),
-    supabaseAdmin.from('tracker_entries').select('user_email'),
+  const [users, subs, trackerRows] = await Promise.all([
+    listAllAuthUsers(supabaseAdmin),
+    fetchAllRows((from, to) => supabaseAdmin!.from('subscriptions').select('user_id, status, is_test').order('created_at', { ascending: false }).range(from, to), 'subscriptions'),
+    fetchAllRows((from, to) => supabaseAdmin!.from('tracker_entries').select('user_email').order('created_at', { ascending: false }).range(from, to), 'tracker_entries'),
   ])
-  const users = usersRes.data?.users ?? []
-  const subs = subsRes.data ?? []
   const subsByUserId = Object.fromEntries(subs.map((s: any) => [s.user_id, s]))
-  const evalCountByEmail = (trackerRes.data ?? []).reduce((acc: Record<string, number>, r: any) => {
+  const evalCountByEmail = trackerRows.reduce((acc: Record<string, number>, r: any) => {
     acc[r.user_email] = (acc[r.user_email] ?? 0) + 1
     return acc
-  }, {})
+  }, {} as Record<string, number>)
   const ageCutoff = Date.now() - MIN_ACCOUNT_AGE_MS
   return users
     .filter((u: any) => {
