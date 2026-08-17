@@ -1158,6 +1158,12 @@ function BulkEmailCard({ email, token, userList, variables, onChanged, onDeleted
     setSelected(allSelected ? new Set() : new Set(candidates.map(u => u.email)))
   }
 
+  const SEND_BATCH_LIMIT = 300
+  const pendingCandidates = candidates.filter(u => !sentEmails.has(u.email))
+  const selectNextBatch = () => {
+    setSelected(new Set(pendingCandidates.slice(0, SEND_BATCH_LIMIT).map(u => u.email)))
+  }
+
   const startEdit = () => {
     setForm({
       titulo: email.titulo, asunto: email.asunto, encabezado: email.encabezado || '', cuerpo: email.cuerpo,
@@ -1401,6 +1407,12 @@ function BulkEmailCard({ email, token, userList, variables, onChanged, onDeleted
                   className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:hover:text-blue-400">
                   {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
                 </button>
+                {pendingCandidates.length > SEND_BATCH_LIMIT && (
+                  <button onClick={selectNextBatch}
+                    className="text-xs text-orange-400 hover:text-orange-300">
+                    Seleccionar {SEND_BATCH_LIMIT} máx.
+                  </button>
+                )}
               </div>
               <button onClick={send} disabled={sending || selected.size === 0}
                 className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
