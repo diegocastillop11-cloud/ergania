@@ -13,6 +13,7 @@ function stripAdSenseForCapacitor(mode: string) {
       return html
         .replace(/\s*<meta name="google-adsense-account"[^>]*>/, '')
         .replace(/\s*<script[^>]*pagead2\.googlesyndication\.com[^>]*><\/script>/, '')
+        .replace(/\s*<!-- fc:start -->[\s\S]*?<!-- fc:end -->/, '')
     },
   }
 }

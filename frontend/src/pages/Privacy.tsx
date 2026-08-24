@@ -61,12 +61,19 @@ export default function Privacy() {
           mostrar anuncios en base a tus visitas a este y otros sitios, y para medir su
           rendimiento.
         </p>
-        <p>
-          Puedes revisar y ajustar la personalización de anuncios de Google en{' '}
+        <p style={{ marginBottom: 12 }}>
+          Si nos visitas desde el Espacio Económico Europeo, el Reino Unido o Suiza, te
+          mostramos un aviso de consentimiento (a través de la plataforma de gestión de
+          consentimiento de Google) antes de cargar cookies de publicidad personalizada, donde
+          puedes aceptar o rechazar su uso. Puedes cambiar tu elección en cualquier momento
+          volviendo a abrir ese aviso o ajustando la personalización de anuncios de Google en{' '}
           <a href="https://myadcenter.google.com/personalizationoff" target="_blank" rel="noopener noreferrer" style={blue2Link}>
             Google Ad Settings
-          </a>. Estos anuncios solo se muestran en nuestra página pública de inicio, nunca dentro
-          de la plataforma una vez que iniciaste sesión.
+          </a>.
+        </p>
+        <p>
+          Estos anuncios solo se muestran en nuestras páginas públicas (como Recursos), nunca
+          dentro de la plataforma una vez que iniciaste sesión.
         </p>
       </Section>
 
