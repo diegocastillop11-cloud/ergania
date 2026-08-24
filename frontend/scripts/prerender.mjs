@@ -172,6 +172,7 @@ function stripAdSense(html) {
   return html
     .replace(/\s*<meta name="google-adsense-account"[^>]*>/, '')
     .replace(/\s*<script[^>]*pagead2\.googlesyndication\.com[^>]*><\/script>/, '')
+    .replace(/\s*<!-- fc:start -->[\s\S]*?<!-- fc:end -->/, '')
 }
 
 // Shell vacío para el fallback SPA de las rutas privadas. Sin esto caerían en
