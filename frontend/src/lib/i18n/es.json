@@ -15,6 +15,11 @@
       "tracker": "Tracker",
       "subscription": "Suscripción"
     },
+    "groups": {
+      "buscar": "Buscar",
+      "postular": "Postular",
+      "cuenta": "Cuenta"
+    },
     "contact": "Contacto",
     "settings": "Configuración",
     "subscribe": "Suscribirse — $9.990/mes",
@@ -136,6 +141,7 @@
     "noEvaluations": "Aún no hay evaluaciones. ¡Agrega una oferta!",
     "quickActions": {
       "title": "Acciones Rápidas",
+      "titleSuggested": "Te sugerimos",
       "evaluateLabel": "Evaluar nueva oferta",
       "evaluateDesc": "Pega un JD o URL para evaluación IA",
       "trackerLabel": "Ver tracker completo",

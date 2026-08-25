@@ -1,12 +1,11 @@
 import { api } from '../../lib/api'
-import { saveBlob } from '../../lib/downloadFile'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Briefcase, FileText, Send, Award, Clock, TrendingUp,
-  Search, ChevronRight, Star, Download, Upload,
-  HardDrive, CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
+  Search, ChevronRight, Star,
+  CheckCircle2, AlertCircle, Bot, Eye, EyeOff, ExternalLink, Zap, Loader2, BookOpen,
 } from 'lucide-react'
 import GuideModal from '../../components/GuideModal'
 import AndroidAppBanner from '../../components/AndroidAppBanner'
@@ -56,8 +55,6 @@ const PROVIDERS: Array<{
 export default function CareersDashboard() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [restoreMsg, setRestoreMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [llmProvider, setLlmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [apiKeys, setApiKeys] = useState<ApiKeyStore>(() => loadApiKeys())
   const [showKey, setShowKey] = useState<Record<string, boolean>>({})
@@ -163,14 +160,33 @@ export default function CareersDashboard() {
     },
   ]
 
-  // Pipeline visual (kanban-light)
-  const statusFlow: Array<{ key: string; label: string }> = [
-    { key: 'Evaluada', label: t('dashboard.funnelLabels.Evaluada') },
-    { key: 'CV Generado', label: t('dashboard.funnelLabels.CV Generado') },
-    { key: 'Postulada', label: t('dashboard.funnelLabels.Postulada') },
-    { key: 'Entrevista', label: t('dashboard.funnelLabels.Entrevista') },
-    { key: 'Oferta', label: t('dashboard.funnelLabels.Oferta') },
+  // Pipeline visual (barra única en vez de 5 tarjetas clickeables — Variante B)
+  const statusFlow: Array<{ key: string; label: string; barColor: string }> = [
+    { key: 'Evaluada', label: t('dashboard.funnelLabels.Evaluada'), barColor: 'bg-blue-500' },
+    { key: 'CV Generado', label: t('dashboard.funnelLabels.CV Generado'), barColor: 'bg-cyan-500' },
+    { key: 'Postulada', label: t('dashboard.funnelLabels.Postulada'), barColor: 'bg-yellow-500' },
+    { key: 'Entrevista', label: t('dashboard.funnelLabels.Entrevista'), barColor: 'bg-purple-500' },
+    { key: 'Oferta', label: t('dashboard.funnelLabels.Oferta'), barColor: 'bg-green-500' },
   ]
+  const funnelTotal = statusFlow.reduce((sum, { key }) => sum + (stats?.byStatus?.[key] ?? 0), 0)
+
+  // Acción sugerida: si aún no hay nada en el tracker, priorizar la primera evaluación;
+  // si ya hay actividad, sugerir sumar más fuentes de ofertas al pipeline.
+  const suggestedAction = tracker.length === 0
+    ? {
+        label: t('dashboard.quickActions.evaluateLabel'),
+        desc: t('dashboard.quickActions.evaluateDesc'),
+        icon: Search,
+        color: 'text-blue-400',
+        to: '/careers/pipeline',
+      }
+    : {
+        label: t('dashboard.quickActions.portalsLabel'),
+        desc: t('dashboard.quickActions.portalsDesc'),
+        icon: TrendingUp,
+        color: 'text-orange-400',
+        to: '/careers/portals',
+      }
 
   return (
     <div className="space-y-6">
@@ -185,31 +201,22 @@ export default function CareersDashboard() {
         <div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Ergania</h2>
           <p className="text-[var(--text-tertiary)] mt-1">{t('dashboard.subtitle')}</p>
-          <div className="mt-3"><EvaluationLimitBanner /></div>
-        </div>
-        <div className="flex gap-2 flex-wrap items-center">
           <button
             onClick={() => setShowGuide(true)}
-            className="flex items-center gap-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-[var(--border-alt)]"
+            className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-sm font-medium mt-2 transition-colors"
           >
-            <BookOpen size={15} />
+            <BookOpen size={13} />
             {t('dashboard.learnToUse')}
           </button>
-          <button
-            onClick={() => navigate('/scanner?autostart=1')}
-            className="flex items-center gap-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-[var(--border-alt)]"
-          >
-            <Search size={16} />
-            {t('dashboard.scanOffers')}
-          </button>
-          <button
-            onClick={() => navigate('/pipeline')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Zap size={16} />
-            {t('dashboard.evaluateOffer')}
-          </button>
+          <div className="mt-3"><EvaluationLimitBanner /></div>
         </div>
+        <button
+          onClick={() => navigate('/pipeline')}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-[var(--text-primary)] px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shrink-0"
+        >
+          <Zap size={16} />
+          {t('dashboard.evaluateOffer')}
+        </button>
       </div>
 
       {/* Configuración de IA — temporalmente oculta, el servidor provee la key */}
@@ -336,24 +343,29 @@ export default function CareersDashboard() {
         ))}
       </div>
 
-      {/* Pipeline visual */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
+      {/* Pipeline visual — una sola barra en vez de 5 tarjetas */}
+      <div
+        className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5 cursor-pointer hover:border-[var(--border-alt)] transition-colors"
+        onClick={() => navigate('/tracker')}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[var(--text-primary)] font-semibold">{t('dashboard.funnel')}</h3>
           <TrendingUp size={16} className="text-[var(--text-muted)]" />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {statusFlow.map(({ key, label }) => {
+        <div className="flex h-3 rounded-full overflow-hidden bg-[var(--bg-surface-alt)]">
+          {funnelTotal === 0 ? null : statusFlow.map(({ key, barColor }) => {
             const count = stats?.byStatus?.[key] ?? 0
-            const cfg = ESTADO_CONFIG[key]
+            if (count === 0) return null
+            return <div key={key} className={barColor} style={{ width: `${(count / funnelTotal) * 100}%` }} />
+          })}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
+          {statusFlow.map(({ key, label, barColor }) => {
+            const count = stats?.byStatus?.[key] ?? 0
             return (
-              <div
-                key={key}
-                className={`flex-1 min-w-[100px] rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 ${cfg?.bg ?? 'bg-[var(--bg-surface-alt)]'}`}
-                onClick={() => navigate('/tracker')}
-              >
-                <p className={`text-2xl font-bold ${cfg?.color ?? 'text-[var(--text-primary)]'}`}>{count}</p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1">{label}</p>
+              <div key={key} className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+                <span className={`w-2 h-2 rounded-full ${barColor}`} />
+                {label} <span className="font-semibold text-[var(--text-primary)]">{count}</span>
               </div>
             )
           })}
@@ -407,124 +419,23 @@ export default function CareersDashboard() {
           )}
         </div>
 
-        {/* Quick actions */}
+        {/* Acción sugerida — antes eran 4 botones fijos, el resto ya vive en el sidebar */}
         <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
           <h3 className="text-[var(--text-primary)] font-semibold mb-4 flex items-center gap-2">
             <Award size={16} className="text-purple-400" />
-            {t('dashboard.quickActions.title')}
+            {t('dashboard.quickActions.titleSuggested')}
           </h3>
-          <div className="space-y-2">
-            {[
-              {
-                label: t('dashboard.quickActions.evaluateLabel'),
-                desc: t('dashboard.quickActions.evaluateDesc'),
-                icon: Search,
-                color: 'text-blue-400',
-                to: '/careers/pipeline',
-              },
-              {
-                label: t('dashboard.quickActions.trackerLabel'),
-                desc: t('dashboard.quickActions.trackerDesc'),
-                icon: Briefcase,
-                color: 'text-green-400',
-                to: '/careers/tracker',
-              },
-              {
-                label: t('dashboard.quickActions.portalsLabel'),
-                desc: t('dashboard.quickActions.portalsDesc'),
-                icon: TrendingUp,
-                color: 'text-orange-400',
-                to: '/careers/portals',
-              },
-              {
-                label: t('dashboard.quickActions.profileLabel'),
-                desc: t('dashboard.quickActions.profileDesc'),
-                icon: FileText,
-                color: 'text-purple-400',
-                to: '/careers/profile',
-              },
-            ].map(({ label, desc, icon: Icon, color, to }) => (
-              <button
-                key={label}
-                onClick={() => navigate(to)}
-                className="w-full flex items-center gap-3 p-3 bg-[var(--bg-surface-alt)]/50 hover:bg-[var(--bg-surface-alt)] rounded-lg text-left transition-colors group"
-              >
-                <Icon size={18} className={color} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
-                  <p className="text-xs text-[var(--text-muted)]">{desc}</p>
-                </div>
-                <ChevronRight size={14} className="text-[var(--text-faint)] group-hover:text-[var(--text-tertiary)] transition-colors" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Backup / Persistencia */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl p-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3">
-            <HardDrive size={18} className="text-[var(--text-tertiary)] mt-0.5 shrink-0" />
-            <div>
-              <h3 className="text-[var(--text-primary)] font-semibold text-sm">{t('dashboard.backup.title')}</h3>
-              <p className="text-[var(--text-tertiary)] text-xs mt-1 max-w-lg">
-                {t('dashboard.backup.desc')}
-              </p>
-              {restoreMsg && (
-                <div className={`flex items-center gap-2 mt-2 text-xs ${restoreMsg.ok ? 'text-green-400' : 'text-red-400'}`}>
-                  {restoreMsg.ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-                  {restoreMsg.text}
-                </div>
-              )}
+          <button
+            onClick={() => navigate(suggestedAction.to)}
+            className="w-full flex items-center gap-3 p-3 bg-[var(--bg-surface-alt)]/50 hover:bg-[var(--bg-surface-alt)] rounded-lg text-left transition-colors group"
+          >
+            <suggestedAction.icon size={18} className={suggestedAction.color} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-[var(--text-primary)]">{suggestedAction.label}</p>
+              <p className="text-xs text-[var(--text-muted)]">{suggestedAction.desc}</p>
             </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const response = await api.get('/backup', { responseType: 'blob' })
-                  const contentDisposition = response.headers['content-disposition'] || ''
-                  const match = contentDisposition.match(/filename="?([^";]+)"?/) 
-                  const filename = match?.[1] || `career-ops-backup-${new Date().toISOString().split('T')[0]}.json`
-                  await saveBlob(response.data, filename)
-                } catch (err: unknown) {
-                  setRestoreMsg({ ok: false, text: `${t('dashboard.backup.downloadError')} ${(err as Error)?.message || ''}` })
-                  setTimeout(() => setRestoreMsg(null), 5000)
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--border-alt)] hover:bg-[var(--text-faint)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
-            >
-              <Download size={13} /> {t('dashboard.backup.download')}
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--border-alt)] hover:bg-[var(--text-faint)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
-            >
-              <Upload size={13} /> {t('dashboard.backup.restore')}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={async e => {
-                const file = e.target.files?.[0]
-                if (!file) return
-                try {
-                  const text = await file.text()
-                  const json = JSON.parse(text)
-                  await api.post('/restore', json)
-                  setRestoreMsg({ ok: true, text: t('dashboard.backup.restoreSuccess') })
-                } catch {
-                  setRestoreMsg({ ok: false, text: t('dashboard.backup.restoreError') })
-                }
-                e.target.value = ''
-                setTimeout(() => setRestoreMsg(null), 5000)
-              }}
-            />
-          </div>
+            <ChevronRight size={14} className="text-[var(--text-faint)] group-hover:text-[var(--text-tertiary)] transition-colors" />
+          </button>
         </div>
       </div>
     </div>

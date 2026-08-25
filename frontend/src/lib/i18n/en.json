@@ -15,6 +15,11 @@
       "tracker": "Tracker",
       "subscription": "Subscription"
     },
+    "groups": {
+      "buscar": "Search",
+      "postular": "Apply",
+      "cuenta": "Account"
+    },
     "contact": "Contact",
     "settings": "Settings",
     "subscribe": "Subscribe — $9,990/mo",
@@ -136,6 +141,7 @@
     "noEvaluations": "No evaluations yet. Add an offer!",
     "quickActions": {
       "title": "Quick Actions",
+      "titleSuggested": "Suggested for you",
       "evaluateLabel": "Evaluate new offer",
       "evaluateDesc": "Paste a job description or URL for AI evaluation",
       "trackerLabel": "View full tracker",

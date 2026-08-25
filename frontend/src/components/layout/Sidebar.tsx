@@ -12,16 +12,36 @@ import SettingsModal from '../SettingsModal'
 import PerfilSwitcher from '../careers/PerfilSwitcher'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
-const nav = [
-  { to: '/dashboard',     icon: LayoutDashboard, key: 'dashboard' },
-  { to: '/profile',       icon: UserCircle,      key: 'profile' },
-  { to: '/portals',       icon: Globe,           key: 'portals' },
-  { to: '/busqueda',      icon: Target,          key: 'busqueda' },
-  { to: '/scanner',       icon: Radio,           key: 'scanner' },
-  { to: '/pipeline',      icon: Inbox,           key: 'pipeline' },
-  { to: '/tracker',       icon: List,            key: 'tracker' },
-  { to: '/postulaciones', icon: Send,            key: 'postulaciones' },
-  { to: '/subscription',  icon: Crown,           key: 'subscription' },
+const navGroups = [
+  {
+    label: null,
+    items: [
+      { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
+    ],
+  },
+  {
+    label: 'buscar',
+    items: [
+      { to: '/portals',  icon: Globe, key: 'portals' },
+      { to: '/busqueda', icon: Target, key: 'busqueda' },
+      { to: '/scanner',  icon: Radio, key: 'scanner' },
+    ],
+  },
+  {
+    label: 'postular',
+    items: [
+      { to: '/pipeline',      icon: Inbox, key: 'pipeline' },
+      { to: '/tracker',       icon: List,  key: 'tracker' },
+      { to: '/postulaciones', icon: Send,  key: 'postulaciones' },
+    ],
+  },
+  {
+    label: 'cuenta',
+    items: [
+      { to: '/profile',      icon: UserCircle, key: 'profile' },
+      { to: '/subscription', icon: Crown,      key: 'subscription' },
+    ],
+  },
 ] as const
 
 interface Props { sub: SubscriptionState; onClose?: () => void }
@@ -79,21 +99,30 @@ export default function Sidebar({ sub, onClose }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {nav.map(({ to, icon: Icon, key }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-[var(--text-primary)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-alt)]'
-              }`
-            }
-          >
-            <Icon size={16} />
-            <span className="flex-1">{t(`sidebar.nav.${key}`)}</span>
-          </NavLink>
+        {navGroups.map(group => (
+          <div key={group.label ?? 'root'} className={group.label ? 'pt-3' : undefined}>
+            {group.label && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">
+                {t(`sidebar.groups.${group.label}`)}
+              </p>
+            )}
+            {group.items.map(({ to, icon: Icon, key }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    isActive
+                      ? 'bg-blue-600 text-[var(--text-primary)]'
+                      : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-alt)]'
+                  }`
+                }
+              >
+                <Icon size={16} />
+                <span className="flex-1">{t(`sidebar.nav.${key}`)}</span>
+              </NavLink>
+            ))}
+          </div>
         ))}
 
         {isAdminEmail(user?.email) && (
