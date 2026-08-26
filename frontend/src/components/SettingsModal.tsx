@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { X, Settings, Sun, Moon, AlertTriangle, Loader2 } from 'lucide-react'
+import { X, Settings, Sun, Moon, AlertTriangle, Loader2, HardDrive, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useTheme } from '../lib/ThemeContext'
 import { useTranslation, Language } from '../lib/i18n/LanguageContext'
 import { useAuth } from '../lib/AuthContext'
 import { deleteAccount } from '../lib/subscriptionApi'
+import { api } from '../lib/api'
+import { saveBlob } from '../lib/downloadFile'
 
 const DELETE_CONFIRM_WORD = 'ELIMINAR'
 
@@ -23,6 +25,37 @@ export default function SettingsModal({ onClose }: Props) {
   const [confirmText, setConfirmText] = useState('')
   const [deleting, setDeleting]     = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [restoreMsg, setRestoreMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const handleDownloadBackup = async () => {
+    try {
+      const response = await api.get('/backup', { responseType: 'blob' })
+      const contentDisposition = response.headers['content-disposition'] || ''
+      const match = contentDisposition.match(/filename="?([^";]+)"?/)
+      const filename = match?.[1] || `career-ops-backup-${new Date().toISOString().split('T')[0]}.json`
+      await saveBlob(response.data, filename)
+    } catch (err: unknown) {
+      setRestoreMsg({ ok: false, text: `${t('dashboard.backup.downloadError')} ${(err as Error)?.message || ''}` })
+      setTimeout(() => setRestoreMsg(null), 5000)
+    }
+  }
+
+  const handleRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      await api.post('/restore', json)
+      setRestoreMsg({ ok: true, text: t('dashboard.backup.restoreSuccess') })
+    } catch {
+      setRestoreMsg({ ok: false, text: t('dashboard.backup.restoreError') })
+    }
+    e.target.value = ''
+    setTimeout(() => setRestoreMsg(null), 5000)
+  }
 
   const handleDelete = async () => {
     setDeleteError('')
@@ -95,6 +128,43 @@ export default function SettingsModal({ onClose }: Props) {
                   {lang === 'es' ? 'Español' : 'English'}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Respaldo */}
+          <div className="border-t border-[var(--border-default)] pt-5">
+            <label className="text-xs text-[var(--text-tertiary)] mb-2 flex items-center gap-1.5">
+              <HardDrive size={13} /> {t('dashboard.backup.title')}
+            </label>
+            <p className="text-xs text-[var(--text-muted)] mb-3">{t('dashboard.backup.desc')}</p>
+            {restoreMsg && (
+              <div className={`flex items-center gap-2 mb-2 text-xs ${restoreMsg.ok ? 'text-green-400' : 'text-red-400'}`}>
+                {restoreMsg.ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+                {restoreMsg.text}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
+              >
+                <Download size={13} /> {t('dashboard.backup.download')}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[var(--bg-surface-alt)] hover:bg-[var(--border-alt)] text-[var(--text-primary)] rounded-lg text-xs font-medium transition-colors"
+              >
+                <Upload size={13} /> {t('dashboard.backup.restore')}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleRestoreFile}
+              />
             </div>
           </div>
 
