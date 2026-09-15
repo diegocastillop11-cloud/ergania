@@ -200,6 +200,20 @@ export async function getStats(req: Request, res: Response) {
   })
 }
 
+export async function listChatErrors(req: Request, res: Response) {
+  const user = await getAdminUser(req)
+  if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Sin conexión a base de datos' })
+
+  const { data, error } = await supabaseAdmin
+    .from('chat_errors')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ errors: data ?? [] })
+}
+
 export async function listSalaryAnchors(req: Request, res: Response) {
   const user = await getAdminUser(req)
   if (!user || !isAdmin(user.email)) return res.status(403).json({ error: 'Acceso denegado' })

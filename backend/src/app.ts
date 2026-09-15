@@ -11,6 +11,7 @@ import { adminRoutes } from './routes/admin'
 import { apkRoutes } from './routes/apk'
 import { videoRoutes } from './routes/video'
 import { faqRoutes } from './routes/faq'
+import { chatRoutes } from './routes/chat'
 
 const app = express()
 
@@ -43,6 +44,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/apk', apkRoutes)
 app.use('/api/video', videoRoutes)
 app.use('/api/faqs', faqRoutes)
+app.use('/api/chat', chatRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

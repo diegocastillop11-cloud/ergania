@@ -5,7 +5,7 @@ import { ADMIN_EMAILS } from '../lib/adminEmails'
 import {
   Users, Crown, CreditCard, MessageSquare, TrendingUp, LogOut, DollarSign,
   Plus, Trash2, Pencil, X, FileText, ChevronDown, ChevronUp, Check, Save, Download, FlaskConical, Send, Megaphone,
-  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone, HelpCircle, Braces, PlayCircle,
+  Receipt, Link as LinkIcon, ArrowLeft, Menu, Smartphone, HelpCircle, Braces, PlayCircle, MessageCircleWarning,
 } from 'lucide-react'
 
 // Este archivo usa fetch() directo (no el cliente axios de lib/api.ts), así
@@ -158,6 +158,44 @@ function SalaryAnchorsTab({ token }: { token: string }) {
           </tbody>
         </table>
       )}
+    </div>
+  )
+}
+
+interface ChatErrorRow {
+  id: string
+  user_email: string | null
+  user_message: string
+  error_message: string
+  created_at: string
+}
+
+function ChatErrorsTab({ token }: { token: string }) {
+  const [errors, setErrors] = useState<ChatErrorRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/chat-errors`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setErrors(d.errors || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [token])
+
+  if (loading) return <div className="p-5"><p className="text-gray-500 text-sm">Cargando...</p></div>
+  if (errors.length === 0) return <div className="p-5"><p className="text-gray-600 text-sm text-center py-6">Sin errores del chat de IA registrados.</p></div>
+
+  return (
+    <div className="p-5 space-y-3">
+      {errors.map(e => (
+        <div key={e.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">{e.user_email || 'sin email'}</span>
+            <span className="text-xs text-gray-600">{new Date(e.created_at).toLocaleString('es-CL')}</span>
+          </div>
+          <p className="text-sm text-gray-300"><span className="text-gray-500">Mensaje:</span> {e.user_message}</p>
+          <p className="text-sm text-red-400"><span className="text-gray-500">Error:</span> {e.error_message}</p>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1622,7 +1660,7 @@ export default function Admin() {
   const navigate  = useNavigate()
   const [stats,   setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'faqs' | 'gastos' | 'reportes' | 'bulkemail' | 'variables'>('suscripciones')
+  const [tab,     setTab]     = useState<'suscripciones' | 'payments' | 'messages' | 'salaries' | 'faqs' | 'gastos' | 'reportes' | 'bulkemail' | 'variables' | 'chaterrors'>('suscripciones')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'fullName' | 'email' | 'createdAt' | 'status' | 'vence' | 'evaluationsCount'>('createdAt')
@@ -1873,6 +1911,7 @@ export default function Admin() {
                 { key: 'reportes',      label: 'Reportes',           icon: FileText      },
                 { key: 'bulkemail',     label: 'Correos masivos',    icon: Megaphone     },
                 { key: 'variables',     label: 'Variables',          icon: Braces        },
+                { key: 'chaterrors',    label: 'Errores chat IA',    icon: MessageCircleWarning },
               ] as const).map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -2268,6 +2307,9 @@ export default function Admin() {
 
             {/* Variables de los correos masivos */}
             {tab === 'variables' && session && <VariablesTab token={session.access_token} />}
+
+            {/* Errores del chat de IA */}
+            {tab === 'chaterrors' && session && <ChatErrorsTab token={session.access_token} />}
 
           </div>
         </div>
