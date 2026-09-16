@@ -58,6 +58,11 @@ export async function cancelChatAction(messageId: string): Promise<void> {
   await chatApi.post('/cancel-action', { messageId })
 }
 
+export async function proposeChatAction(tool: string, input: Record<string, unknown>): Promise<{ message: ChatMessage }> {
+  const { data } = await chatApi.post('/quick-action', { tool, input })
+  return data
+}
+
 export async function fetchChatUsage(): Promise<ChatUsage> {
   const { data } = await chatApi.get('/usage')
   return data

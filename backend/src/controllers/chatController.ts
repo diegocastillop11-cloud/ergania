@@ -236,7 +236,15 @@ export const confirmAction = async (req: Request, res: Response) => {
       } else {
         const entry = result.body.entry as Record<string, unknown>
         const meta = result.body.meta as Record<string, unknown>
-        resultText = `Evaluación lista: ${entry?.empresa} — ${entry?.rol}. Score ${meta?.score ?? '—'}/5, recomendación: ${meta?.recomendacion ?? '—'}. Renta estimada: ${meta?.salario_clp ?? 'sin dato'}.`
+        const keywords = Array.isArray(meta?.keywords) ? (meta.keywords as string[]).slice(0, 5).join(', ') : ''
+        resultText = [
+          `**${entry?.empresa ?? 'Empresa'}** — ${entry?.rol ?? 'Rol'}`,
+          `Score: **${meta?.score ?? '—'}/5** · Recomendación: **${meta?.recomendacion ?? '—'}**`,
+          `Seniority: ${meta?.seniority ?? '—'} · Modalidad: ${meta?.remoto ?? '—'} · Legitimidad: ${meta?.legitimidad ?? '—'}`,
+          meta?.arquetipo ? `Tipo de rol: ${meta.arquetipo}` : undefined,
+          keywords ? `Palabras clave: ${keywords}` : undefined,
+          `Renta estimada: ${meta?.salario_clp ?? 'sin dato'}`,
+        ].filter(Boolean).join('\n')
       }
       toolResult = result.body
     } else if (tool === 'crear_postulacion') {
@@ -281,6 +289,26 @@ export const confirmAction = async (req: Request, res: Response) => {
     console.error('[chat/confirm-action] error:', err)
     await chatSvc.logChatError(userId ?? null, userEmail ?? null, '(confirm-action)', (err as Error).message ?? String(err))
     res.status(500).json({ error: friendlyAiError(err) })
+  }
+}
+
+// ── POST /api/chat/quick-action ──────────────────────────────────────────────
+// Crea una propuesta de acción directamente (sin pasar por el modelo) para los
+// botones de seguimiento que aparecen bajo un resultado ya ejecutado — ej.
+// "Preparar kit de postulación" después de evaluar una oferta. Sigue pasando
+// por el mismo Confirmar/Cancelar que cualquier otra propuesta.
+
+export const quickAction = async (req: Request, res: Response) => {
+  try {
+    const { userId } = await getUser(req)
+    const { tool, input } = req.body ?? {}
+    if (!tool || typeof tool !== 'string') return res.status(400).json({ error: 'Falta tool' })
+    const assistant = await chatSvc.saveMessage(userId, 'assistant', proposalText(tool, (input ?? {}) as Record<string, unknown>), {
+      pendingAction: { tool, input: input ?? {} },
+    })
+    res.json({ message: assistant })
+  } catch (err: unknown) {
+    res.status((err as { status?: number }).status ?? 500).json({ error: (err as Error).message })
   }
 }
 

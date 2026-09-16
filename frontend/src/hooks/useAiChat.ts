@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
-  ChatMessage, ChatUsage, fetchHistory, sendChatMessage, confirmChatAction, cancelChatAction, fetchChatUsage,
+  ChatMessage, ChatUsage, fetchHistory, sendChatMessage, confirmChatAction, cancelChatAction, fetchChatUsage, proposeChatAction,
 } from '../lib/chatApi'
 
 export function useAiChat() {
@@ -66,5 +66,15 @@ export function useAiChat() {
     try { await cancelChatAction(messageId) } catch { /* ya se actualizó localmente */ }
   }, [])
 
-  return { messages, usage, loading, error, loadedOnce, send, confirm, cancel }
+  const propose = useCallback(async (tool: string, input: Record<string, unknown>) => {
+    setError('')
+    try {
+      const { message } = await proposeChatAction(tool, input)
+      setMessages(prev => [...prev, message])
+    } catch {
+      setError('No se pudo preparar esa acción. Intenta de nuevo.')
+    }
+  }, [])
+
+  return { messages, usage, loading, error, loadedOnce, send, confirm, cancel, propose }
 }

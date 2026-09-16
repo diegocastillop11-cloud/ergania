@@ -1,16 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, X, Send, Crown } from 'lucide-react'
+import { MessageCircle, X, Send, Crown, ArrowRight, ExternalLink } from 'lucide-react'
 import { useAiChat } from '../../hooks/useAiChat'
 import type { ChatMessage } from '../../lib/chatApi'
 
-function Bubble({ msg, onConfirm, onCancel, busy }: {
+// Render **negrita** en texto plano — el modelo devuelve markdown liviano y la
+// burbuja lo mostraba literal (con los asteriscos a la vista).
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*.+?\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    return part
+  })
+}
+
+function Bubble({ msg, onConfirm, onCancel, onPropose, busy }: {
   msg: ChatMessage
   onConfirm: (id: string) => void
   onCancel: (id: string) => void
+  onPropose: (tool: string, input: Record<string, unknown>) => void
   busy: boolean
 }) {
+  const navigate = useNavigate()
+  const [kitRequested, setKitRequested] = useState(false)
   const isUser = msg.sender === 'user'
+
+  const evalResult = msg.tool_result?.entry ? (msg.tool_result as { entry: Record<string, unknown> }).entry : null
+  const appResult = msg.tool_result?.application ? (msg.tool_result as { application: Record<string, unknown> }).application : null
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
@@ -18,7 +37,45 @@ function Bubble({ msg, onConfirm, onCancel, busy }: {
           ? 'bg-blue-600 text-white rounded-br-sm'
           : 'bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-bl-sm'
       }`}>
-        <p className="whitespace-pre-wrap">{msg.body}</p>
+        <p className="whitespace-pre-wrap">{renderInline(msg.body)}</p>
+
+        {evalResult && !kitRequested && (
+          <button
+            onClick={() => {
+              setKitRequested(true)
+              onPropose('crear_postulacion', {
+                empresa: evalResult.empresa, rol: evalResult.rol, url: evalResult.url,
+                score: evalResult.score, reportSlug: evalResult.reportSlug,
+              })
+            }}
+            disabled={busy}
+            className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-[var(--border-default)]/60 text-xs font-semibold text-blue-400 hover:text-blue-300 disabled:opacity-50 transition-colors"
+          >
+            <ArrowRight size={13} /> Preparar kit de postulación
+          </button>
+        )}
+
+        {appResult && (
+          <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-[var(--border-default)]/60">
+            <button
+              onClick={() => navigate('/postulaciones')}
+              className="text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Ir a Postulaciones
+            </button>
+            {!!appResult.url && (
+              <a
+                href={String(appResult.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                Ver oferta <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        )}
+
         {msg.pending_action && (
           <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-[var(--border-default)]/60">
             <button
@@ -46,8 +103,16 @@ export default function AiChatWidget() {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const navigate = useNavigate()
-  const { messages, usage, loading, error, send, confirm, cancel } = useAiChat()
+  const { messages, usage, loading, error, send, confirm, cancel, propose } = useAiChat()
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Se abre solo una vez, a los 6s de que la persona esté en la app — el
+  // widget vive dentro de Layout, que no se remonta al navegar entre rutas
+  // protegidas, así que este timer corre una sola vez por sesión.
+  useEffect(() => {
+    const t = setTimeout(() => setOpen(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -83,7 +148,7 @@ export default function AiChatWidget() {
               </p>
             )}
             {messages.map(m => (
-              <Bubble key={m.id} msg={m} onConfirm={confirm} onCancel={cancel} busy={loading} />
+              <Bubble key={m.id} msg={m} onConfirm={confirm} onCancel={cancel} onPropose={propose} busy={loading} />
             ))}
             {loading && (
               <div className="flex justify-start">
