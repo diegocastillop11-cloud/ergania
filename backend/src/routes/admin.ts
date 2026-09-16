@@ -3,6 +3,7 @@ import {
   requireAdminAuth,
   getStats, setUserTestFlag, setUserExemptFlag, deleteUser, replyToMessage, getMessageThread,
   listSalaryAnchors, createSalaryAnchor, updateSalaryAnchor, deleteSalaryAnchor,
+  listChatErrors,
   listFaqs, createFaq, updateFaq, deleteFaq,
   listReports, createReport, updateReport, deleteReport, downloadReportPdf,
   listReceipts, downloadReceiptPdf,
@@ -33,6 +34,8 @@ router.get('/messages/:id/thread', getMessageThread)
 
 router.get('/receipts', listReceipts)
 router.get('/receipts/:id/pdf', downloadReceiptPdf)
+
+router.get('/chat-errors', listChatErrors)
 
 router.get('/salary-anchors', listSalaryAnchors)
 router.post('/salary-anchors', createSalaryAnchor)

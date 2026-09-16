@@ -5,6 +5,7 @@ import Sidebar from './Sidebar'
 import ApiKeySettingsModal from '../careers/ApiKeySettingsModal'
 import SubscriptionBanner from '../subscription/SubscriptionBanner'
 import UpdateAvailableBanner from '../UpdateAvailableBanner'
+import AiChatWidget from '../chat/AiChatWidget'
 import { useSubscription } from '../../hooks/useSubscription'
 import { useIdleLogout } from '../../hooks/useIdleLogout'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
@@ -74,6 +75,7 @@ export default function Layout() {
       </div>
 
       {showApiModal && <ApiKeySettingsModal onClose={() => setShowApiModal(false)} />}
+      {!blocked && <AiChatWidget />}
     </div>
   )
 }
