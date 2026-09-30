@@ -1816,10 +1816,9 @@ export const downloadApplicationPdf = async (req: Request, res: Response) => {
     if (!app?.cvHtml) return res.status(404).json({ error: 'CV no disponible' })
 
     const profile = await svc.readProfile(userEmail)
-    const candidateName = ((profile?.candidate as Record<string, string>)?.full_name || '').replace(/\s+/g, '_')
-    const emp = app.empresa.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
-    const rol = app.rol.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
-    const filename = `CV_${candidateName}_${emp}_${rol}.pdf`
+    const fullName = (profile?.candidate as Record<string, string>)?.full_name || ''
+    const candidateName = fullName.replace(/\s+/g, '_')
+    const filename = svc.buildCvFilename(fullName, app.rol)
 
     // Renderiza app.cvHtml directamente (mismo HTML del preview/iframe) en vez de
     // volver a parsearlo a CvData: cualquier edición por designMode (Editar CV)
@@ -1947,8 +1946,9 @@ export const downloadOptimizedCvPdf = async (req: Request, res: Response) => {
     if (!cvData?.name) return res.status(400).json({ error: 'Falta el CV a descargar.' })
 
     const profile = await svc.readProfile(userEmail)
-    const candidateName = ((profile?.candidate as Record<string, string>)?.full_name || cvData.name || '').replace(/\s+/g, '_')
-    const filename = `CV_${candidateName || 'General'}_Optimizado.pdf`
+    const fullName = (profile?.candidate as Record<string, string>)?.full_name || cvData.name || ''
+    const suffix = typeof req.body?.suffix === 'string' ? req.body.suffix : ''
+    const filename = svc.buildCvFilename(fullName, '', suffix)
 
     const buffer = await svc.buildPdfFromCvData(cvData)
     res.setHeader('Content-Type', 'application/pdf')

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../../lib/api'
-import { saveBlob } from '../../lib/downloadFile'
+import { saveBlob, filenameFromResponse } from '../../lib/downloadFile'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -20,9 +20,9 @@ function normalizeText(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
-async function downloadPdf(appId: string, filename: string) {
-  const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  await saveBlob(data, filename)
+async function downloadPdf(appId: string) {
+  const { data, headers } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
+  await saveBlob(data, filenameFromResponse(headers, 'CV.pdf'))
 }
 
 async function downloadInterviewPrepPdf(appId: string, empresa: string, rol: string) {
@@ -396,7 +396,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             )}
             {app.id && (
               <button
-                onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
+                onClick={() => downloadPdf(app.id)}
                 disabled={editing}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
@@ -1031,7 +1031,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
           <div className="flex items-center gap-2">
             {app.id && (
               <button
-                onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
+                onClick={() => downloadPdf(app.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 title={t('careersPostulaciones.applyKit.downloadCvTitle')}
               >
@@ -1072,7 +1072,7 @@ function ApplyKitPanel({ app, onClose }: { app: Application; onClose: () => void
                 </button>
                 {app.id && (
                   <button
-                    onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
+                    onClick={() => downloadPdf(app.id)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-xl font-medium"
                   >
                     <Download size={16} /> {t('careersPostulaciones.applyKit.downloadCv')}

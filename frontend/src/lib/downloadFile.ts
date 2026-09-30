@@ -22,6 +22,13 @@ export async function saveBlob(data: Blob, filename: string): Promise<void> {
   await Share.share({ url: uri, title: filename })
 }
 
+// El backend arma el nombre profesional del archivo (nombre del candidato + cargo);
+// el fallback solo se usa si el header no llega.
+export function filenameFromResponse(headers: Record<string, unknown>, fallback: string): string {
+  const disposition = String(headers['content-disposition'] || '')
+  return disposition.match(/filename="([^"]+)"/)?.[1] || fallback
+}
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

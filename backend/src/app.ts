@@ -32,6 +32,8 @@ app.use(cors({
     cb(ok ? null : new Error('Not allowed by CORS'), ok)
   },
   credentials: true,
+  // El APK (origen capacitor://) necesita leer el nombre del PDF que arma el backend.
+  exposedHeaders: ['Content-Disposition'],
 }))
 
 app.use(express.json({ limit: '10mb' }))

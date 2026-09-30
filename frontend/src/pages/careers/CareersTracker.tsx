@@ -1,5 +1,5 @@
 import { api } from '../../lib/api'
-import { saveBlob } from '../../lib/downloadFile'
+import { saveBlob, filenameFromResponse } from '../../lib/downloadFile'
 import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12,9 +12,9 @@ import {
 import { TrackerEntry, EstadoJob, ESTADO_CONFIG, SCORE_COLOR, Application } from '../../types/careers'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
-async function downloadPdf(appId: string, filename: string) {
-  const { data } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
-  await saveBlob(data, filename)
+async function downloadPdf(appId: string) {
+  const { data, headers } = await api.get(`/applications/${appId}/pdf`, { responseType: 'blob' })
+  await saveBlob(data, filenameFromResponse(headers, 'CV.pdf'))
 }
 
 const ESTADOS: EstadoJob[] = [
@@ -118,7 +118,7 @@ function CvModal({ app, onClose }: { app: Application; onClose: () => void }) {
           <div className="flex items-center gap-2">
             {app.id && (
               <button
-                onClick={() => downloadPdf(app.id, app.cvPdfFilename ?? `cv-${app.empresa}-${app.rol}.pdf`.replace(/\s+/g, '-').toLowerCase())}
+                onClick={() => downloadPdf(app.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 text-[var(--text-primary)] rounded-lg text-xs font-medium"
               >
                 <Download size={13} /> {t('careersTracker.cvModal.downloadPdf')}
