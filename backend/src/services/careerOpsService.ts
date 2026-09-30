@@ -409,14 +409,21 @@ export function readModeFile(name: string): string {
 
 // ── CV Data: tipos + builders HTML/LaTeX ─────────────────────────────────────
 
+export interface CvDiagnostico {
+  keywords_faltantes: string[]
+  a_confirmar: string[]
+}
+
 export interface CvData {
   name: string
+  headline?: string
   contact: { city: string; phone: string; email: string; linkedin?: string; github?: string }
   summary: string
   experience: Array<{ company: string; location: string; role: string; dates: string; bullets: string[] }>
   projects: Array<{ name: string; year?: string; bullets: string[] }>
   skills: Record<string, string>
   education: Array<{ title: string; institution: string; year: string }>
+  diagnostico?: CvDiagnostico
 }
 
 function latexEsc(s: string): string {
@@ -437,6 +444,7 @@ export const HARVARD_CSS = `<style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Times New Roman',Times,serif;font-size:11pt;color:#000;background:#fff;max-width:8.5in;margin:0 auto;padding:0.7in 0.75in}
 .name{text-align:center;font-size:19pt;font-weight:bold;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.headline{text-align:center;font-size:10.5pt;font-weight:bold;letter-spacing:.4px;margin-bottom:3px}
 .contact{text-align:center;font-size:9.5pt;color:#222;line-height:1.6}
 .contact a{color:#222;text-decoration:none}
 .section{margin-top:13px}
@@ -484,7 +492,8 @@ export function buildCvHtml(data: CvData): string {
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">${HARVARD_CSS}</head><body>
 <div class="name">${data.name}</div>
-<div class="contact">${contact1}${contact2 ? `<br>${contact2}` : ''}</div>
+${data.headline ? `<div class="headline">${data.headline}</div>
+` : ''}<div class="contact">${contact1}${contact2 ? `<br>${contact2}` : ''}</div>
 <div class="section"><div class="section-title">Resumen Profesional</div><div class="summary">${data.summary}</div></div>
 <div class="section"><div class="section-title">Experiencia Profesional</div>${expHtml}</div>
 <div class="section"><div class="section-title">Proyectos Destacados</div>${projHtml}</div>
@@ -538,7 +547,7 @@ ${p.bullets.map(b => `  \\item ${e(b)}`).join('\n')}
 \\begin{document}
 \\begin{center}
 {\\fontsize{16}{19}\\selectfont\\textbf{\\MakeUppercase{${e(data.name)}}}}\\\\[4pt]
-{\\small ${e(data.contact.city)} \\quad|\\quad ${e(data.contact.phone)} \\quad|\\quad \\href{mailto:${data.contact.email}}{${e(data.contact.email)}}${contactLine2}}
+${data.headline ? `{\\textbf{${e(data.headline)}}}\\\\[3pt]\n` : ''}{\\small ${e(data.contact.city)} \\quad|\\quad ${e(data.contact.phone)} \\quad|\\quad \\href{mailto:${data.contact.email}}{${e(data.contact.email)}}${contactLine2}}
 \\end{center}
 
 \\section{Resumen Profesional}
@@ -579,6 +588,7 @@ export interface Application {
   interviewMeta?: InterviewMeta
   hasGuide?: boolean            // solo en el listado — evita mandar la guía entera por fila
   coverLetter?: string
+  cvDiagnostico?: CvDiagnostico | null
   score?: number | null
   notas?: string
   salario_clp?: string
@@ -1091,9 +1101,19 @@ async function dbSaveApplication(userEmail: string, app: Application): Promise<v
   // coverLetter se excluye del upsert hasta que exista la columna en Supabase.
   // Para agregarla: ALTER TABLE applications ADD COLUMN "coverLetter" text;
   // hasGuide es derivado del listado, no una columna: mandarlo al upsert rompería el insert.
-  const { coverLetter: _cl, hasGuide: _hg, ...appForDb } = app
+  // cvDiagnostico va en un update aparte y tolerante a fallos: si la migración 032 todavía
+  // no corrió, el upsert principal no debe romperse por una columna que no existe.
+  const { coverLetter: _cl, hasGuide: _hg, cvDiagnostico, ...appForDb } = app
   const { error } = await supabase.from('applications').upsert({ user_email: userEmail, ...appForDb })
   if (error) throw new Error(error.message)
+  if (cvDiagnostico !== undefined) {
+    const { error: diagErr } = await supabase
+      .from('applications')
+      .update({ cvDiagnostico })
+      .eq('user_email', userEmail)
+      .eq('id', app.id)
+    if (diagErr) console.error('cvDiagnostico no guardado (¿falta migración 032?):', diagErr.message)
+  }
 }
 
 async function dbFindApplicationByUrlOrRole(userEmail: string, url: string | undefined, empresa: string, rol: string): Promise<Application | null> {
@@ -1313,6 +1333,7 @@ export async function buildPdfFromCvData(cvData: CvData): Promise<Buffer> {
 
     // ── Header ───────────────────────────────────────────────────────────────
     doc.font('Times-Bold').fontSize(18).text(cvData.name.toUpperCase(), { align: 'center' })
+    if (cvData.headline) doc.font('Times-Bold').fontSize(10.5).text(cvData.headline, { align: 'center' })
     doc.moveDown(0.2)
     const c1 = [cvData.contact.city, cvData.contact.phone, cvData.contact.email].filter(Boolean).join('  |  ')
     doc.font('Times-Roman').fontSize(9.5).fillColor(gray).text(c1, { align: 'center' })

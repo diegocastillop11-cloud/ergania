@@ -6,6 +6,7 @@ import * as svc from '../services/careerOpsService'
 import { supabaseAdmin } from '../config/supabase'
 import { getSubscriptionStatus } from '../services/subscriptionService'
 import { getCountryConfig, DEFAULT_COUNTRY_NAME, COUNTRIES } from '../config/countries'
+import { buildCvJsonPrompt, buildCvBaseOptimizePrompt } from '../prompts/cv'
 
 /** Solo devuelve un país si coincide EXACTO con uno conocido — evita que un
  * pais_detectado vacío/inventado por el LLM caiga silenciosamente en el
@@ -180,6 +181,36 @@ function stripYearExperiencePhrases(text: string): string {
     .replace(/\b(?:years? of experience|años? de experiencia)\b/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim()
+}
+
+// Parsea la respuesta JSON del CV y separa el diagnóstico (solo para el candidato)
+// del CvData que se renderiza — el diagnóstico nunca debe llegar al HTML/PDF.
+function parseCvResponse(
+  content: Array<{ type: string }>,
+  invalidMsg: string,
+): { cvData: svc.CvData; diagnostico: svc.CvDiagnostico | null } {
+  const rawText = content
+    .filter(b => b.type === 'text')
+    .map(b => (b as { type: 'text'; text: string }).text)
+    .join('')
+    .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
+
+  let parsed: svc.CvData
+  try { parsed = JSON.parse(rawText) }
+  catch { throw new Error(invalidMsg) }
+
+  const { diagnostico: rawDiag, ...cvData } = parsed
+  cvData.summary = stripYearExperiencePhrases(cvData.summary)
+  cvData.experience = cvData.experience.map(exp => ({ ...exp, bullets: exp.bullets.map(stripYearExperiencePhrases) }))
+  cvData.projects = cvData.projects.map(proj => ({ ...proj, bullets: proj.bullets.map(stripYearExperiencePhrases) }))
+
+  const toList = (v: unknown, max: number) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, max) : []
+  const diagnostico = rawDiag
+    ? { keywords_faltantes: toList(rawDiag.keywords_faltantes, 8), a_confirmar: toList(rawDiag.a_confirmar, 5) }
+    : null
+
+  return { cvData, diagnostico }
 }
 
 /** Prueba mínima de conectividad con el proveedor de IA seleccionado */
@@ -1163,92 +1194,6 @@ export function detectLanguage(text: string): 'es' | 'en' {
   return en > es ? 'en' : 'es'
 }
 
-const LANGUAGE_RULE: Record<'es' | 'en', string> = {
-  es: '',
-  en: `\nIDIOMA (obligatorio): la oferta está en INGLÉS. Escribe TODO el contenido del CV en inglés profesional nativo: summary, bullets, roles, nombres de skills y títulos de educación. Mantén nombres propios (empresas, instituciones) tal cual. Las claves del JSON no cambian.\n`,
-}
-
-// ── CV prompt builder (shared between createApplication & regenerateCV) ────────
-function buildCvJsonPrompt(
-  rol: string,
-  empresa: string,
-  jd: string,
-  cv: string,
-  cand: Record<string, string>,
-  contactInfo: Record<string, string>,
-  cvInstructions?: string,
-  idioma: 'es' | 'en' = 'es',
-): string {
-  return `Actúa como un panel de élite evaluando y reescribiendo este CV para ${rol} en ${empresa}: recruiter senior con 20 años en Fortune 500, hiring manager del área, especialista ATS, y career coach de perfiles tech. El estándar es el nivel de Google, Stripe, Mercado Libre o Nubank — no una corrección cosmética, una reconstrucción completa.
-
-REGLA ABSOLUTA DE VERACIDAD (por sobre cualquier otra instrucción):
-- Nunca inventes empresas, cargos, fechas, certificaciones, proyectos, tecnologías o logros que no estén en el CV o perfil del candidato.
-- Nunca exageres una métrica que no exista. Si no hay una cifra real disponible, describe el impacto con precisión cualitativa (alcance, criticidad, complejidad) en vez de inventar un número.
-- Maximiza el IMPACTO de la experiencia real; no la experiencia misma. Credibilidad > exageración: un reclutador senior detecta una métrica inflada al instante y descarta el CV completo.
-
-ANÁLISIS PREVIO (aplica mentalmente, no lo muestres en la salida):
-- Extrae del JD: tecnologías, frameworks, metodologías, herramientas, certificaciones, soft skills y verbos de acción — prioriza las 5-8 más críticas que falten o estén débiles en el CV actual
-- Detecta los 3 motivos por los que un reclutador cansado descartaría este CV en 10 segundos (genérico, desalineado, difícil de escanear) y corrígelos
-- Detecta riesgos de percepción: ¿podría leerse como junior por falta de métricas, sobrecalificado por exceso de años, o especializado en otra área? Ajusta el framing para neutralizarlos sin ocultar información
-
-JD DEL CARGO (extrae keywords ATS, úsalas literalmente):
-${jd.slice(0, 2500)}
-
-CV DEL CANDIDATO (incluye TODA la experiencia real; no omitas ninguna empresa ni la inventes):
-${cv}
-
-REGLAS DE REDACCIÓN:
-- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
-- Resumen (máx. 4 frases): quién es el candidato, su especialidad, las 2-3 habilidades clave del JD que domina, y el valor/impacto que entrega. Debe dar ganas de seguir leyendo. CERO frases genéricas.
-- ATS: usa las keywords exactas del JD en bullets y resumen; no parafrasees si la keyword es técnica (ej. no cambies "SQL Server" por "bases de datos relacionales").
-- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo concreto.
-- Skills: agrupa por categoría y ordena por relevancia para el JD, no alfabéticamente. Incluye ≥3 keywords técnicas del JD.
-- Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
-- Proyectos personales: ≥1 proyecto relevante al JD; nombra el proyecto y su impacto real, sin inflarlo.
-- Si el JD pide una habilidad puntual (ej. Python, bases de datos), menciónala en el resumen Y en al menos un bullet de experiencia real donde se haya usado.
-${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}${LANGUAGE_RULE[idioma]}
-Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
-
-Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
-{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}]}`
-}
-
-// CV base del perfil (sin oferta/JD específica) — aplica cv_instructions al CV
-// tal cual está guardado, para descargar/usar fuera del flujo de Postulaciones.
-function buildCvBaseOptimizePrompt(
-  cv: string,
-  cand: Record<string, string>,
-  contactInfo: Record<string, string>,
-  cvInstructions: string,
-  idioma: 'es' | 'en' = 'es',
-): string {
-  return `Actúa como un panel de élite reescribiendo este CV: recruiter senior con 20 años en Fortune 500, hiring manager, especialista ATS, y career coach de perfiles tech. El estándar es el nivel de Google, Stripe, Mercado Libre o Nubank — no una corrección cosmética, una reconstrucción completa. Este CV NO está atado a una oferta específica — es el CV general del candidato.
-
-REGLA ABSOLUTA DE VERACIDAD (por sobre cualquier otra instrucción):
-- Nunca inventes empresas, cargos, fechas, certificaciones, proyectos, tecnologías o logros que no estén en el CV del candidato.
-- Nunca exageres una métrica que no exista. Si no hay una cifra real disponible, describe el impacto con precisión cualitativa en vez de inventar un número.
-- Maximiza el IMPACTO de la experiencia real; no la experiencia misma.
-
-CV DEL CANDIDATO (incluye TODA la experiencia real; no omitas ninguna empresa ni la inventes):
-${cv}
-
-REGLAS DE REDACCIÓN:
-- FÓRMULA XYZ (Google): cada bullet = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
-- Resumen (máx. 4 frases): quién es el candidato, su especialidad, sus habilidades clave, y el valor/impacto que entrega.
-- Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "trabajo en equipo" sin respaldo concreto.
-- Skills: agrupa por categoría y ordena por relevancia.
-- Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
-
-INSTRUCCIONES DEL CANDIDATO (máxima prioridad — es la razón principal por la que se está regenerando este CV):
-${cvInstructions}
-
-${LANGUAGE_RULE[idioma]}
-Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
-
-Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
-{"name":"${cand.full_name || ''}","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C"},"education":[{"title":"...","institution":"...","year":"..."}]}`
-}
-
 function buildCoverLetterPrompt(
   candidateName: string,
   empresa: string,
@@ -1356,35 +1301,16 @@ export const createApplication = async (req: Request, res: Response) => {
       : country.idioma === 'en' ? 'en' : detectLanguage(jd)
     const cvJsonPrompt = buildCvJsonPrompt(rol, empresa, jd, cv, cand, contactInfo, cvInstructions, idioma)
 
+    // 6000 y no 4000: el JSON ahora trae headline + diagnóstico, y una respuesta cortada
+    // rompe el JSON entero.
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 6000,
       system: `Eres un redactor experto en CVs Harvard ATS-optimizados para ${country.nombre}. Retornas SOLO JSON válido, sin markdown, sin explicaciones.`,
       messages: [{ role: 'user', content: cvJsonPrompt }],
     })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('')
-      .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
-
-    let cvData: svc.CvData
-    try {
-      cvData = JSON.parse(rawText)
-    } catch {
-      throw new Error('Claude no devolvió JSON válido para el CV')
-    }
-
-    cvData.summary = stripYearExperiencePhrases(cvData.summary)
-    cvData.experience = cvData.experience.map(exp => ({
-      ...exp,
-      bullets: exp.bullets.map(stripYearExperiencePhrases),
-    }))
-    cvData.projects = cvData.projects.map(proj => ({
-      ...proj,
-      bullets: proj.bullets.map(stripYearExperiencePhrases),
-    }))
+    const { cvData, diagnostico } = parseCvResponse(response.content, 'Claude no devolvió JSON válido para el CV')
 
     const cvHtml = svc.buildCvHtml(cvData)
     const cvTex  = svc.buildCvLatex(cvData)
@@ -1429,6 +1355,7 @@ export const createApplication = async (req: Request, res: Response) => {
       notas: existingApp?.notas || '',
       interviewPrep: existingApp?.interviewPrep,
       coverLetter,
+      cvDiagnostico: diagnostico,
       idioma,
       salario_clp: existingApp?.salario_clp || existingTrackerEntry?.salario_clp,
       salario_usd: existingApp?.salario_usd || existingTrackerEntry?.salario_usd,
@@ -1501,36 +1428,19 @@ export const regenerateCV = async (req: Request, res: Response) => {
 
     const response = await getLlmClient(req).messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 6000,
       system: `Eres un redactor experto en CVs Harvard ATS-optimizados para ${country.nombre}. Retornas SOLO JSON válido, sin markdown, sin explicaciones.`,
       messages: [{ role: 'user', content: cvJsonPrompt }],
     })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('')
-      .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
-
-    let cvData: svc.CvData
-    try { cvData = JSON.parse(rawText) }
-    catch { throw new Error('Claude no devolvió JSON válido') }
-
-    cvData.summary = stripYearExperiencePhrases(cvData.summary)
-    cvData.experience = cvData.experience.map(exp => ({
-      ...exp,
-      bullets: exp.bullets.map(stripYearExperiencePhrases),
-    }))
-    cvData.projects = cvData.projects.map(proj => ({
-      ...proj,
-      bullets: proj.bullets.map(stripYearExperiencePhrases),
-    }))
+    const { cvData, diagnostico } = parseCvResponse(response.content, 'Claude no devolvió JSON válido')
 
     const cvHtml = svc.buildCvHtml(cvData)
     const cvTex  = svc.buildCvLatex(cvData)
 
     app.cvHtml = cvHtml
     app.cvTex  = cvTex
+    app.cvDiagnostico = diagnostico
     app.cvPdfFilename = undefined
     app.idioma = idioma
     await svc.saveApplication(app, userEmail)
@@ -1959,22 +1869,7 @@ export const optimizeCv = async (req: Request, res: Response) => {
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('')
-      .replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
-
-    let cvData: svc.CvData
-    try {
-      cvData = JSON.parse(rawText)
-    } catch {
-      throw new Error('La IA no devolvió un CV en formato válido. Intenta de nuevo.')
-    }
-
-    cvData.summary = stripYearExperiencePhrases(cvData.summary)
-    cvData.experience = cvData.experience.map(exp => ({ ...exp, bullets: exp.bullets.map(stripYearExperiencePhrases) }))
-    cvData.projects = cvData.projects.map(proj => ({ ...proj, bullets: proj.bullets.map(stripYearExperiencePhrases) }))
+    const { cvData } = parseCvResponse(response.content, 'La IA no devolvió un CV en formato válido. Intenta de nuevo.')
 
     const cvHtml = svc.buildCvHtml(cvData)
     res.json({ ok: true, cvData, cvHtml })

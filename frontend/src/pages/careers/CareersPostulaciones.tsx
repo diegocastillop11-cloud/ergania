@@ -266,6 +266,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   const [savingCv, setSavingCv] = useState(false)
   const [saveCvError, setSaveCvError] = useState('')
   const [resetKey, setResetKey] = useState(0)
+  const [diagOpen, setDiagOpen] = useState(true)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const copyHtml = () => {
@@ -438,6 +439,40 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             </p>
           )}
         </div>
+        {!!(app.cvDiagnostico?.keywords_faltantes.length || app.cvDiagnostico?.a_confirmar.length) && (
+          <div className="shrink-0 border-b border-[var(--border-default)] px-4 py-2 text-xs max-h-[30vh] overflow-y-auto">
+            <button
+              onClick={() => setDiagOpen(o => !o)}
+              className="flex items-center gap-1.5 font-semibold text-amber-400"
+            >
+              <AlertTriangle size={13} /> {t('careersPostulaciones.cvPreview.diagTitle')}
+              {diagOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            {diagOpen && (
+              <div className="mt-2 space-y-2">
+                {!!app.cvDiagnostico!.keywords_faltantes.length && (
+                  <div>
+                    <p className="text-[var(--text-secondary)]">{t('careersPostulaciones.cvPreview.diagMissing')}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {app.cvDiagnostico!.keywords_faltantes.map(k => (
+                        <span key={k} className="px-2 py-0.5 rounded-full bg-amber-900/30 text-amber-300 border border-amber-800/50">{k}</span>
+                      ))}
+                    </div>
+                    <p className="text-[var(--text-muted)] mt-1">{t('careersPostulaciones.cvPreview.diagMissingHint')}</p>
+                  </div>
+                )}
+                {!!app.cvDiagnostico!.a_confirmar.length && (
+                  <div>
+                    <p className="text-[var(--text-secondary)]">{t('careersPostulaciones.cvPreview.diagConfirm')}</p>
+                    <ul className="list-disc ml-4 mt-1 space-y-0.5 text-[var(--text-tertiary)]">
+                      {app.cvDiagnostico!.a_confirmar.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex-1 overflow-hidden rounded-b-2xl">
           {app.cvHtml ? (
             <iframe

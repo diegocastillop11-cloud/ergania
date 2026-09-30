@@ -143,6 +143,7 @@ export interface Application {
   interviewMeta?: InterviewMeta
   hasGuide?: boolean            // solo viene en el listado; el detalle trae interviewGuide
   coverLetter?: string
+  cvDiagnostico?: { keywords_faltantes: string[]; a_confirmar: string[] } | null
   idioma?: 'es' | 'en'
   score?: number | null
   notas?: string
