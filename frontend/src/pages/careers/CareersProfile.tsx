@@ -1,5 +1,5 @@
 import { api } from '../../lib/api'
-import { saveBlob } from '../../lib/downloadFile'
+import { saveBlob, filenameFromResponse } from '../../lib/downloadFile'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -353,8 +353,8 @@ export default function CareersProfile() {
     if (!cvOptimizeResult) return
     setCvOptimizeDownloading(true)
     try {
-      const { data } = await api.post('/cv/optimize/pdf', { cvData: cvOptimizeResult.cvData }, { responseType: 'blob' })
-      await saveBlob(data, 'CV_Optimizado.pdf')
+      const { data, headers } = await api.post('/cv/optimize/pdf', { cvData: cvOptimizeResult.cvData }, { responseType: 'blob' })
+      await saveBlob(data, filenameFromResponse(headers, 'CV.pdf'))
     } catch {
       setCvOptimizeError('Error al descargar el PDF')
     } finally {
@@ -433,8 +433,8 @@ export default function CareersProfile() {
     if (!translateResult) return
     setTranslateDownloading(true)
     try {
-      const { data } = await api.post('/cv/optimize/pdf', { cvData: translateResult.cvData }, { responseType: 'blob' })
-      await saveBlob(data, `CV_${translateLang.trim().replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`)
+      const { data, headers } = await api.post('/cv/optimize/pdf', { cvData: translateResult.cvData, suffix: translateLang.trim() }, { responseType: 'blob' })
+      await saveBlob(data, filenameFromResponse(headers, 'CV.pdf'))
     } catch {
       setTranslateError('Error al descargar el PDF')
     } finally {

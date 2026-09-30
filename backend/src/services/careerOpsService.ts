@@ -1224,6 +1224,22 @@ function buildPdfFilename(empresa: string, rol: string, candidateName = '', pref
   return `${prefix}_${name}_${emp}_${r}.pdf`
 }
 
+// Nombre que ve RR.HH. al recibir el archivo: "CV_Diego_Castillo_BI_Engineer.pdf".
+// Sin tildes ni símbolos (hay portales ATS que los rechazan o deforman) y sin la empresa:
+// el reclutador ya sabe a qué empresa postulaste. De un cargo compuesto
+// ("BI Engineer / Data Engineer") se queda con el primero.
+export function buildCvFilename(candidateName: string, rol = '', suffix = ''): string {
+  const clean = (s: string) => s
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  const name = candidateName === candidateName.toLowerCase() || candidateName === candidateName.toUpperCase()
+    ? candidateName.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase())
+    : candidateName
+  const mainRole = rol.split(/\s*[/|]\s*|\s+[-–—]\s+|\s*\(/)[0]
+  const parts = [clean(name), clean(mainRole).slice(0, 50).replace(/_+$/, ''), clean(suffix)].filter(Boolean)
+  return `CV_${parts.join('_') || 'Curriculum'}.pdf`
+}
+
 export function buildInterviewPrepHtml(prep: string, empresa: string, rol: string): string {
   const safePrep = prep.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prep. Entrevista ${empresa}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:24px;line-height:1.6;}h1,h2,h3{color:#111;margin-top:1.4rem;}h1{font-size:26px;}h2{font-size:20px;}h3{font-size:17px;}p{margin:0.9rem 0;}ul,ol{margin:0.8rem 0 0.8rem 1.4rem;}code{background:#f3f4f6;padding:0.15rem 0.35rem;border-radius:0.3rem;}pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e5e7eb;padding:16px;border-radius:12px;}</style></head><body><h1>Preparación de Entrevista</h1><p><strong>Empresa:</strong> ${empresa}</p><p><strong>Cargo:</strong> ${rol}</p><pre>${safePrep}</pre></body></html>`
