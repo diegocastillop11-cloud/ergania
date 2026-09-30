@@ -462,6 +462,10 @@
       "copyHtml": "Copy HTML",
       "editModeActive": "Edit mode active — click on the resume text to modify it",
       "noHtml": "No HTML available",
+      "diagTitle": "Before you apply",
+      "diagMissing": "Job keywords we left out (your resume doesn't show them)",
+      "diagMissingHint": "If you do have that experience, add it to your base resume and regenerate.",
+      "diagConfirm": "Make sure you can back these up in the interview",
       "genericErrorSave": "Error saving",
       "genericErrorRegen": "Error regenerating"
     },

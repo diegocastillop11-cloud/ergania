@@ -462,6 +462,10 @@
       "copyHtml": "Copiar HTML",
       "editModeActive": "Modo edición activo — haz click en el texto del CV para modificarlo",
       "noHtml": "No hay HTML disponible",
+      "diagTitle": "Antes de postular",
+      "diagMissing": "Keywords de la oferta que no pusimos (tu CV no las demuestra)",
+      "diagMissingHint": "Si sí tienes esa experiencia, agrégala a tu CV base y regenera.",
+      "diagConfirm": "Confirma que puedes defender esto en la entrevista",
       "genericErrorSave": "Error al guardar",
       "genericErrorRegen": "Error al regenerar"
     },
