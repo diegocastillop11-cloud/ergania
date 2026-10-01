@@ -496,7 +496,7 @@ ${data.headline ? `<div class="headline">${data.headline}</div>
 ` : ''}<div class="contact">${contact1}${contact2 ? `<br>${contact2}` : ''}</div>
 <div class="section"><div class="section-title">Resumen Profesional</div><div class="summary">${data.summary}</div></div>
 <div class="section"><div class="section-title">Experiencia Profesional</div>${expHtml}</div>
-<div class="section"><div class="section-title">Proyectos Destacados</div>${projHtml}</div>
+${data.projects.length ? `<div class="section"><div class="section-title">Proyectos Destacados</div>${projHtml}</div>` : ''}
 <div class="section"><div class="section-title">Habilidades Técnicas</div>${skillsHtml}</div>
 <div class="section"><div class="section-title">Formación Académica</div>${eduHtml}</div>
 </body></html>`
@@ -556,8 +556,8 @@ ${e(data.summary)}
 \\section{Experiencia Profesional}
 ${expTex}
 
-\\section{Proyectos Destacados}
-${projTex}
+${data.projects.length ? `\\section{Proyectos Destacados}
+${projTex}` : ''}
 
 \\section{Habilidades T\\'{e}cnicas}
 ${skillsTex}
