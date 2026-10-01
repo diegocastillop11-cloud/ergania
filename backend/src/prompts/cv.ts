@@ -7,7 +7,11 @@ const LANGUAGE_RULE: Record<'es' | 'en', string> = {
 }
 
 // Compartido por el CV por oferta y el CV base, para que no diverjan.
-const HEADLINE_RULE = `- HEADLINE (título profesional bajo el nombre): formato "CARGO | KEYWORD · KEYWORD · KEYWORD" (3-4 keywords). El cargo debe ser el más cercano al objetivo que la experiencia real respalde — nunca uno que haga ver al candidato menos relevante, ni uno que no pueda defender. Las keywords solo pueden ser tecnologías/competencias demostradas en el CV.`
+const HEADLINE_RULE = `- HEADLINE (título profesional bajo el nombre): formato "CARGO | KEYWORD · KEYWORD · KEYWORD" (3-4 keywords). El CARGO debe ser un cargo que el candidato realmente ejerció según su CV (el más cercano al objetivo), copiado tal cual o con una variante mínima de redacción — NUNCA un cargo que no aparezca en su historial (ej. no pongas "Jefe de..." si fue "Recepcionista"), ni el título de la oferta si no lo ha tenido. Las keywords solo pueden ser tecnologías/competencias demostradas en el CV.`
+
+const SUMMARY_RULE = `- Prohibido en el resumen dejar frases rotas o sin sujeto al evitar "años de experiencia": cada oración debe ser gramaticalmente completa y natural (ej. "Profesional con experiencia en..." es válido; NO escribas "Profesional con gestionando..."). Relee el resumen antes de responder.`
+
+const PROJECTS_RULE = `- Proyectos: incluye SOLO proyectos que estén explícitamente en el CV o perfil del candidato. Si no hay ninguno, devuelve "projects":[] (cada proyecto real usa {"name","year","bullets"}) — nunca inventes ni conviertas tareas de experiencia laboral en proyectos.`
 
 const LOSS_RULE = `- PRINCIPIO DE PÉRDIDA: cuando la experiencia lo respalde, estructura el bullet como problema → pérdida evitada → resultado → cómo se resolvió (tiempo, dinero, errores, trabajo manual, disponibilidad). Ej: "Eliminé 12 h semanales de reportería manual automatizando..." La sensación debe salir de la evidencia, nunca de frases manipuladoras ni de cifras inventadas.`
 
@@ -45,12 +49,13 @@ REGLAS DE REDACCIÓN:
 ${HEADLINE_RULE}
 - FÓRMULA XYZ (Google): cada bullet empieza con el RESULTADO = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
 ${LOSS_RULE}
+${SUMMARY_RULE}
 - Resumen (máx. 4 frases): quién es el candidato, su especialidad, las 2-3 habilidades clave del JD que domina, y el valor/impacto que entrega a ESTE cargo. CERO frases genéricas.
 - ATS: usa las keywords exactas del JD en headline, resumen, bullets y skills, donde tengan sentido y en contexto de resultados reales. No parafrasees si la keyword es técnica (ej. no cambies "SQL Server" por "bases de datos relacionales"). No rellenes artificialmente.
 - Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "orientado a resultados", "trabajo en equipo", "gran capacidad analítica" sin respaldo concreto.
 - Skills: agrupa por categoría y ordena por relevancia para el JD, no alfabéticamente. Incluye ≥3 keywords técnicas del JD (solo las demostradas).
 - Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua; los más relevantes para la oferta primero. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
-- Proyectos: mantén solo los que ayuden a esta candidatura; nombra el proyecto y su impacto real, sin inflarlo.
+${PROJECTS_RULE}
 - Si el JD pide una habilidad puntual que el candidato sí tiene, menciónala en el resumen Y en al menos un bullet de experiencia real donde se haya usado.
 ${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}${LANGUAGE_RULE[idioma]}
 DIAGNÓSTICO (para el candidato, NO va en el CV — escríbelo en español, breve y directo):
@@ -60,7 +65,7 @@ DIAGNÓSTICO (para el candidato, NO va en el CV — escríbelo en español, brev
 Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
 
 Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
-{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}],"diagnostico":{"keywords_faltantes":["..."],"a_confirmar":["..."]}}`
+{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}],"diagnostico":{"keywords_faltantes":["..."],"a_confirmar":["..."]}}`
 }
 
 // CV base del perfil (sin oferta/JD específica) — aplica cv_instructions al CV
@@ -86,9 +91,11 @@ REGLAS DE REDACCIÓN:
 ${HEADLINE_RULE}
 - FÓRMULA XYZ (Google): cada bullet empieza con el RESULTADO = "Logré [resultado], medido por [métrica], haciendo [acción/tecnología]". Nunca bullets vagos ni descripciones de funciones ("responsable de...").
 ${LOSS_RULE}
+${SUMMARY_RULE}
 - Resumen (máx. 4 frases): quién es el candidato, su especialidad, sus habilidades clave, y el valor/impacto que entrega.
 - Prohibido: "años de experiencia", "X+ años", "senior/junior" por tiempo, "proactivo", "apasionado", "dinámico", "orientado a resultados", "trabajo en equipo" sin respaldo concreto.
 - Skills: agrupa por categoría y ordena por relevancia.
+${PROJECTS_RULE}
 - Experiencia: ≥3 bullets por empresa reciente, 1 para la más antigua. Mínimo 1 bullet con métrica concreta por empresa; si no existe una métrica real, describe el impacto cualitativo con precisión (nunca inventada).
 
 INSTRUCCIONES DEL CANDIDATO (máxima prioridad — es la razón principal por la que se está regenerando este CV):
@@ -98,5 +105,5 @@ ${LANGUAGE_RULE[idioma]}
 Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
 
 Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
-{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[{"name":"...","year":"2024","bullets":["..."]}],"skills":{"Categoría 1":"Skill A, Skill B, Skill C"},"education":[{"title":"...","institution":"...","year":"..."}]}`
+{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[],"skills":{"Categoría 1":"Skill A, Skill B, Skill C"},"education":[{"title":"...","institution":"...","year":"..."}]}`
 }
