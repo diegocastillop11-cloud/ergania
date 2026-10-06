@@ -764,6 +764,13 @@
       "suspicious": "Sospechosa"
     }
   },
+  "jobAlerts": {
+    "title": "Alertas de ofertas nuevas por correo",
+    "desc": "Cada día te enviamos las ofertas nuevas de GetOnBoard que calzan con tus cargos objetivo. Máximo 1 correo diario, con enlace para darte de baja.",
+    "enable": "Activar alertas",
+    "disable": "Desactivar",
+    "error": "No se pudo guardar"
+  },
   "careersScanner": {
     "title": "Escáner de Portales",
     "subtitle": "Busca trabajos automáticamente en portales chilenos (incluye ofertas remotas) y los filtra por tu perfil",

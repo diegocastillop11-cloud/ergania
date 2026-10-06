@@ -764,6 +764,13 @@
       "suspicious": "Suspicious"
     }
   },
+  "jobAlerts": {
+    "title": "New job alerts by email",
+    "desc": "Every day we email you the new GetOnBoard jobs that match your target roles. At most 1 email a day, with an unsubscribe link.",
+    "enable": "Turn on alerts",
+    "disable": "Turn off",
+    "error": "Could not save"
+  },
   "careersScanner": {
     "title": "Portal Scanner",
     "subtitle": "Automatically searches for jobs on Chilean portals (includes remote offers) and filters them by your profile",

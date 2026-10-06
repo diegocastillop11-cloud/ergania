@@ -2207,7 +2207,7 @@ export const importBackup = async (req: Request, res: Response) => {
 
 // ── Scanner helpers ───────────────────────────────────────────────────────────
 
-interface JobResult {
+export interface JobResult {
   titulo: string; empresa: string; url: string
   ubicacion: string; match_score: number; razon: string
 }
@@ -2240,7 +2240,7 @@ function kwMatch(title: string, positive: string[], negative: string[]): boolean
     })
 }
 
-function kwScore(title: string, positive: string[]): number {
+export function kwScore(title: string, positive: string[]): number {
   if (!title || positive.length === 0) return 0.5
   const t = title.toLowerCase()
   const hits = positive.filter(k => t.includes(k.toLowerCase())).length
@@ -2412,7 +2412,7 @@ function parseLaborum(html: string, baseScore: (t: string) => number, positive: 
 // título en <h4 class="results-list-title"><strong> y la empresa en el atributo alt del
 // logo (<img alt="Empresa" class="results-avatar">) — más estable que cavar entre <strong>
 // anidados. Recorte de tarjeta por posición, igual que Laborum, por la misma razón.
-function parseGetOnBoard(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string): JobResult[] {
+export function parseGetOnBoard(html: string, baseScore: (t: string) => number, positive: string[], negative: string[], razon: string): JobResult[] {
   const results: JobResult[] = []
   const seen = new Set<string>()
 

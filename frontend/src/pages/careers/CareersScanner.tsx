@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { loadLlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import PerfilTabs from '../../components/careers/PerfilTabs'
+import JobAlertsToggle from '../../components/careers/JobAlertsToggle'
 import {
   Radio, Play, Square, ExternalLink, CheckCircle2,
   XCircle, Zap, Globe, ChevronDown, ChevronUp,
@@ -424,6 +425,7 @@ export default function CareersScanner() {
   return (
     <div className="space-y-5">
       <PerfilTabs />
+      <JobAlertsToggle />
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/careersController'
 import * as guideCtrl from '../controllers/interviewGuideController'
+import * as alertsCtrl from '../controllers/jobAlertsController'
 import { uploadMiddleware } from '../controllers/careersController'
 
 export const careersRoutes = Router()
@@ -15,6 +16,9 @@ careersRoutes.post('/tracker/:id/apply', ctrl.markApplied)
 careersRoutes.get('/pipeline', ctrl.getPipeline)
 careersRoutes.post('/pipeline', ctrl.addToPipeline)
 careersRoutes.delete('/pipeline', ctrl.removeFromPipeline)
+
+careersRoutes.get('/alerts', alertsCtrl.getAlerts)
+careersRoutes.put('/alerts', alertsCtrl.setAlerts)
 
 careersRoutes.get('/portals', ctrl.getPortals)
 careersRoutes.put('/portals', ctrl.updatePortals)

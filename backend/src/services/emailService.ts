@@ -253,3 +253,37 @@ export async function sendPaymentNotification(
   `
   await sendEmail(ADMIN_EMAIL, `[Ergania] Pago recibido — $${montoFmt} ${moneda}`, html)
 }
+
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+export async function sendJobAlertDigest(
+  to: string,
+  jobs: { titulo: string; empresa: string; url: string; ubicacion: string }[],
+  unsubscribeUrl: string,
+) {
+  // Título/empresa vienen de HTML scrapeado: se escapan, y solo se enlazan URLs https.
+  const items = jobs.filter(j => /^https:\/\//.test(j.url)).map(j => `
+    <li style="margin-bottom:14px;">
+      <a href="${escapeHtml(j.url)}" style="color:#1d4ed8;font-weight:bold;text-decoration:none;">${escapeHtml(j.titulo)}</a><br>
+      <span style="color:#555;font-size:13px;">${escapeHtml(j.empresa)} · ${escapeHtml(j.ubicacion)}</span>
+    </li>`).join('')
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="color:#1d4ed8;border-bottom:2px solid #1d4ed8;padding-bottom:8px;">
+        ${jobs.length} oferta${jobs.length === 1 ? '' : 's'} nueva${jobs.length === 1 ? '' : 's'} para tu búsqueda
+      </h2>
+      <p style="color:#333;line-height:1.6;">Encontramos estas ofertas que calzan con tus cargos objetivo y que aún no habías visto:</p>
+      <ul style="padding-left:18px;">${items}</ul>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="https://www.ergania.com/scanner" style="background:#1d4ed8;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:bold;display:inline-block;">
+          Abrir el Escáner
+        </a>
+      </div>
+      <p style="font-size:12px;color:#999;margin-top:24px;">
+        Recibes este correo porque activaste las alertas de ofertas en Ergania.
+        <a href="${escapeHtml(unsubscribeUrl)}" style="color:#999;">Dejar de recibirlas</a>
+      </p>
+    </div>
+  `
+  await sendEmail(to, `${jobs.length} oferta${jobs.length === 1 ? '' : 's'} nueva${jobs.length === 1 ? '' : 's'} para ti — Ergania`, html)
+}

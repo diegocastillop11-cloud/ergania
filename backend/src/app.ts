@@ -12,6 +12,7 @@ import { apkRoutes } from './routes/apk'
 import { videoRoutes } from './routes/video'
 import { faqRoutes } from './routes/faq'
 import { chatRoutes } from './routes/chat'
+import { alertsRoutes } from './routes/alerts'
 
 const app = express()
 
@@ -47,6 +48,7 @@ app.use('/api/apk', apkRoutes)
 app.use('/api/video', videoRoutes)
 app.use('/api/faqs', faqRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/alerts', alertsRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
