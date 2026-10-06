@@ -266,7 +266,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   const [savingCv, setSavingCv] = useState(false)
   const [saveCvError, setSaveCvError] = useState('')
   const [resetKey, setResetKey] = useState(0)
-  const [diagOpen, setDiagOpen] = useState(true)
+  const [diagOpen, setDiagOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 640)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const copyHtml = () => {
@@ -330,19 +330,19 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 sm:p-4">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-alt)] sm:rounded-2xl w-full max-w-4xl h-[100dvh] sm:h-[90vh] flex flex-col">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 sm:p-4 border-b border-[var(--border-default)] shrink-0">
           <div>
-            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2">
+            <h3 className="text-[var(--text-primary)] font-bold flex items-center gap-2 text-sm sm:text-base line-clamp-1 sm:line-clamp-none">
               <FileText size={16} className="text-blue-400" />
               {t('careersPostulaciones.cvPreview.titlePrefix')} {app.rol} {t('careersPostulaciones.cvPreview.in')} {app.empresa}
             </h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            <p className="hidden sm:block text-xs text-[var(--text-muted)] mt-0.5">
               {t('careersPostulaciones.cvPreview.generatedNote')} {(app.idioma || 'es') === 'en' ? 'English' : 'Español'}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap [&>*]:shrink-0 [&>*]:whitespace-nowrap">
             <div className="flex rounded-lg overflow-hidden border border-[var(--border-alt)] text-xs" title="Idioma del CV">
               <button
                 onClick={() => setLang('es')}
@@ -440,7 +440,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
           )}
         </div>
         {!!(app.cvDiagnostico?.keywords_faltantes.length || app.cvDiagnostico?.a_confirmar.length) && (
-          <div className="shrink-0 border-b border-[var(--border-default)] px-4 py-2 text-xs max-h-[30vh] overflow-y-auto">
+          <div className="shrink-0 border-b border-[var(--border-default)] px-4 py-2 text-xs max-h-[25vh] sm:max-h-[30vh] overflow-y-auto">
             <button
               onClick={() => setDiagOpen(o => !o)}
               className="flex items-center gap-1.5 font-semibold text-amber-400"
