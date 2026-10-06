@@ -59,13 +59,14 @@ ${PROJECTS_RULE}
 - Si el JD pide una habilidad puntual que el candidato sí tiene, menciónala en el resumen Y en al menos un bullet de experiencia real donde se haya usado.
 ${cvInstructions ? `\nINSTRUCCIONES DEL CANDIDATO (máxima prioridad):\n${cvInstructions}\n` : ''}${LANGUAGE_RULE[idioma]}
 DIAGNÓSTICO (para el candidato, NO va en el CV — escríbelo en español, breve y directo):
+- "keywords_cubiertas": keywords críticas o importantes del JD que SÍ quedaron incorporadas en el CV, escritas exactamente como aparecen en la oferta Y como aparecen en el CV. Máximo 12.
 - "keywords_faltantes": keywords críticas o importantes del JD, escritas exactamente como aparecen en la oferta, que NO incorporaste porque el CV no las respalda. Máximo 8. Si no falta ninguna, [].
 - "a_confirmar": afirmaciones del CV generado que son reformulación o inferencia razonable pero que el candidato debe confirmar que puede defender en entrevista (cita la frase corta y por qué). Máximo 5. Si todo está respaldado explícitamente, [].
 
 Antes de responder, verifica en silencio: ortografía y gramática impecables, cero afirmaciones no respaldadas por el CV original, cada bullet legible en menos de 3 segundos.
 
 Devuelve SOLO JSON válido, sin markdown ni explicaciones. La siguiente estructura es solo un EJEMPLO DE FORMATO — usa las empresas, cargos y fechas REALES del candidato, nunca estos placeholders:
-{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}],"diagnostico":{"keywords_faltantes":["..."],"a_confirmar":["..."]}}`
+{"name":"${cand.full_name || ''}","headline":"CARGO | KW1 · KW2 · KW3","contact":${JSON.stringify(contactInfo)},"summary":"...","experience":[{"company":"Empresa A","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]},{"company":"Empresa B","location":"Ciudad, País","role":"Cargo","dates":"Mes Año – Mes Año","bullets":["..."]}],"projects":[],"skills":{"Categoría 1":"Skill A, Skill B, Skill C","Categoría 2":"Skill D, Skill E"},"education":[{"title":"...","institution":"...","year":"..."}],"diagnostico":{"keywords_cubiertas":["..."],"keywords_faltantes":["..."],"a_confirmar":["..."]}}`
 }
 
 // CV base del perfil (sin oferta/JD específica) — aplica cv_instructions al CV

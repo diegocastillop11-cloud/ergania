@@ -142,8 +142,10 @@ export interface Application {
   interviewGuide?: InterviewGuide
   interviewMeta?: InterviewMeta
   hasGuide?: boolean            // solo viene en el listado; el detalle trae interviewGuide
+  hasCover?: boolean            // solo en el listado
+  hasSalary?: boolean           // solo en el listado
   coverLetter?: string
-  cvDiagnostico?: { keywords_faltantes: string[]; a_confirmar: string[] } | null
+  cvDiagnostico?: { keywords_cubiertas?: string[]; keywords_faltantes: string[]; a_confirmar: string[] } | null
   idioma?: 'es' | 'en'
   score?: number | null
   notas?: string

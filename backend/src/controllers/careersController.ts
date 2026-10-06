@@ -206,8 +206,15 @@ function parseCvResponse(
 
   const toList = (v: unknown, max: number) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, max) : []
+  // La IA se autodeclara qué keywords cubrió; solo cuentan las que de verdad aparecen en el CV,
+  // así el contador no depende de que el modelo no exagere.
+  const cvText = JSON.stringify(cvData).toLowerCase()
   const diagnostico = rawDiag
-    ? { keywords_faltantes: toList(rawDiag.keywords_faltantes, 8), a_confirmar: toList(rawDiag.a_confirmar, 5) }
+    ? {
+        keywords_cubiertas: toList(rawDiag.keywords_cubiertas, 12).filter(k => cvText.includes(k.toLowerCase())),
+        keywords_faltantes: toList(rawDiag.keywords_faltantes, 8),
+        a_confirmar: toList(rawDiag.a_confirmar, 5),
+      }
     : null
 
   return { cvData, diagnostico }
@@ -1408,7 +1415,15 @@ export const regenerateCV = async (req: Request, res: Response) => {
     const cv = await svc.readCV(userEmail)
     const profile = await svc.readProfile(userEmail)
     const cand = (profile?.candidate as Record<string, string>) || {}
-    const cvInstructions = (profile as Record<string, unknown>)?.cv_instructions as string | undefined
+    const baseInstructions = (profile as Record<string, unknown>)?.cv_instructions as string | undefined
+    // Keywords que el candidato confirmó tener (botón en el diagnóstico): son la única vía para
+    // que entren al CV skills que el CV base no respaldaba.
+    const confirmedSkills: string[] = Array.isArray(req.body?.confirmedSkills)
+      ? req.body.confirmedSkills.filter((s: unknown): s is string => typeof s === 'string' && !!s.trim()).map((s: string) => s.trim().slice(0, 60)).slice(0, 8)
+      : []
+    const cvInstructions = confirmedSkills.length
+      ? `${baseInstructions ? baseInstructions + '\n' : ''}El candidato CONFIRMA que tiene experiencia real con: ${confirmedSkills.join(', ')}. Incorpóralas con esas palabras exactas en resumen, skills y, donde corresponda, en un bullet de experiencia, sin inventar métricas ni empresas.`
+      : baseInstructions
     const contactInfo = {
       city: cand.location || '',
       phone: cand.phone || '',

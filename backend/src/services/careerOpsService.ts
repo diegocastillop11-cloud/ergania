@@ -410,6 +410,7 @@ export function readModeFile(name: string): string {
 // ── CV Data: tipos + builders HTML/LaTeX ─────────────────────────────────────
 
 export interface CvDiagnostico {
+  keywords_cubiertas?: string[]
   keywords_faltantes: string[]
   a_confirmar: string[]
 }
@@ -587,6 +588,8 @@ export interface Application {
   interviewNotes?: InterviewNotes
   interviewMeta?: InterviewMeta
   hasGuide?: boolean            // solo en el listado — evita mandar la guía entera por fila
+  hasCover?: boolean            // solo en el listado (franja "lista para postular")
+  hasSalary?: boolean           // idem
   coverLetter?: string
   cvDiagnostico?: CvDiagnostico | null
   score?: number | null
@@ -1078,9 +1081,23 @@ async function dbReadApplications(userEmail: string): Promise<Omit<Application, 
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
+
+  // Qué tiene ya listo cada postulación (franja "lista para postular"). Va en una consulta aparte
+  // y tolerante: si falta alguna de estas columnas, el listado sigue funcionando sin la franja.
+  const ready = new Map<string, { hasCover: boolean; hasSalary: boolean }>()
+  const { data: extra, error: extraErr } = await supabase
+    .from('applications')
+    .select('id, "coverLetter", salario_clp')
+    .eq('user_email', userEmail)
+  if (extraErr) console.error('Franja de postulación sin datos extra:', extraErr.message)
+  for (const r of (extra || []) as Array<{ id: string; coverLetter?: string | null; salario_clp?: string | null }>) {
+    ready.set(r.id, { hasCover: !!r.coverLetter?.trim(), hasSalary: !!r.salario_clp?.trim() })
+  }
+
   return (data || []).map(row => {
     const { guideVersion, ...rest } = row as Record<string, unknown>
-    return { ...rest, hasGuide: guideVersion != null } as Omit<Application, 'cvHtml'>
+    const r = ready.get(rest.id as string)
+    return { ...rest, hasGuide: guideVersion != null, hasCover: r?.hasCover ?? false, hasSalary: r?.hasSalary ?? false } as Omit<Application, 'cvHtml'>
   })
 }
 
@@ -1103,7 +1120,7 @@ async function dbSaveApplication(userEmail: string, app: Application): Promise<v
   // hasGuide es derivado del listado, no una columna: mandarlo al upsert rompería el insert.
   // cvDiagnostico va en un update aparte y tolerante a fallos: si la migración 032 todavía
   // no corrió, el upsert principal no debe romperse por una columna que no existe.
-  const { coverLetter: _cl, hasGuide: _hg, cvDiagnostico, ...appForDb } = app
+  const { coverLetter: _cl, hasGuide: _hg, hasCover: _hc, hasSalary: _hs, cvDiagnostico, ...appForDb } = app
   const { error } = await supabase.from('applications').upsert({ user_email: userEmail, ...appForDb })
   if (error) throw new Error(error.message)
   if (cvDiagnostico !== undefined) {

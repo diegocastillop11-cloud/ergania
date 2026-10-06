@@ -267,6 +267,7 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
   const [saveCvError, setSaveCvError] = useState('')
   const [resetKey, setResetKey] = useState(0)
   const [diagOpen, setDiagOpen] = useState(true)
+  const [confirmedKw, setConfirmedKw] = useState<string[]>([])
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const copyHtml = () => {
@@ -317,8 +318,10 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
       await api.post(`/applications/${app.id}/regenerate-cv`, {
         llmProvider,
         idioma: lang,
+        ...(confirmedKw.length ? { confirmedSkills: confirmedKw } : {}),
         ...(userApiKey ? { userApiKey } : {}),
       })
+      setConfirmedKw([])
       const { data: full } = await api.get<Application>(`/applications/${app.id}`)
       setApp(full)
       onRegenerated?.(full)
@@ -439,26 +442,63 @@ export function CvPreviewPanel({ app: initialApp, onClose, onRegenerated }: {
             </p>
           )}
         </div>
-        {!!(app.cvDiagnostico?.keywords_faltantes.length || app.cvDiagnostico?.a_confirmar.length) && (
+        {!!(app.cvDiagnostico?.keywords_cubiertas?.length || app.cvDiagnostico?.keywords_faltantes.length || app.cvDiagnostico?.a_confirmar.length) && (
           <div className="shrink-0 border-b border-[var(--border-default)] px-4 py-2 text-xs max-h-[30vh] overflow-y-auto">
             <button
               onClick={() => setDiagOpen(o => !o)}
               className="flex items-center gap-1.5 font-semibold text-amber-400"
             >
-              <AlertTriangle size={13} /> {t('careersPostulaciones.cvPreview.diagTitle')}
+              <AlertTriangle size={13} />
+              {(() => {
+                const covered = app.cvDiagnostico!.keywords_cubiertas?.length ?? 0
+                const total = covered + app.cvDiagnostico!.keywords_faltantes.length
+                return covered > 0 && total > 0
+                  ? t('careersPostulaciones.cvPreview.diagCoverage', { covered, total })
+                  : t('careersPostulaciones.cvPreview.diagTitle')
+              })()}
               {diagOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
             {diagOpen && (
               <div className="mt-2 space-y-2">
+                {!!app.cvDiagnostico!.keywords_cubiertas?.length && (
+                  <div>
+                    <p className="text-[var(--text-secondary)]">{t('careersPostulaciones.cvPreview.diagCovered')}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {app.cvDiagnostico!.keywords_cubiertas.map(k => (
+                        <span key={k} className="px-2 py-0.5 rounded-full bg-green-900/30 text-green-300 border border-green-800/50">{k}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!!app.cvDiagnostico!.keywords_faltantes.length && (
                   <div>
                     <p className="text-[var(--text-secondary)]">{t('careersPostulaciones.cvPreview.diagMissing')}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {app.cvDiagnostico!.keywords_faltantes.map(k => (
-                        <span key={k} className="px-2 py-0.5 rounded-full bg-amber-900/30 text-amber-300 border border-amber-800/50">{k}</span>
-                      ))}
+                      {app.cvDiagnostico!.keywords_faltantes.map(k => {
+                        const on = confirmedKw.includes(k)
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => setConfirmedKw(c => on ? c.filter(x => x !== k) : [...c, k])}
+                            className={`px-2 py-0.5 rounded-full border ${on ? 'bg-green-900/40 text-green-300 border-green-700' : 'bg-amber-900/30 text-amber-300 border-amber-800/50 hover:border-amber-600'}`}
+                          >
+                            {on && <Check size={11} className="inline mr-1" />}{k}
+                          </button>
+                        )
+                      })}
                     </div>
                     <p className="text-[var(--text-muted)] mt-1">{t('careersPostulaciones.cvPreview.diagMissingHint')}</p>
+                    {confirmedKw.length > 0 && (
+                      <button
+                        onClick={() => regenerate()}
+                        disabled={regenerating || editing}
+                        className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-[var(--text-primary)] rounded-lg font-medium"
+                      >
+                        {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Rocket size={13} />}
+                        {t('careersPostulaciones.cvPreview.diagRegenWith', { n: confirmedKw.length })}
+                      </button>
+                    )}
                   </div>
                 )}
                 {!!app.cvDiagnostico!.a_confirmar.length && (
@@ -1519,6 +1559,35 @@ function ApplicationCard({ app: appSummary }: { app: Omit<Application, 'cvHtml'>
               )}
             </div>
           </div>
+
+          {/* Franja "lista para postular": qué está hecho y qué falta, cada paso abre su panel */}
+          {(() => {
+            const steps = [
+              { key: 'cv', label: t('careersPostulaciones.card.readyCv'), done: !!appSummary.cvTex, open: openCv },
+              { key: 'cover', label: t('careersPostulaciones.card.readyCover'), done: !!appSummary.hasCover, open: openCoverLetter },
+              { key: 'salary', label: t('careersPostulaciones.card.readySalary'), done: !!appSummary.hasSalary, open: openSalary },
+              { key: 'prep', label: t('careersPostulaciones.card.readyPrep'), done: !!(appSummary.hasGuide || appSummary.interviewPrep), open: openPrep },
+            ]
+            const pending = steps.filter(s => !s.done).length
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 mt-3 text-[11px]">
+                <span className={pending === 0 ? 'text-green-400 font-medium' : 'text-[var(--text-muted)]'}>
+                  {pending === 0 ? t('careersPostulaciones.card.readyAll') : t('careersPostulaciones.card.readyPending', { n: pending })}
+                </span>
+                {steps.map(s => (
+                  <button
+                    key={s.key}
+                    onClick={s.open}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${s.done
+                      ? 'bg-green-900/30 text-green-300 border-green-800/50'
+                      : 'text-[var(--text-muted)] border-[var(--border-alt)] hover:text-[var(--text-primary)]'}`}
+                  >
+                    {s.done ? <Check size={10} /> : <Plus size={10} />}{s.label}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Acciones rápidas */}
           <div className="flex flex-wrap gap-2 mt-3">
