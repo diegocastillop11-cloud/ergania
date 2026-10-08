@@ -8,7 +8,18 @@
       "includeFiles": "node_modules/@sparticuz/chromium-min/**"
     }
   },
+  "headers": [
+    {
+      "source": "/ergania.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"ergania.apk\"" },
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    }
+  ],
   "rewrites": [
+    { "source": "/ergania.apk", "destination": "https://swwwpx4x0ekiwk61.public.blob.vercel-storage.com/ergania.apk" },
     { "source": "/api/(.*)", "destination": "/api/index.ts" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],

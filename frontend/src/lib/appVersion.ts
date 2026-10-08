@@ -6,4 +6,7 @@ export const ANDROID_APK_FILENAME = `ergania_v${ANDROID_APK_VERSION}.apk`
 
 // El APK ya no se commitea al repo (pasó los 100MB que permite GitHub) — vive en Vercel
 // Blob con pathname fijo "ergania.apk" así esta URL no cambia entre versiones.
-export const ANDROID_APK_URL = 'https://swwwpx4x0ekiwk61.public.blob.vercel-storage.com/ergania.apk'
+// Se sirve por nuestro dominio (rewrite en vercel.json hacia Blob) para controlar los headers
+// de descarga: desde vercel-storage.com directo, Chrome dejaba la descarga pegada en
+// "Descargando…" aunque ya hubiera bajado el 100%.
+export const ANDROID_APK_URL = 'https://www.ergania.com/ergania.apk'

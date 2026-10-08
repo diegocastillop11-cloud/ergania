@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Download, X } from 'lucide-react'
 import { useTranslation } from '../lib/i18n/LanguageContext'
-import { ANDROID_APK_VERSION, ANDROID_APK_URL } from '../lib/appVersion'
+import { ANDROID_APK_VERSION, ANDROID_APK_FILENAME, ANDROID_APK_URL } from '../lib/appVersion'
 import { logApkDownload } from '../lib/logApkDownload'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -39,8 +39,7 @@ export default function UpdateAvailableBanner() {
       <p className="text-sm text-blue-200 flex-1">{t('layout.updateBanner.text')}</p>
       <a
         href={ANDROID_APK_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+        download={ANDROID_APK_FILENAME}
         onClick={logApkDownload}
         className="text-xs font-semibold text-[var(--text-primary)] bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
       >
