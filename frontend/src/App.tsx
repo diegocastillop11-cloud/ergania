@@ -24,6 +24,7 @@ import CareersPostulaciones from './pages/careers/CareersPostulaciones'
 import CareersBusqueda from './pages/careers/CareersBusqueda'
 import Admin from './pages/Admin'
 import TermsGate from './components/legal/TermsGate'
+import MaintenanceNotice, { SITE_PAUSED } from './components/MaintenanceNotice'
 
 function Root() {
   const { user, loading } = useAuth()
@@ -59,6 +60,8 @@ function ProtectedLayout() {
 }
 
 export default function App() {
+  if (SITE_PAUSED) return <MaintenanceNotice />
+
   return (
     <Routes>
       <Route path="/" element={<Root />} />
