@@ -5,6 +5,7 @@ import yaml from 'js-yaml'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { LOCAL_MODE, createLocalClient } from '../config/localDb'
 import crypto from 'crypto'
 import { PDF_EMBEDDED_FONT_CSS } from './pdfFonts'
 import type { InterviewGuide, InterviewNotes, InterviewMeta, EmpresaInfo } from './interviewGuideService'
@@ -16,7 +17,9 @@ const execAsync = promisify(exec)
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY
-const supabase: SupabaseClient | null = SUPABASE_URL && SUPABASE_KEY
+const supabase: SupabaseClient | null = LOCAL_MODE
+  ? createLocalClient()
+  : SUPABASE_URL && SUPABASE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
   : null
 
@@ -1151,10 +1154,12 @@ export async function findEmpresaResearch(userEmail: string, empresa: string): P
     .eq('empresa', empresa)
     .not('interviewGuide', 'is', null)
     .order('updated_at', { ascending: false })
-    .limit(1)
   if (error) return null
 
-  const info = (data?.[0] as { interviewGuide?: InterviewGuide } | undefined)?.interviewGuide?.empresaInfo
+  // Una guía hecha para el cliente de una consultora investigó a otra empresa que la del
+  // registro: reusarla en otra postulación de esa consultora mostraría los valores equivocados.
+  const own = (data as { interviewGuide?: InterviewGuide }[] | null)?.find(r => !r.interviewGuide?.meta?.empresaCliente?.trim())
+  const info = own?.interviewGuide?.empresaInfo
   return info?.investigada && info.resumen ? info : null
 }
 

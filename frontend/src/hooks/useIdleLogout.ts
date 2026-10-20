@@ -13,7 +13,8 @@ export function useIdleLogout() {
   const hasSession = !!session
 
   useEffect(() => {
-    if (!hasSession) return
+    // En modo offline no hay sesión real que proteger: cerrarla solo tira al usuario a /login.
+    if (!hasSession || import.meta.env.VITE_LOCAL_MODE === '1') return
 
     localStorage.setItem(KEY, String(Date.now()))
     const mark = () => localStorage.setItem(KEY, String(Date.now()))
@@ -28,6 +29,10 @@ export function useIdleLogout() {
     }
 
     ACTIVITY_EVENTS.forEach(ev => window.addEventListener(ev, mark, { passive: true }))
+    // La guía de entrevista vive en un iframe: lo que se escribe ahí no llega a `window`,
+    // así que avisa por postMessage (ver el script de interviewGuideService).
+    const onFrameActivity = (e: MessageEvent) => { if (e.data?.type === 'ergania:activity') mark() }
+    window.addEventListener('message', onFrameActivity)
     document.addEventListener('visibilitychange', check)
     const interval = setInterval(check, 30_000)
     check()
@@ -35,6 +40,7 @@ export function useIdleLogout() {
     return () => {
       clearInterval(interval)
       ACTIVITY_EVENTS.forEach(ev => window.removeEventListener(ev, mark))
+      window.removeEventListener('message', onFrameActivity)
       document.removeEventListener('visibilitychange', check)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

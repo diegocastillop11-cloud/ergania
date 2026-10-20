@@ -18,6 +18,8 @@ export interface InterviewMeta {
   hora?: string
   modalidad?: string
   tipo?: string
+  /** Empresa final cuando el aviso lo publica una consultora/intermediaria (ej. TCIT para Deloitte). */
+  empresaCliente?: string
 }
 
 export interface InterviewNotes {
@@ -48,6 +50,41 @@ export interface EmpresaInfo {
   valores: EmpresaValor[]
   fuentes: Fuente[]
   investigada: boolean   // false = web_search no encontró datos confiables de esta empresa
+}
+
+export interface PlanPaso { texto: string; temas?: string[] }
+
+export interface TemaAprender {
+  tema: string
+  prioridad: 'critico' | 'importante' | 'deseable'
+  porQue: string
+  queEs: string
+  analogia: string
+  conceptos: { termino: string; explicacion: string }[]
+  ejemplo: string
+  preguntas: QA[]
+  practica: string[]
+  buscar: string[]
+  // Capa de profundidad (se genera en una segunda pasada por tema; los módulos viejos no la traen).
+  comoFunciona?: string
+  cuandoUsarlo?: string
+  equivalencias?: { conocido: string; nuevo: string; nota?: string }[]
+  codigo?: { titulo: string; lenguaje: string; codigo: string; explicacion: string }[]
+  laboratorio?: string[]
+  errores?: string[]
+  buenasPracticas?: string[]
+  primeraSemana?: string[]
+  autoevaluacion?: { pregunta: string; respuesta: string }[]
+}
+
+/** Módulo de estudio: los requisitos del aviso que el CV no demuestra, explicados para llegar
+ *  a la entrevista —y al primer día de trabajo— entendiéndolos. Se genera aparte de la guía
+ *  (a pedido) y se guarda en ella. */
+export interface Aprender {
+  generatedAt: string
+  intro: string
+  temas: TemaAprender[]
+  plan: (PlanPaso | string)[]
 }
 
 export interface InterviewGuide {
@@ -83,6 +120,7 @@ export interface InterviewGuide {
     noHacer: string[]
     ventaja: string
   }
+  aprender?: Aprender
 }
 
 // ── i18n mínimo del artefacto ────────────────────────────────────────────────
@@ -104,6 +142,35 @@ const ES: Dict = {
   tabFoDe: 'Fortalezas y debilidades',
   tabChecklist: 'Checklist',
   tabNotas: 'Notas',
+  tabAprender: 'Aprender',
+  aprenderTitulo: 'Lo que el cargo pide y aún no dominas',
+  aprenderVacio: 'Tu CV ya cubre lo que pide el aviso: no hay temas nuevos que estudiar para esta entrevista.',
+  prioCritico: 'Imprescindible', prioImportante: 'Importante', prioDeseable: 'Deseable',
+  porQueImporta: 'Por qué lo piden en este cargo',
+  queEsTema: 'Qué es, explicado simple',
+  analogiaLabel: 'Para que lo entiendas',
+  conceptosClave: 'Conceptos que debes manejar',
+  comoSeUsa: 'Cómo se usa en este cargo',
+  preguntasProbables: 'Qué te pueden preguntar',
+  practicaLabel: 'Practica antes de la entrevista',
+  buscarLabel: 'Qué buscar para estudiarlo',
+  planEstudio: 'Plan de estudio sugerido',
+  temasIndice: 'Temas — toca uno para estudiarlo',
+  volverTemas: '← Todos los temas',
+  verTema: 'Estudiar',
+  comoFunciona: 'Cómo funciona por dentro',
+  cuandoUsarlo: 'Cuándo usarlo (y cuándo no)',
+  equivalencias: 'Lo que ya sabes → su equivalente',
+  codigoLabel: 'Ejemplos para leer y probar',
+  laboratorio: 'Laboratorio paso a paso',
+  errores: 'Errores típicos de quien recién empieza',
+  buenasPracticas: 'Buenas prácticas',
+  primeraSemana: 'Para tu primera semana en el cargo',
+  autoevaluacion: 'Compruébate: ¿lo entendiste?',
+  respuestaLabel: 'Respuesta',
+  tema: 'Tema',
+  yaConoces: 'Ya conoces',
+  aquiEs: 'Aquí es',
   queEs: 'Qué es',
   datosClave: 'Datos clave',
   valoresCultura: 'Valores y cultura',
@@ -152,6 +219,7 @@ const ES: Dict = {
   nLibre: 'Notas libres',
   guardado: 'Guardado',
   guardando: 'Guardando…',
+  noGuardado: '⚠ No se pudo guardar en el servidor — tus notas están a salvo en este equipo',
   notasSoloApp: 'Estas notas se editan desde Ergania. Esta copia es solo lectura.',
   sinNotas: 'Todavía no escribiste notas.',
   generada: 'Guía generada el',
@@ -170,6 +238,35 @@ const EN: Dict = {
   tabFoDe: 'Strengths & weaknesses',
   tabChecklist: 'Checklist',
   tabNotas: 'Notes',
+  tabAprender: 'Learn',
+  aprenderTitulo: 'What the role asks for that you do not know yet',
+  aprenderVacio: 'Your CV already covers what the posting asks for: no new topics to study for this interview.',
+  prioCritico: 'Essential', prioImportante: 'Important', prioDeseable: 'Nice to have',
+  porQueImporta: 'Why this role asks for it',
+  queEsTema: 'What it is, in plain words',
+  analogiaLabel: 'To help it click',
+  conceptosClave: 'Concepts you should know',
+  comoSeUsa: 'How it is used in this role',
+  preguntasProbables: 'What they might ask you',
+  practicaLabel: 'Practice before the interview',
+  buscarLabel: 'What to search to study it',
+  planEstudio: 'Suggested study plan',
+  temasIndice: 'Topics — tap one to study it',
+  volverTemas: '← All topics',
+  verTema: 'Study',
+  comoFunciona: 'How it works under the hood',
+  cuandoUsarlo: 'When to use it (and when not)',
+  equivalencias: 'What you already know → its equivalent',
+  codigoLabel: 'Examples to read and try',
+  laboratorio: 'Step-by-step lab',
+  errores: 'Common beginner mistakes',
+  buenasPracticas: 'Best practices',
+  primeraSemana: 'For your first week on the job',
+  autoevaluacion: 'Check yourself: did it click?',
+  respuestaLabel: 'Answer',
+  tema: 'Topic',
+  yaConoces: 'You know',
+  aquiEs: 'Here it is',
   queEs: 'What it is',
   datosClave: 'Key facts',
   valoresCultura: 'Values & culture',
@@ -218,6 +315,7 @@ const EN: Dict = {
   nLibre: 'Free notes',
   guardado: 'Saved',
   guardando: 'Saving…',
+  noGuardado: '⚠ Could not save to the server — your notes are safe on this device',
   notasSoloApp: 'These notes are edited from Ergania. This copy is read-only.',
   sinNotas: "You haven't written any notes yet.",
   generada: 'Guide generated on',
@@ -250,7 +348,18 @@ function deepStrip<T>(v: T): T {
  *  guardadas con el marcado adentro y obligar a regenerarlas costaría tokens por un bug de
  *  presentación. `meta` queda fuera: eso lo escribió el usuario y no se le toca. */
 function sanitizeGuide(g: InterviewGuide): InterviewGuide {
-  return { ...deepStrip(g), meta: g.meta }
+  const out: InterviewGuide = { ...deepStrip(g), meta: g.meta }
+  // El código se muestra tal cual: stripCitations le comería `[0]`, la indentación y los espacios
+  // antes de `)`, y un ejemplo roto es peor que ninguno.
+  if (g.aprender && out.aprender) {
+    out.aprender = {
+      ...out.aprender,
+      temas: out.aprender.temas.map((t, i) => t.codigo
+        ? { ...t, codigo: t.codigo.map((c, j) => ({ ...c, codigo: g.aprender!.temas[i].codigo![j].codigo })) }
+        : t),
+    }
+  }
+  return out
 }
 
 function esc(s: unknown): string {
@@ -372,6 +481,39 @@ body{
 .checklist li:last-child{border-bottom:none}
 .checklist li::before{content:'☐';flex-shrink:0;color:var(--accent-2);font-size:15px;line-height:1.5}
 .checklist.no li::before{content:'✕';color:var(--bad);font-weight:700;font-size:13px}
+.prio{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 9px;border-radius:10px;margin-left:8px;vertical-align:middle}
+.prio.critico{background:var(--bad-soft);color:var(--bad)}
+.prio.importante{background:var(--warn-soft);color:var(--warn-ink)}
+.prio.deseable{background:var(--ok-soft);color:var(--ok)}
+.tema-sub{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-muted);margin:16px 0 6px}
+.tema{display:none}
+.tema.active{display:block}
+.tema-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:0 0 18px}
+.tema-tile{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;padding:16px 18px;cursor:pointer;font-family:inherit;color:var(--ink);transition:border-color .15s,transform .15s}
+.tema-tile:hover{border-color:var(--accent-2);transform:translateY(-1px)}
+.tema-tile .t-nombre{font-size:16px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tema-tile .t-desc{font-size:13px;color:var(--ink-sub);line-height:1.5}
+.tema-tile .t-ir{font-size:12px;font-weight:700;color:var(--accent-ink);margin-top:10px;display:block}
+.tema-back{background:none;border:none;color:var(--accent-ink);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:6px 0;margin-bottom:10px}
+.tema-back:hover{text-decoration:underline}
+.plan-paso{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px;color:var(--ink-sub);line-height:1.55}
+.plan-paso:last-child{border-bottom:none}
+.plan-paso::before{content:'☐';flex-shrink:0;color:var(--accent-2);font-size:15px}
+.plan-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.plan-link{background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2);border-radius:16px;padding:3px 11px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.plan-link:hover{border-color:var(--accent-2)}
+.equiv{width:100%;border-collapse:collapse;font-size:14px;margin-top:4px}
+.equiv th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted);padding:6px 10px;border-bottom:1px solid var(--line-2)}
+.equiv td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-sub);line-height:1.5}
+.equiv td:first-child{color:var(--ink);font-weight:600}
+.code-block{margin:10px 0 14px}
+.code-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.code-block pre{background:var(--footer);border:1px solid var(--line-2);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:13px;line-height:1.55;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre}
+.code-note{font-size:13px;color:var(--ink-sub);margin-top:6px;line-height:1.55}
+.lab-step{counter-increment:lab;display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px;color:var(--ink-sub);line-height:1.55}
+.lab-step:last-child{border-bottom:none}
+.lab-step::before{content:counter(lab);flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+.lab{counter-reset:lab}
 .valor-card{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:10px}
 .valor-nombre{font-size:15px;font-weight:700;margin-bottom:4px;color:var(--ink)}
 .valor-desc{font-size:13px;color:var(--ink-sub);line-height:1.55;margin-bottom:8px}
@@ -430,6 +572,9 @@ textarea.nota-input{min-height:170px;resize:vertical}
   .section:first-of-type{page-break-before:avoid}
   .content{max-width:100%;padding:12px 0}
   .card,.q-block,.valor-card,.stat-box,.highlight,.alerta{page-break-inside:avoid}
+  .tema{display:block !important;page-break-before:always}
+  #tema-indice,.tema-back,.t-ir{display:none !important}
+  .code-block pre{white-space:pre-wrap;word-break:break-word;background:#F7F7FB}
   .tl-dot{color:#fff}
   .nota-input{border:1px solid var(--line-2);min-height:auto}
   a{text-decoration:none}
@@ -653,6 +798,94 @@ function sectionNotas(notes: InterviewNotes, T: Dict, editable: boolean): string
 </div>`
 }
 
+function planPasos(a: Aprender): PlanPaso[] {
+  return (a.plan || []).map(p => (typeof p === 'string' ? { texto: p } : p)).filter(p => p?.texto)
+}
+
+function temaCard(t: TemaAprender, i: number, T: Dict): string {
+  const prioLabel: Record<TemaAprender['prioridad'], string> = { critico: T.prioCritico, importante: T.prioImportante, deseable: T.prioDeseable }
+  const sub = (label: string, body: string) => body ? `<div class="tema-sub">${label}</div>${body}` : ''
+  const text = (v?: string) => v ? `<div class="r-text">${rich(v)}</div>` : ''
+
+  const conceptos = t.conceptos?.length
+    ? t.conceptos.map(c => `<div class="valor-card"><div class="valor-nombre">${esc(c.termino)}</div><div class="valor-desc">${rich(c.explicacion)}</div></div>`).join('')
+    : ''
+  const equiv = t.equivalencias?.length
+    ? `<table class="equiv"><tr><th>${T.yaConoces}</th><th>${T.aquiEs}</th></tr>${
+        t.equivalencias.map(e => `<tr><td>${esc(e.conocido)}</td><td>${esc(e.nuevo)}${e.nota ? `<br><span style="font-size:12px;color:var(--ink-muted)">${rich(e.nota)}</span>` : ''}</td></tr>`).join('')
+      }</table>`
+    : ''
+  const codigo = t.codigo?.length
+    ? t.codigo.map(c => `<div class="code-block">
+        <div class="code-title">${esc(c.titulo)}${c.lenguaje ? ` <span style="color:var(--ink-muted);font-weight:500">· ${esc(c.lenguaje)}</span>` : ''}</div>
+        <pre><code>${esc(c.codigo)}</code></pre>
+        ${c.explicacion ? `<div class="code-note">${rich(c.explicacion)}</div>` : ''}
+      </div>`).join('')
+    : ''
+  const lab = t.laboratorio?.length
+    ? `<div class="lab">${t.laboratorio.map(p => `<div class="lab-step"><span>${rich(p)}</span></div>`).join('')}</div>`
+    : ''
+  const quiz = t.autoevaluacion?.length
+    ? t.autoevaluacion.map(q => `<div class="q-block"><div class="q-text">${esc(q.pregunta)}</div><div class="r-label">${T.respuestaLabel}</div><div class="r-text">${rich(q.respuesta)}</div></div>`).join('')
+    : ''
+
+  const body = [
+    sub(T.porQueImporta, text(t.porQue)),
+    sub(T.queEsTema, text(t.queEs)),
+    t.analogia ? `<div class="highlight"><strong>${T.analogiaLabel}:</strong> ${rich(t.analogia)}</div>` : '',
+    sub(T.equivalencias, equiv),
+    sub(T.comoFunciona, text(t.comoFunciona)),
+    sub(T.conceptosClave, conceptos),
+    sub(T.cuandoUsarlo, text(t.cuandoUsarlo)),
+    sub(T.comoSeUsa, text(t.ejemplo)),
+    sub(T.codigoLabel, codigo),
+    sub(T.laboratorio, lab),
+    sub(T.errores, list(t.errores, 'no')),
+    sub(T.buenasPracticas, list(t.buenasPracticas)),
+    sub(T.primeraSemana, list(t.primeraSemana)),
+    sub(T.preguntasProbables, t.preguntas?.map(q => qaBlock(q, T)).join('')),
+    sub(T.autoevaluacion, quiz),
+    sub(T.practicaLabel, list(t.practica)),
+    t.buscar?.length ? sub(T.buscarLabel, `<div class="chips">${t.buscar.map(b => `<span class="chip">${esc(b)}</span>`).join('')}</div>`) : '',
+  ].join('')
+
+  return `<div id="tema-${i}" class="tema">
+  <button type="button" class="tema-back" data-tema-back="1">${T.volverTemas}</button>
+  <div class="card"><div class="card-title">${esc(t.tema)}<span class="prio ${esc(t.prioridad)}">${esc(prioLabel[t.prioridad] ?? '')}</span></div>${body}</div>
+  <button type="button" class="tema-back" data-tema-back="1">${T.volverTemas}</button>
+</div>`
+}
+
+function sectionAprender(g: InterviewGuide, T: Dict): string {
+  const a = g.aprender
+  if (!a) return ''
+  const prioLabel: Record<TemaAprender['prioridad'], string> = { critico: T.prioCritico, importante: T.prioImportante, deseable: T.prioDeseable }
+  const indexOf = (name: string) => a.temas.findIndex(t => t.tema.trim().toLowerCase() === name.trim().toLowerCase())
+
+  const tiles = a.temas.map((t, i) => `<button type="button" class="tema-tile" data-tema="tema-${i}">
+    <div class="t-nombre">${esc(t.tema)}<span class="prio ${esc(t.prioridad)}" style="margin-left:0">${esc(prioLabel[t.prioridad] ?? '')}</span></div>
+    <div class="t-desc">${esc((t.porQue || t.queEs || '').slice(0, 150))}${(t.porQue || t.queEs || '').length > 150 ? '…' : ''}</div>
+    <span class="t-ir">${T.verTema} →</span>
+  </button>`).join('')
+
+  const pasos = planPasos(a).map(p => {
+    const links = (p.temas || []).map(n => ({ n, i: indexOf(n) })).filter(x => x.i >= 0)
+    return `<div class="plan-paso"><div><div>${rich(p.texto)}</div>${
+      links.length ? `<div class="plan-links">${links.map(x => `<button type="button" class="plan-link" data-tema="tema-${x.i}">${esc(a.temas[x.i].tema)} →</button>`).join('')}</div>` : ''
+    }</div></div>`
+  }).join('')
+
+  return `<div id="aprender" class="section">
+  <div id="tema-indice">
+    <div class="section-title">${T.aprenderTitulo}</div>
+    ${a.intro ? `<div class="section-sub">${rich(a.intro)}</div>` : ''}
+    ${a.temas.length ? `<div class="tema-sub" style="margin-top:6px">${T.temasIndice}</div><div class="tema-grid">${tiles}</div>` : `<div class="alerta"><span>✅</span><span>${T.aprenderVacio}</span></div>`}
+    ${pasos ? card(T.planEstudio, pasos, 'destacado') : ''}
+  </div>
+  ${a.temas.map((t, i) => temaCard(t, i, T)).join('')}
+</div>`
+}
+
 // ── índice del buscador ──────────────────────────────────────────────────────
 // Se construye en el servidor desde el JSON para que el buscador del artefacto no tenga
 // que recorrer el DOM: busca sobre texto plano ya normalizado.
@@ -683,6 +916,7 @@ function buildSearchIndex(g: InterviewGuide, T: Dict): IndexEntry[] {
   push(T.prepMental, 'checklist', g.checklist.mental?.join(' '))
   push(T.logistica, 'checklist', g.checklist.logistica?.join(' '))
   push(T.noHacer, 'checklist', g.checklist.noHacer?.join(' '))
+  g.aprender?.temas?.forEach((t, i) => push(t.tema, `aprender#tema-${i}`, t.queEs, t.porQue, t.analogia, t.comoFunciona, t.cuandoUsarlo, t.conceptos?.map(c => `${c.termino} ${c.explicacion}`).join(' '), t.equivalencias?.map(e => `${e.conocido} ${e.nuevo}`).join(' '), t.errores?.join(' '), t.buenasPracticas?.join(' ')))
 
   return idx
 }
@@ -693,6 +927,8 @@ export interface BuildOptions {
   /** 'app' = notas editables + postMessage al padre. 'standalone' = descarga/PDF, solo lectura. */
   mode: 'app' | 'standalone'
   notes?: InterviewNotes
+  /** Pestaña que se abre al cargar (por defecto la de la empresa). */
+  initialTab?: string
 }
 
 export function buildInterviewGuideHtml(rawGuide: InterviewGuide, opts: BuildOptions): string {
@@ -709,6 +945,7 @@ export function buildInterviewGuideHtml(rawGuide: InterviewGuide, opts: BuildOpt
     { id: 'escenarios', label: T.tabEscenarios },
     { id: 'fode',       label: T.tabFoDe },
     { id: 'checklist',  label: T.tabChecklist },
+    ...(g.aprender ? [{ id: 'aprender', label: T.tabAprender }] : []),
     { id: 'notas',      label: T.tabNotas },
   ]
 
@@ -766,6 +1003,7 @@ ${sectionPreguntas(g, T)}
 ${sectionEscenarios(g, T)}
 ${sectionFoDe(g, T)}
 ${sectionChecklist(g, T)}
+${sectionAprender(g, T)}
 ${sectionNotas(notes, T, editable)}
 <div class="pie">Ergania · ${T.generada} ${esc(fechaGen)}</div>
 </div>
@@ -777,18 +1015,41 @@ ${sectionNotas(notes, T, editable)}
   var INDICE = ${JSON.stringify(idx)};
   var EDITABLE = ${editable ? 'true' : 'false'};
   var NOTE_IDS = ${JSON.stringify(noteIds)};
-  var T = ${JSON.stringify({ sinResultados: T.sinResultados, guardado: T.guardado, guardando: T.guardando })};
+  var INITIAL = ${JSON.stringify(opts.initialTab && (!opts.initialTab.startsWith('aprender') || g.aprender) ? opts.initialTab : '')};
+  var T = ${JSON.stringify({ sinResultados: T.sinResultados, guardado: T.guardado, guardando: T.guardando, noGuardado: T.noGuardado })};
 
-  function show(tab){
+  function openTema(id){
+    var ts = document.querySelectorAll('.tema');
+    for (var a=0;a<ts.length;a++) ts[a].classList.remove('active');
+    var ind = document.getElementById('tema-indice');
+    if (id) {
+      var t = document.getElementById(id);
+      if (t) { t.classList.add('active'); if (ind) ind.style.display = 'none'; return; }
+    }
+    if (ind) ind.style.display = '';
+  }
+
+  function show(dest){
+    var parts = String(dest).split('#');
+    var tab = parts[0];
     var secs = document.querySelectorAll('.section');
     for (var i=0;i<secs.length;i++) secs[i].classList.remove('active');
     var btns = document.querySelectorAll('.tab-btn');
     for (var j=0;j<btns.length;j++) btns[j].classList.toggle('active', btns[j].getAttribute('data-tab') === tab);
     var el = document.getElementById(tab);
     if (el) el.classList.add('active');
+    if (tab === 'aprender') openTema(parts[1] || '');
     cerrar();
     window.scrollTo({top:0, behavior:'smooth'});
   }
+
+  document.addEventListener('click', function(e){
+    var n = e.target;
+    while (n && n !== document && !(n.getAttribute && (n.getAttribute('data-tema') || n.getAttribute('data-tema-back')))) n = n.parentNode;
+    if (!n || n === document) return;
+    var id = n.getAttribute('data-tema');
+    show('aprender' + (id ? '#' + id : ''));
+  });
 
   var btns = document.querySelectorAll('.tab-btn');
   for (var k=0;k<btns.length;k++) {
@@ -830,7 +1091,7 @@ ${sectionNotas(notes, T, editable)}
     resEl.innerHTML = out.map(function(m){
       return '<div class="result-item" data-go="' + m.item.tab + '">' +
         '<div><div class="result-title">' + escapeHtml(m.item.t) + '</div>' +
-        '<div class="result-sec">' + escapeHtml(m.item.tab) + '</div></div>' +
+        '<div class="result-sec">' + escapeHtml(m.item.tab.split('#')[0]) + '</div></div>' +
         '<div class="result-ir">IR →</div></div>';
     }).join('');
     resEl.style.display = 'block';
@@ -843,6 +1104,8 @@ ${sectionNotas(notes, T, editable)}
   if (input) input.addEventListener('input', function(){ buscar(this.value); });
   if (btnC) btnC.addEventListener('click', cerrar);
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') cerrar(); });
+
+  if (INITIAL) show(INITIAL);
 
   // ── Notas ──
   // El iframe corre con srcDoc, así que comparte origen con la app: postMessage al padre
@@ -875,7 +1138,24 @@ ${sectionNotas(notes, T, editable)}
       if (el) el.addEventListener('input', agendar);
     }
 
+    // Escribir acá no llega al window de la app: sin este aviso su contador de inactividad
+    // cerraba la sesión a los 15 min aunque se estuviera tomando notas.
+    var ultimoPing = 0;
+    function ping(){
+      var ahora = Date.now();
+      if (ahora - ultimoPing < 10000) return;
+      ultimoPing = ahora;
+      window.parent.postMessage({ type: 'ergania:activity' }, '*');
+    }
+    ['mousedown','keydown','scroll','touchstart'].forEach(function(ev){
+      document.addEventListener(ev, ping, { passive: true });
+    });
+
     window.addEventListener('message', function(e){
+      if (e.data && e.data.type === 'ergania:notes-failed') {
+        marcar(T.noGuardado, true);
+        return;
+      }
       if (e.data && e.data.type === 'ergania:notes-saved') {
         marcar(T.guardado, true);
         setTimeout(function(){ marcar('', false); }, 1600);

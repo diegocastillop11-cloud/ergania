@@ -2834,9 +2834,14 @@ export const parseCv = async (req: Request, res: Response) => {
       // se extrae directamente de la imagen vía visión de Claude — sin OCR intermedio
     } else if (mime === 'application/pdf') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
-      const parsed = await pdfParse(file.buffer)
-      rawText = parsed.text
+      // v1 (raíz, Vercel) exporta una función; v2 (backend/node_modules) exporta la clase PDFParse.
+      const pdfMod = require('pdf-parse')
+      if (typeof pdfMod === 'function') {
+        rawText = (await pdfMod(file.buffer)).text
+      } else {
+        const parser = new pdfMod.PDFParse({ data: new Uint8Array(file.buffer) })
+        try { rawText = (await parser.getText()).text } finally { await parser.destroy() }
+      }
     } else if (
       mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       mime === 'application/msword'

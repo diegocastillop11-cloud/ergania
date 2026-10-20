@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 
 // Aviso de pausa del proyecto. Para reactivar el sitio basta con poner esto en false.
-export const SITE_PAUSED = true
+// El modo offline (npm run local) es la copia personal del dueño: la pausa no le aplica.
+export const SITE_PAUSED = import.meta.env.VITE_LOCAL_MODE !== '1'
 
 export default function MaintenanceNotice() {
   useEffect(() => {

@@ -8,7 +8,7 @@ import {
   getLlmClient, getProviderFromRequest, friendlyAiError,
 } from './careersController'
 import { stripCitations } from '../services/interviewGuideService'
-import type { InterviewGuide, InterviewMeta, InterviewNotes, EmpresaInfo } from '../services/interviewGuideService'
+import type { InterviewGuide, InterviewMeta, InterviewNotes, EmpresaInfo, Aprender, TemaAprender, PlanPaso } from '../services/interviewGuideService'
 
 // El modelo a veces envuelve el JSON en ```json, a veces en ``` pelado, a veces lo escupe
 // directo. Mismo problema (y misma defensa) que en evaluateJob.
@@ -58,6 +58,7 @@ function cleanMeta(raw: unknown): InterviewMeta {
     hora: take('hora'),
     modalidad: take('modalidad'),
     tipo: take('tipo'),
+    empresaCliente: take('empresaCliente'),
   }
 }
 
@@ -76,6 +77,10 @@ function cleanNotes(raw: unknown): InterviewNotes {
     libre: take('libre'),
   }
 }
+
+/** A quién se prepara la entrevista: el cliente final si el aviso lo publica una consultora
+ *  (TCIT → Deloitte), si no la empresa de la postulación. */
+const empresaObjetivo = (app: svc.Application, meta: InterviewMeta) => meta.empresaCliente?.trim() || app.empresa
 
 // ── 1. Investigación de la empresa (la única llamada que gasta web_search) ────
 
@@ -233,6 +238,7 @@ async function generateGuideBody(
   moneda: string,
   idioma: 'es' | 'en',
 ): Promise<Record<string, unknown> | null> {
+  const objetivo = empresaObjetivo(app, meta)
   const idiomaRule = idioma === 'en'
     ? 'IMPORTANTE: la entrevista será en INGLÉS. Escribe TODO el contenido en inglés profesional, con las respuestas listas para decirse tal cual.'
     : 'Escribe en español neutro profesional chileno (sin voseo).'
@@ -268,8 +274,13 @@ Reglas:
 ${idiomaRule}`,
     messages: [{
       role: 'user',
-      content: `Prepara al candidato para su entrevista en ${app.empresa} — cargo: ${app.rol}.
-
+      content: `Prepara al candidato para su entrevista en ${objetivo} — cargo: ${app.rol}.
+${objetivo !== app.empresa ? `
+OJO: el aviso lo publica ${app.empresa}, una empresa intermediaria, pero el candidato trabajaría para su
+cliente final, ${objetivo}. Prepara TODA la guía para ${objetivo}: su cultura, valores y por qué quiere
+trabajar ahí. ${app.empresa} solo se menciona como la consultora que gestiona el proceso, nunca como el
+destino del candidato.
+` : ''}
 ${foco}
 
 ${investigacion}
@@ -305,7 +316,7 @@ Responde SOLO con este JSON, sin texto antes ni después:
       { "etiqueta": "Quién soy", "texto": "..." },
       { "etiqueta": "Mi experiencia más potente", "texto": "..." },
       { "etiqueta": "Mi diferencial", "texto": "..." },
-      { "etiqueta": "Por qué ${app.empresa}", "texto": "..." }
+      { "etiqueta": "Por qué ${objetivo}", "texto": "..." }
     ],
     "numerosClave": ["cifra real del CV que debe memorizar", "..."]
   },
@@ -374,7 +385,7 @@ function buildGuide(
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
-    empresa: app.empresa,
+    empresa: empresaObjetivo(app, meta),
     rol: app.rol,
     idioma,
     meta,
@@ -438,8 +449,12 @@ export const researchInterviewCompany = async (req: Request, res: Response) => {
       ? req.body.idioma
       : app.idioma || country.idioma
 
+    const meta = cleanMeta(req.body?.meta ?? app.interviewMeta)
+    const objetivo = empresaObjetivo(app, meta)
+    const conCliente = objetivo !== app.empresa
+
     // Investigación ya pagada para esta empresa en otra postulación del usuario.
-    if (req.body?.reinvestigar !== true) {
+    if (req.body?.reinvestigar !== true && !conCliente) {
       // Se re-limpia: las guías generadas antes del fix quedaron guardadas con el marcado
       // <cite> adentro, y reusarlas tal cual lo volvería a meter en la guía nueva.
       const cached = await svc.findEmpresaResearch(userEmail, app.empresa)
@@ -448,7 +463,7 @@ export const researchInterviewCompany = async (req: Request, res: Response) => {
 
     let empresaInfo: EmpresaInfo
     try {
-      empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
+      empresaInfo = await researchEmpresa(req, objetivo, app.rol, country.nombre, idioma)
     } catch (err) {
       // La guía se puede armar igual sin investigación; no vale la pena abortar el flujo.
       console.error('researchEmpresa error:', err)
@@ -483,14 +498,16 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
     // La investigación viene del paso 1 (POST .../research). Se acepta del cliente para no
     // repetir la búsqueda ya pagada, pero se re-normaliza acá y todo se escapa al renderizar.
     // Si no viene (cliente viejo), se busca inline aceptando que la request tarda más.
+    const objetivo = empresaObjetivo(app, meta)
+    const conCliente = objetivo !== app.empresa
     let empresaInfo = cleanEmpresaInfo(req.body?.empresaInfo)
     if (!empresaInfo.investigada) {
-      const cached = req.body?.reinvestigar === true ? null : await svc.findEmpresaResearch(userEmail, app.empresa)
+      const cached = req.body?.reinvestigar === true || conCliente ? null : await svc.findEmpresaResearch(userEmail, app.empresa)
       if (cached) {
         empresaInfo = cleanEmpresaInfo(cached)
       } else if (req.body?.empresaInfo === undefined) {
         try {
-          empresaInfo = await researchEmpresa(req, app.empresa, app.rol, country.nombre, idioma)
+          empresaInfo = await researchEmpresa(req, objetivo, app.rol, country.nombre, idioma)
         } catch (err) {
           // Que se caiga la búsqueda no puede tumbar la guía entera: el resto sale igual,
           // con la tab de empresa avisando que no hay datos.
@@ -510,6 +527,8 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
       return res.status(502).json({ error: 'La guía salió incompleta. Intenta generarla de nuevo.' })
     }
 
+    // El módulo de estudio depende del aviso y del CV, no del cuerpo de la guía: se conserva.
+    if (app.interviewGuide?.aprender) g.aprender = app.interviewGuide.aprender
     app.interviewGuide = g
     app.interviewMeta = meta
     app.estado = 'Preparado'
@@ -522,6 +541,276 @@ export const generateInterviewGuide = async (req: Request, res: Response) => {
     })
   } catch (err: unknown) {
     console.error('generateInterviewGuide error:', err)
+    if (!res.headersSent) {
+      res.status((err as { status?: number }).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
+    }
+  }
+}
+
+// ── 3. Módulo "Aprender" ─────────────────────────────────────────────────────
+// Dos pasadas a propósito: un esquema corto (qué temas faltan y en qué orden estudiarlos) y
+// después UNA llamada por tema, en paralelo, para que cada uno salga con la profundidad de un
+// mini-curso. Un solo prompt con 8 temas a fondo no cabe en el maxDuration de 300s de la función.
+
+type Ctx = { app: svc.Application; cv: string; profile: unknown; meta: InterviewMeta; idioma: 'es' | 'en' }
+
+const LEARN_RULES = `Reglas:
+- Explicas desde cero, sin jerga innecesaria, como a alguien inteligente que simplemente no ha trabajado
+  con eso. Defines cada término técnico la primera vez que aparece.
+- Todo se ancla en lo que el candidato SÍ sabe según su CV: las analogías y equivalencias comparan lo nuevo
+  con herramientas o experiencias reales suyas.
+- Nunca inventes datos de los que no estés seguro: versiones, precios, límites numéricos, fechas, nombres
+  de parámetros. Si dudas, explica el concepto sin el detalle. No incluyas URLs.
+- Las respuestas a preguntas de entrevista son HONESTAS: nunca le hagas decir que tiene experiencia que su
+  CV no respalda. Fórmula: lo cercano que sí hizo → que entiende el concepto y cuándo se usa → disposición
+  concreta a aprenderlo. Sonar seguro sin mentir.`
+
+function learnLang(idioma: 'es' | 'en'): string {
+  return idioma === 'en' ? 'Write EVERYTHING in clear English.' : 'Escribe en español neutro profesional chileno (sin voseo).'
+}
+
+function jobContext({ app, cv, profile, meta }: Ctx): string {
+  const objetivo = empresaObjetivo(app, meta)
+  return `Cargo: ${app.rol} en ${objetivo}${objetivo !== app.empresa ? ` (publicado por ${app.empresa})` : ''}.
+
+AVISO DEL CARGO:
+${app.jd}
+
+CV DEL CANDIDATO:
+${cv}
+
+PERFIL: ${JSON.stringify(profile)}`
+}
+
+interface Outline { intro: string; plan: PlanPaso[]; temas: { tema: string; prioridad: TemaAprender['prioridad']; porQue: string; enfoque: string }[] }
+
+async function generateLearningOutline(req: Request, ctx: Ctx): Promise<Outline | null> {
+  const cuando = [ctx.meta.fecha, ctx.meta.hora].filter(Boolean).join(' ')
+  const message = await getLlmClient(req).messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 4000,
+    system: `Eres un mentor técnico que arma el plan de estudio de un candidato para que llegue preparado a la
+entrevista y a su primer día de trabajo. Decides QUÉ tiene que aprender y en qué orden.
+
+${LEARN_RULES}
+- Eliges SOLO requisitos, tecnologías o habilidades del aviso que el CV no demuestra o demuestra de forma
+  parcial. Lo que el CV ya acredita no se enseña.
+${learnLang(ctx.idioma)}`,
+    messages: [{
+      role: 'user',
+      content: `${jobContext(ctx)}
+
+${cuando ? `La entrevista es: ${cuando}. Ajusta el plan al tiempo que queda.` : 'No se conoce la fecha de la entrevista: arma el plan para unos 3 días.'}
+
+Responde SOLO con este JSON:
+\`\`\`json
+{
+  "intro": "1-2 frases: qué brechas hay entre el aviso y el CV, y la buena noticia (qué sí cubre ya).",
+  "plan": [{ "texto": "Día 1 mañana (2h): qué estudiar y qué hacer", "temas": ["nombre EXACTO de un tema de abajo"] }],
+  "temas": [
+    {
+      "tema": "Nombre corto (ej: BigQuery)",
+      "prioridad": "critico | importante | deseable",
+      "porQue": "Por qué ESTE cargo lo pide y qué hace la gente en ese rol con eso (1-2 frases)",
+      "enfoque": "Qué subtemas hay que cubrir para dominarlo a nivel de trabajo (lista breve separada por comas)"
+    }
+  ]
+}
+\`\`\`
+
+Máximo 8 temas, ordenados de "critico" a "deseable". Una pieza de plataforma = un tema si importa por
+separado; agrupa las menores. En "plan" cada paso nombra en "temas" los temas que cubre, con el nombre
+exacto. Si el CV ya cubre todo lo que pide el aviso, responde "temas": [] y explícalo en "intro".`,
+    }],
+  })
+
+  const raw = extractJson<Record<string, unknown>>(textOf(message))
+  if (!raw) return null
+  const prios: TemaAprender['prioridad'][] = ['critico', 'importante', 'deseable']
+  return {
+    intro: asString(raw.intro).trim(),
+    plan: asArray<Record<string, unknown> | string>(raw.plan).slice(0, 8).map(p => typeof p === 'string'
+      ? { texto: asString(p).trim() }
+      : { texto: asString(p.texto).trim(), temas: asArray<unknown>(p.temas).map(asString).map(s => s.trim()).filter(Boolean) })
+      .filter(p => p.texto),
+    temas: asArray<Record<string, unknown>>(raw.temas).slice(0, 8).map(t => ({
+      tema: asString(t.tema).trim(),
+      prioridad: prios.includes(t.prioridad as TemaAprender['prioridad']) ? t.prioridad as TemaAprender['prioridad'] : 'importante',
+      porQue: asString(t.porQue).trim(),
+      enfoque: asString(t.enfoque).trim(),
+    })).filter(t => t.tema),
+  }
+}
+
+function cleanTema(raw: Record<string, unknown>, base: Outline['temas'][number]): TemaAprender {
+  const strList = (v: unknown, max: number) => asArray<unknown>(v).map(asString).map(s => s.trim()).filter(Boolean).slice(0, max)
+  const qa = (v: unknown, max: number) => asArray<Record<string, unknown>>(v).slice(0, max)
+    .map(q => ({ pregunta: asString(q.pregunta).trim(), respuesta: asString(q.respuesta).trim(), tip: asString(q.tip).trim() || undefined }))
+    .filter(q => q.pregunta && q.respuesta)
+
+  return {
+    tema: base.tema,
+    prioridad: base.prioridad,
+    porQue: asString(raw.porQue).trim() || base.porQue,
+    queEs: asString(raw.queEs).trim(),
+    analogia: asString(raw.analogia).trim(),
+    comoFunciona: asString(raw.comoFunciona).trim() || undefined,
+    cuandoUsarlo: asString(raw.cuandoUsarlo).trim() || undefined,
+    equivalencias: asArray<Record<string, unknown>>(raw.equivalencias).slice(0, 8)
+      .map(e => ({ conocido: asString(e.conocido).trim(), nuevo: asString(e.nuevo).trim(), nota: asString(e.nota).trim() || undefined }))
+      .filter(e => e.conocido && e.nuevo),
+    conceptos: asArray<Record<string, unknown>>(raw.conceptos).slice(0, 12)
+      .map(c => ({ termino: asString(c.termino).trim(), explicacion: asString(c.explicacion).trim() }))
+      .filter(c => c.termino && c.explicacion),
+    ejemplo: asString(raw.ejemplo).trim(),
+    // El código se guarda tal cual: asString le quitaría marcado de citas, no espacios ni saltos de línea.
+    codigo: asArray<Record<string, unknown>>(raw.codigo).slice(0, 4)
+      .map(c => ({
+        titulo: asString(c.titulo).trim(),
+        lenguaje: asString(c.lenguaje).trim(),
+        codigo: typeof c.codigo === 'string' ? c.codigo.replace(/\s+$/, '') : '',
+        explicacion: asString(c.explicacion).trim(),
+      }))
+      .filter(c => c.titulo && c.codigo),
+    laboratorio: strList(raw.laboratorio, 10),
+    errores: strList(raw.errores, 8),
+    buenasPracticas: strList(raw.buenasPracticas, 8),
+    primeraSemana: strList(raw.primeraSemana, 8),
+    preguntas: qa(raw.preguntas, 4),
+    autoevaluacion: asArray<Record<string, unknown>>(raw.autoevaluacion).slice(0, 6)
+      .map(q => ({ pregunta: asString(q.pregunta).trim(), respuesta: asString(q.respuesta).trim() }))
+      .filter(q => q.pregunta && q.respuesta),
+    practica: strList(raw.practica, 4),
+    buscar: strList(raw.buscar, 6),
+  }
+}
+
+async function generateLearningTopic(req: Request, ctx: Ctx, base: Outline['temas'][number], otros: string[]): Promise<TemaAprender> {
+  const message = await getLlmClient(req).messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 9000,
+    system: `Eres un mentor técnico escribiendo el capítulo de un mini-curso para UN tema. Al terminar de leerlo,
+alguien que nunca lo usó debe poder explicarlo en una entrevista y empezar a trabajar con ello.
+
+${LEARN_RULES}
+- Profundidad real: explica cómo funciona por dentro, cuándo usarlo y cuándo no, los errores típicos de quien
+  empieza y las buenas prácticas de quien ya lo hace en producción.
+- Los ejemplos de código son cortos, estándar y verificables (consultas, comandos, fragmentos). Usa solo
+  sintaxis que conozcas con certeza; si dudas de un parámetro, descríbelo en prosa en vez de escribirlo.
+${learnLang(ctx.idioma)}`,
+    messages: [{
+      role: 'user',
+      content: `${jobContext(ctx)}
+
+TEMA A ESCRIBIR: ${base.tema} (prioridad: ${base.prioridad})
+Por qué lo pide este cargo: ${base.porQue}
+Subtemas a cubrir: ${base.enfoque || 'los fundamentos y el uso típico en este cargo'}
+Otros temas del plan (no los expliques aquí, solo referencia si hace falta): ${otros.join(', ') || '—'}
+
+Responde SOLO con este JSON:
+\`\`\`json
+{
+  "porQue": "Por qué este cargo lo pide y qué hace la gente en ese rol con eso",
+  "queEs": "Qué es, en 2-3 párrafos cortos, sin asumir que lo conoce. Separa párrafos con \\n\\n",
+  "analogia": "Comparación con algo que el candidato SÍ conoce según su CV",
+  "equivalencias": [{ "conocido": "herramienta/concepto de su CV", "nuevo": "su equivalente en este tema", "nota": "diferencia clave a tener presente" }],
+  "comoFunciona": "Cómo funciona por dentro: componentes, flujo de una petición o dato de punta a punta, en pasos claros",
+  "conceptos": [{ "termino": "concepto clave", "explicacion": "1-3 frases claras" }],
+  "cuandoUsarlo": "Cuándo es la herramienta correcta y cuándo NO (y qué se usa en su lugar)",
+  "ejemplo": "Un caso real de este cargo contado paso a paso, de principio a fin",
+  "codigo": [{ "titulo": "Qué hace este ejemplo", "lenguaje": "sql | bash | python | yaml | ...", "codigo": "el código", "explicacion": "Qué hace cada parte, en simple" }],
+  "laboratorio": ["Paso 1 concreto y verificable…", "Paso 2…"],
+  "errores": ["Error típico y cómo evitarlo"],
+  "buenasPracticas": ["Práctica que se espera de alguien con experiencia"],
+  "primeraSemana": ["Qué se espera que sepas hacer o preguntar tu primera semana en este cargo"],
+  "preguntas": [{ "pregunta": "pregunta probable en la entrevista", "respuesta": "respuesta honesta en primera persona", "tip": "" }],
+  "autoevaluacion": [{ "pregunta": "pregunta corta para comprobar que entendió", "respuesta": "respuesta breve y correcta" }],
+  "practica": ["ejercicio extra de 30-90 min con nivel gratuito, sandbox o documentación oficial"],
+  "buscar": ["término exacto para buscar la documentación o un tutorial"]
+}
+\`\`\`
+
+Cantidades: 3-4 equivalencias, 6-10 conceptos, 2-3 ejemplos de código, 5-8 pasos de laboratorio, 4-6 errores,
+4-6 buenas prácticas, 3-5 puntos de primera semana, 3 preguntas de entrevista, 4-5 de autoevaluación, 2
+prácticas. Si algo no aplica al tema (ej.: no hay código), deja ese arreglo vacío en vez de rellenar.`,
+    }],
+  })
+
+  const raw = extractJson<Record<string, unknown>>(textOf(message))
+  if (!raw) throw new Error(`Respuesta ilegible para el tema ${base.tema}`)
+  const tema = cleanTema(raw, base)
+  if (!tema.queEs) throw new Error(`Tema vacío: ${base.tema}`)
+  return tema
+}
+
+/** Concurrencia acotada: 8 llamadas simultáneas a un proveedor con tope de peticiones por minuto
+ *  (Gemini/Groq gratis) se rechazan entre sí; 4 es lo que aguantan sin fallar. */
+async function mapPool<T, R>(items: T[], size: number, fn: (x: T, i: number) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++
+      out[i] = await fn(items[i], i)
+    }
+  }))
+  return out
+}
+
+/** Genera (o regenera) la pestaña "Aprender" de una guía ya creada. Va en su propia request
+ *  y sin web_search: no hace falta investigar nada, solo enseñar lo que el aviso pide. */
+export const generateLearningModule = async (req: Request, res: Response) => {
+  try {
+    const { email: userEmail, userId } = await getUser(req)
+    await requireActiveSubscription(userId)
+    const app = await svc.getApplication(req.params.id, userEmail)
+    if (!app) return res.status(404).json({ error: 'Postulación no encontrada' })
+    if (!app.interviewGuide) return res.status(400).json({ error: 'Primero genera la guía de entrevista.' })
+    if (!app.jd?.trim()) return res.status(400).json({ error: 'La postulación no tiene el texto del aviso: no hay requisitos que comparar con tu CV.' })
+
+    const country = getCountryConfig(app.pais)
+    const ctx: Ctx = {
+      app,
+      cv: await svc.readCV(userEmail),
+      profile: await svc.readProfile(userEmail),
+      meta: cleanMeta(app.interviewMeta ?? app.interviewGuide.meta),
+      idioma: app.interviewGuide.idioma || app.idioma || country.idioma,
+    }
+
+    const outline = await generateLearningOutline(req, ctx)
+    if (!outline) return res.status(502).json({ error: 'La IA devolvió una respuesta que no se pudo leer. Intenta de nuevo.' })
+
+    const nombres = outline.temas.map(t => t.tema)
+    const results = await mapPool(outline.temas, 4, async (base) => {
+      const otros = nombres.filter(n => n !== base.tema)
+      // Un tema que falla no tumba el módulo: se reintenta una vez y, si sigue fallando, queda
+      // el resumen del esquema (el usuario puede volver a tocar "Aprender" para completarlo).
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try { return await generateLearningTopic(req, ctx, base, otros) } catch (err) {
+          console.error(`learning topic "${base.tema}" intento ${attempt + 1}:`, (err as Error).message)
+        }
+      }
+      return cleanTema({ queEs: base.enfoque || base.porQue, porQue: base.porQue }, base)
+    })
+
+    const temas = results.filter(t => t.queEs)
+    if (!temas.length && !outline.intro) {
+      return res.status(502).json({ error: 'El módulo salió vacío. Intenta generarlo de nuevo.' })
+    }
+
+    const aprender: Aprender = { generatedAt: new Date().toISOString(), intro: outline.intro, temas, plan: outline.plan }
+    app.interviewGuide = { ...app.interviewGuide, aprender }
+    await svc.saveApplication(app, userEmail)
+
+    res.json({
+      ok: true,
+      temas: temas.length,
+      html: guide.buildInterviewGuideHtml(app.interviewGuide, {
+        mode: 'app', notes: cleanNotes(app.interviewNotes), initialTab: 'aprender',
+      }),
+    })
+  } catch (err: unknown) {
+    console.error('generateLearningModule error:', err)
     if (!res.headersSent) {
       res.status((err as { status?: number }).status ?? 500).json({ error: friendlyAiError(err, getProviderFromRequest(req)) })
     }
