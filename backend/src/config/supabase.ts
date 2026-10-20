@@ -4,6 +4,7 @@ import path from 'path'
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true })
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { LOCAL_MODE, createLocalClient } from './localDb'
 
 const clean = (s: string) => { const t = (s ?? '').trim(); return t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t }
 // VITE_SUPABASE_URL como fallback — garantiza el mismo proyecto que el frontend
@@ -20,7 +21,9 @@ if (!url || !key) {
  * Cliente admin con service_role.
  * null si las vars de entorno no están configuradas.
  */
-export const supabaseAdmin: SupabaseClient | null = (url && key)
+export const supabaseAdmin: SupabaseClient | null = LOCAL_MODE
+  ? createLocalClient()
+  : (url && key)
   ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
   : null
 

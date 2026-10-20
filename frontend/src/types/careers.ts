@@ -115,6 +115,7 @@ export interface InterviewMeta {
   hora?: string
   modalidad?: string
   tipo?: string
+  empresaCliente?: string
 }
 
 /** La guía se renderiza en el backend (un solo builder para preview, .html y PDF), así que
@@ -125,6 +126,7 @@ export interface InterviewGuide {
   empresa: string
   rol: string
   idioma: 'es' | 'en'
+  aprender?: unknown   // módulo "Aprender"; el HTML lo arma el backend
 }
 
 export interface Application {

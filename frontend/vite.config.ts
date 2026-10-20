@@ -28,7 +28,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: Number(process.env.PORT) || 3001,
     proxy: {
-      '/api': 'http://localhost:4001',
+      // 127.0.0.1 explícito en modo offline: el backend local solo escucha en loopback IPv4.
+      '/api': mode === 'offline' ? 'http://127.0.0.1:4001' : 'http://localhost:4001',
     },
   },
   test: {

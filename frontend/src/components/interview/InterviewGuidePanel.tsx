@@ -5,12 +5,12 @@ import { loadLlmProvider, type LlmProvider } from '../../lib/llmProvider'
 import { getKeyForProvider } from '../../lib/userApiKeys'
 import {
   Brain, Loader2, X, Download, FileCode2, Sparkles, RefreshCw, Search,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, GraduationCap,
 } from 'lucide-react'
 import type { Application, InterviewMeta } from '../../types/careers'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
-const EMPTY_META: InterviewMeta = { entrevistadores: '', fecha: '', hora: '', modalidad: '', tipo: '' }
+const EMPTY_META: InterviewMeta = { entrevistadores: '', fecha: '', hora: '', modalidad: '', tipo: '', empresaCliente: '' }
 
 // El tipo decide cómo se reparte el contenido de la guía (ver backend/src/config/interviewTypes.ts):
 // una de RRHH no lleva preguntas técnicas y una técnica casi no lleva conductuales. Las claves
@@ -31,6 +31,8 @@ function loadExpanded(): boolean {
     return true
   }
 }
+
+const notesBackupKey = (appId: string) => `ergania:notes-backup:${appId}`
 
 function fileBase(app: Application): string {
   const clean = (s: string) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
@@ -66,6 +68,9 @@ export function InterviewGuidePanel({
   const [research, setResearch] = useState<unknown>(null)
   const [llmProvider] = useState<LlmProvider>(() => loadLlmProvider())
   const [expanded, setExpanded] = useState<boolean>(loadExpanded)
+  // El módulo "Aprender" se genera aparte de la guía y vive dentro de ella.
+  const [learning, setLearning] = useState(false)
+  const [hasLearn, setHasLearn] = useState(!!app.interviewGuide?.aprender)
 
   const toggleExpanded = () => {
     setExpanded(v => {
@@ -95,7 +100,18 @@ export function InterviewGuidePanel({
     if (!app.interviewGuide) return
     let cancelled = false
     setLoadingGuide(true)
-    api.get(`/applications/${app.id}/interview-guide`)
+    // Copia local de notas que no alcanzaron a llegar al servidor (sesión cerrada, red caída):
+    // se sube primero para que el HTML que viene del backend ya las traiga.
+    const restore = async () => {
+      let backup: unknown = null
+      try { backup = JSON.parse(localStorage.getItem(notesBackupKey(app.id)) || 'null') } catch { /* corrupta */ }
+      if (!backup) return
+      try {
+        await api.patch(`/applications/${app.id}/interview-guide/notes`, { notes: backup })
+        localStorage.removeItem(notesBackupKey(app.id))
+      } catch { /* se reintenta la próxima vez que se abra */ }
+    }
+    restore().then(() => api.get(`/applications/${app.id}/interview-guide`))
       .then(({ data }) => { if (!cancelled) setHtml(data.html) })
       .catch(err => { if (!cancelled) setError(errMsg(err, t('careersPostulaciones.interviewGuide.loadError'))) })
       .finally(() => { if (!cancelled) setLoadingGuide(false) })
@@ -107,10 +123,15 @@ export function InterviewGuidePanel({
   useEffect(() => {
     const onMessage = async (e: MessageEvent) => {
       if (e.data?.type !== 'ergania:guide-notes') return
+      // Primero a disco local, después al servidor: si la sesión expira o se cae la red a
+      // mitad de la entrevista, lo escrito no se pierde (se reenvía al reabrir la guía).
+      try { localStorage.setItem(notesBackupKey(app.id), JSON.stringify(e.data.notes)) } catch { /* sin cuota */ }
       try {
         await api.patch(`/applications/${app.id}/interview-guide/notes`, { notes: e.data.notes })
+        try { localStorage.removeItem(notesBackupKey(app.id)) } catch { /* nada */ }
         iframeRef.current?.contentWindow?.postMessage({ type: 'ergania:notes-saved' }, '*')
       } catch (err) {
+        iframeRef.current?.contentWindow?.postMessage({ type: 'ergania:notes-failed' }, '*')
         console.error('No se pudieron guardar las notas', err)
       }
     }
@@ -132,7 +153,7 @@ export function InterviewGuidePanel({
       if (!info) {
         setStep('research')
         const { data } = await api.post(`/applications/${app.id}/interview-guide/research`, {
-          llmProvider, idioma: lang, reinvestigar, ...auth,
+          llmProvider, idioma: lang, reinvestigar, meta, ...auth,
         })
         info = data.empresaInfo
         setResearch(info)
@@ -152,6 +173,25 @@ export function InterviewGuidePanel({
     } finally {
       setLoading(false)
       setStep(null)
+    }
+  }
+
+  const learn = async () => {
+    if (hasLearn && !window.confirm(t('careersPostulaciones.interviewGuide.learnConfirm'))) return
+    setLearning(true)
+    setError('')
+    const userApiKey = getKeyForProvider(llmProvider)
+    try {
+      const { data } = await api.post(`/applications/${app.id}/interview-guide/learn`, {
+        llmProvider, ...(userApiKey ? { userApiKey } : {}),
+      })
+      setHtml(data.html)
+      setHasLearn(true)
+    } catch (err: unknown) {
+      setError(errMsg(err, t('careersPostulaciones.interviewGuide.genericError')))
+      console.error(err)
+    } finally {
+      setLearning(false)
     }
   }
 
@@ -245,6 +285,17 @@ export function InterviewGuidePanel({
             {hasGuide && (
               <>
                 <button
+                  onClick={learn}
+                  disabled={learning}
+                  className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-[var(--text-primary)] rounded-lg text-xs"
+                  title={t('careersPostulaciones.interviewGuide.learnTitle')}
+                >
+                  <GraduationCap size={14} />
+                  <span className="hidden md:inline">
+                    {hasLearn ? t('careersPostulaciones.interviewGuide.learnRedo') : t('careersPostulaciones.interviewGuide.learn')}
+                  </span>
+                </button>
+                <button
                   onClick={() => setShowForm(true)}
                   className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-1.5 bg-violet-700 hover:bg-violet-600 text-[var(--text-primary)] rounded-lg text-xs"
                   title={t('careersPostulaciones.interviewGuide.regenerateTitle')}
@@ -329,7 +380,15 @@ export function InterviewGuidePanel({
             </div>
           )}
 
-          {!loading && showForm && (
+          {learning && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <Loader2 size={32} className="text-amber-400 animate-spin" />
+              <p className="text-[var(--text-primary)] font-medium">{t('careersPostulaciones.interviewGuide.learning')}</p>
+              <p className="text-[var(--text-tertiary)] text-sm max-w-md">{t('careersPostulaciones.interviewGuide.learningNote')}</p>
+            </div>
+          )}
+
+          {!loading && !learning && showForm && (
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-2xl w-full mx-auto">
               <div className="flex items-start gap-3 mb-5">
                 <div className="w-11 h-11 rounded-xl bg-violet-900/30 flex items-center justify-center shrink-0">
@@ -363,6 +422,10 @@ export function InterviewGuidePanel({
                   {tipoField}
                   {field('fecha', t('careersPostulaciones.interviewGuide.fieldDate'), t('careersPostulaciones.interviewGuide.phDate'))}
                   {field('hora', t('careersPostulaciones.interviewGuide.fieldTime'), t('careersPostulaciones.interviewGuide.phTime'))}
+                </div>
+                <div className="mt-3">
+                  {field('empresaCliente', t('careersPostulaciones.interviewGuide.fieldClient'), t('careersPostulaciones.interviewGuide.phClient'))}
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1.5">{t('careersPostulaciones.interviewGuide.clientHint')}</p>
                 </div>
                 <div className="mt-3">
                   {field('modalidad', t('careersPostulaciones.interviewGuide.fieldFormat'), t('careersPostulaciones.interviewGuide.phFormat'))}
@@ -413,13 +476,13 @@ export function InterviewGuidePanel({
             </div>
           )}
 
-          {!loading && !showForm && loadingGuide && (
+          {!loading && !learning && !showForm && loadingGuide && (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 size={28} className="text-violet-400 animate-spin" />
             </div>
           )}
 
-          {!loading && hasGuide && !loadingGuide && (
+          {!loading && !learning && hasGuide && !loadingGuide && (
             <iframe
               ref={iframeRef}
               srcDoc={html}
